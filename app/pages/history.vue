@@ -7,4 +7,6 @@ definePageMeta({
 await navigateTo({ path: '/', query: { panel: 'history' } }, { replace: true })
 </script>
 
-<template />
+<template>
+  <div />
+</template>

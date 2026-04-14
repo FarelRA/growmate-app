@@ -6,11 +6,9 @@ import { toast } from 'vue-sonner'
 import { api } from '@/lib/api'
 import { activeDeviceId, setActiveDeviceId, syncActiveDevice } from '@/lib/devices'
 import { getErrorMessage } from '@/lib/errors'
-import { getSetupRoute } from '@/lib/setup'
 
 const router = useRouter()
 
-const { data: setupStatus } = useConvexQuery(api.growmate.checkSetupStatus, {})
 const { data: devices } = useConvexQuery(api.growmate.userDevices, {})
 
 watch(devices, (deviceList) => {
@@ -27,12 +25,10 @@ const { data } = useConvexQuery(
 
 const { mutate: sendMessage } = useConvexMutation(api.growmate.sendAssistantMessage)
 const { mutate: resetAssistantThread } = useConvexMutation(api.growmate.resetAssistantThread)
-const { mutate: createSupportRequest } = useConvexMutation(api.growmate.createSupportRequest)
 
 const messageInput = ref('')
 const sending = ref(false)
 const resetting = ref(false)
-const requestingSupport = ref(false)
 
 const tierLabel = computed(() => (data.value?.user.tier === 'advanced' ? 'Advanced' : 'Basic'))
 const activeTickets = computed(() => (data.value?.supportRequests ?? []).filter((request) => request.status !== 'resolved' && request.status !== 'closed'))
@@ -50,13 +46,6 @@ const displayMessages = computed(() => {
   const messages = data.value?.messages ?? []
   return messages.length ? messages : [introAssistantMessage]
 })
-
-watch(setupStatus, async (status) => {
-  if (!status) return
-  if (!status.authenticated || !status.setupComplete || status.isAdmin) {
-    await router.replace(getSetupRoute(status))
-  }
-}, { immediate: true })
 
 function sanitizeAssistantBody(body: string) {
   return body
@@ -120,24 +109,6 @@ function renderAssistantBody(body: string) {
 
   flushList()
   return blocks.join('')
-}
-
-async function requestSupport() {
-  requestingSupport.value = true
-  try {
-    const topic = data.value?.plant
-      ? `${data.value.plant.name} support follow-up`
-      : data.value?.device
-        ? `${data.value.device.name} support follow-up`
-        : 'General account support'
-    const result = await createSupportRequest({ topic, priority: data.value?.plant ? 'high' : 'normal' })
-    toast.success('Support ticket created')
-    await router.push({ path: '/support', query: { ticketId: result.requestId } })
-  } catch (error: unknown) {
-    toast.error(getErrorMessage(error, 'Failed to create support ticket'))
-  } finally {
-    requestingSupport.value = false
-  }
 }
 
 async function handleSendMessage() {

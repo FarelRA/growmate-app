@@ -1,17 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
 import { defaultLifecycleProfile, lifecycleStageOptions, type LifecycleProfile, type PlantLifecycleStage } from '@/lib/plants'
-import { getSetupRoute } from '@/lib/setup'
 import { readSelectedImage, uploadImageFile } from '@/lib/uploads'
 
-const router = useRouter()
-
-const { data: setupStatus } = useConvexQuery(api.growmate.checkSetupStatus, {})
 const { data } = useConvexQuery(api.growmate.adminConsole, {})
 
 const { mutate: saveDevice } = useConvexMutation(api.growmate.adminSaveDevice)
@@ -98,17 +93,6 @@ const tabs = [
 
 const supportQueue = computed(() => data.value?.supportRequests ?? [])
 const selectedSupportRequest = computed(() => supportQueue.value.find((request) => request._id === selectedSupportRequestId.value) ?? supportQueue.value[0] ?? null)
-
-watch(setupStatus, async (status) => {
-  if (!status) return
-  if (!status.authenticated) {
-    await router.replace('/login')
-    return
-  }
-  if (!status.isAdmin) {
-    await router.replace(getSetupRoute(status))
-  }
-}, { immediate: true })
 
 watch(supportQueue, (requests) => {
   if (!requests.length) {

@@ -1,23 +1,14 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
-import { useConvexQuery } from '@convex-vue/core'
-import { api } from '@/lib/api'
-import { authState, signInWithPassword } from '@/lib/auth'
+import { signInWithPassword } from '@/lib/auth'
 import { getErrorMessage } from '@/lib/errors'
-import { getSetupRoute } from '@/lib/setup'
 
 const router = useRouter()
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
-const { data: setupStatus } = useConvexQuery(api.growmate.checkSetupStatus, {})
-
-watch(setupStatus, async (status) => {
-  if (!authState.isAuthenticated.value || !status) return
-  await router.replace(getSetupRoute(status))
-}, { immediate: true })
 
 async function handleLogin() {
   if (!email.value || !password.value) {

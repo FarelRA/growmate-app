@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
-import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
+import { useConvexMutation } from '@convex-vue/core'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
-import { getSetupRoute } from '@/lib/setup'
 
 const router = useRouter()
 const name = ref('')
@@ -15,17 +14,6 @@ const avatar = ref('')
 const loading = ref(false)
 
 const { mutate: completeProfile } = useConvexMutation(api.growmate.completeProfile)
-const { data: setupStatus } = useConvexQuery(api.growmate.checkSetupStatus, {})
-
-watch(setupStatus, (status) => {
-  if (status) {
-    if (!status.authenticated) {
-      router.push('/login')
-    } else if (status.hasProfile && status.nextStep !== 'complete-profile') {
-      router.push(getSetupRoute(status))
-    }
-  }
-}, { immediate: true })
 
 async function handleCompleteProfile() {
   if (!name.value || !handle.value) {

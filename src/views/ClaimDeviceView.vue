@@ -2,12 +2,11 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
-import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
+import { useConvexMutation } from '@convex-vue/core'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@/lib/api'
 import { setActiveDeviceId } from '@/lib/devices'
 import { getErrorMessage } from '@/lib/errors'
-import { getSetupRoute } from '@/lib/setup'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,27 +17,12 @@ const unclaimedDevice = ref<{ deviceId: string; name: string; firmwareVersion?: 
 
 const convexClient = new ConvexHttpClient(import.meta.env.VITE_CONVEX_URL)
 const { mutate: claimDevice } = useConvexMutation(api.growmate.claimDevice)
-const { data: setupStatus } = useConvexQuery(api.growmate.checkSetupStatus, {})
 
 const manualLinking = computed(() => route.query.manual === '1')
 const pageTitle = computed(() => manualLinking.value ? 'Link another device' : 'Connect your first device')
 const pageDescription = computed(() => manualLinking.value
   ? 'Claim another GrowMate pod and add it to your account.'
   : 'Enter the device ID printed on your hardware to link it to your account.')
-
-watch(setupStatus, (status) => {
-  if (status) {
-    if (!status.authenticated) {
-      router.push('/login')
-    } else if (status.isAdmin) {
-      router.push(getSetupRoute(status))
-    } else if (!status.hasProfile) {
-      router.push(getSetupRoute(status))
-    } else if (!manualLinking.value && status.nextStep !== 'claim-device') {
-      router.push(getSetupRoute(status))
-    }
-  }
-}, { immediate: true })
 
 watch(deviceId, (value) => {
   if (unclaimedDevice.value && value.trim() !== unclaimedDevice.value.deviceId) {

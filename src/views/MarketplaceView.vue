@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
-import { getSetupRoute } from '@/lib/setup'
 import { readSelectedImage, uploadImageFile } from '@/lib/uploads'
-
-const router = useRouter()
 
 const searchQuery = ref('')
 const selectedCategory = ref<'all' | 'official' | 'community'>('all')
@@ -32,7 +28,6 @@ const draftForm = ref({
 })
 
 const { data } = useConvexQuery(api.growmate.marketplace, {})
-const { data: setupStatus } = useConvexQuery(api.growmate.checkSetupStatus, {})
 
 const { mutate: saveMarketplaceDraft } = useConvexMutation(api.growmate.saveMarketplaceDraft)
 const { mutate: publishMarketplaceDraft } = useConvexMutation(api.growmate.publishMarketplaceDraft)
@@ -55,13 +50,6 @@ const sendingReply = ref(false)
 const editingListingId = ref<string | null>(null)
 const draftImageFile = ref<File | null>(null)
 const draftImagePreview = ref<string | null>(null)
-
-watch(setupStatus, async (status) => {
-  if (!status) return
-  if (!status.authenticated || !status.setupComplete || status.isAdmin) {
-    await router.replace(getSetupRoute(status))
-  }
-}, { immediate: true })
 
 watch(() => data.value?.threads, async (threads) => {
   if (!threads?.length) {

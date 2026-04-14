@@ -7,7 +7,6 @@ import { api } from '@/lib/api'
 import { activeDeviceId, setActiveDeviceId, syncActiveDevice } from '@/lib/devices'
 import { getErrorMessage } from '@/lib/errors'
 import { defaultCustomPlantPreset, lifecycleStageOptions, type LifecycleProfile, type PlantLifecycleStage } from '@/lib/plants'
-import { getSetupRoute } from '@/lib/setup'
 import { readSelectedImage, uploadImageFile } from '@/lib/uploads'
 
 const route = useRoute()
@@ -66,25 +65,6 @@ const totalLifecycleDays = computed(() => Object.values(lifecycleProfile.value).
 watch(devices, (deviceList) => {
   if (!deviceList) return
   syncActiveDevice(deviceList)
-}, { immediate: true })
-
-watch(setupStatus, async (status) => {
-  if (!status) return
-  if (!status.authenticated) {
-    await router.replace('/login')
-    return
-  }
-  if (status.isAdmin) {
-    await router.replace('/admin')
-    return
-  }
-  if (!status.hasProfile) {
-    await router.replace('/complete-profile')
-    return
-  }
-  if (!status.hasDevice) {
-    await router.replace('/claim-device')
-  }
 }, { immediate: true })
 
 watch(selectedPreset, (preset) => {
@@ -158,7 +138,7 @@ async function handleAssignPlant() {
       return
     }
 
-    await router.replace(getSetupRoute({ authenticated: true, nextStep: 'done' }))
+    await router.replace('/')
   } catch (error: unknown) {
     toast.error(getErrorMessage(error, 'Failed to save plant'))
   } finally {

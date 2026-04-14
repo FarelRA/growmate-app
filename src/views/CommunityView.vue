@@ -1,17 +1,12 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref } from 'vue'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
-import { getSetupRoute } from '@/lib/setup'
 import { readSelectedImage, uploadImageFile } from '@/lib/uploads'
 
-const router = useRouter()
-
 const { data } = useConvexQuery(api.growmate.community, {})
-const { data: setupStatus } = useConvexQuery(api.growmate.checkSetupStatus, {})
 
 const { mutate: createPost } = useConvexMutation(api.growmate.createPost)
 const { mutate: likePost } = useConvexMutation(api.growmate.likePost)
@@ -30,13 +25,6 @@ const creatingPost = ref(false)
 const likingPosts = ref<Set<string>>(new Set())
 const commentingPosts = ref<Set<string>>(new Set())
 const deletingPosts = ref<Set<string>>(new Set())
-
-watch(setupStatus, async (status) => {
-  if (!status) return
-  if (!status.authenticated || !status.setupComplete || status.isAdmin) {
-    await router.replace(getSetupRoute(status))
-  }
-}, { immediate: true })
 
 async function handleCreatePost() {
   creatingPost.value = true

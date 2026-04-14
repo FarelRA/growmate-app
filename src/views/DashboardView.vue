@@ -7,7 +7,6 @@ import MetricLineChart from '@/components/MetricLineChart.vue'
 import { api } from '@/lib/api'
 import { activeDeviceId, setActiveDeviceId, syncActiveDevice } from '@/lib/devices'
 import { getErrorMessage } from '@/lib/errors'
-import { getSetupRoute } from '@/lib/setup'
 
 type DashboardPanel = 'overview' | 'care' | 'devices' | 'history'
 type ScheduleCadenceUnit = 'hours' | 'days'
@@ -43,18 +42,10 @@ function isPanel(value: string | null): value is DashboardPanel {
 }
 
 const { data: devices } = useConvexQuery(api.growmate.userDevices, {})
-const { data: setupStatus } = useConvexQuery(api.growmate.checkSetupStatus, {})
 
 watch(devices, (deviceList) => {
   if (!deviceList) return
   syncActiveDevice(deviceList)
-}, { immediate: true })
-
-watch(setupStatus, async (status) => {
-  if (!status) return
-  if (!status.authenticated || !status.setupComplete || status.isAdmin) {
-    await router.replace(getSetupRoute(status))
-  }
 }, { immediate: true })
 
 const activePanel = computed<DashboardPanel>(() => {

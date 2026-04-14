@@ -5,12 +5,10 @@ import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
-import { getSetupRoute } from '@/lib/setup'
 
 const route = useRoute()
 const router = useRouter()
 
-const { data: setupStatus } = useConvexQuery(api.growmate.checkSetupStatus, {})
 const { data } = useConvexQuery(api.growmate.supportInbox, {})
 const { mutate: createSupportRequest } = useConvexMutation(api.growmate.createSupportRequest)
 const { mutate: sendSupportMessage } = useConvexMutation(api.growmate.sendSupportMessage)
@@ -24,13 +22,6 @@ const closingTicket = ref(false)
 const selectedRequestId = ref<string | null>(null)
 
 const selectedRequest = computed(() => data.value?.requests.find((request) => request._id === selectedRequestId.value) ?? data.value?.requests[0] ?? null)
-
-watch(setupStatus, async (status) => {
-  if (!status) return
-  if (!status.authenticated || !status.setupComplete || status.isAdmin) {
-    await router.replace(getSetupRoute(status))
-  }
-}, { immediate: true })
 
 watch([() => data.value?.requests, () => route.query.ticketId], ([requests, ticketId]) => {
   if (!requests?.length) {

@@ -3470,7 +3470,7 @@ export const adminSavePlantPreset = mutation({
     }
 
     const image = await resolveStoredImageUrl(ctx, args.imageStorageId)
-    let existing = args.presetId ? await ctx.db.get(args.presetId) : null
+    const existing = args.presetId ? await ctx.db.get(args.presetId) : null
     if (args.presetId && (!existing || existing._id !== args.presetId)) {
       throw new Error('Plant preset not found')
     }

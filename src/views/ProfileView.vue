@@ -6,11 +6,9 @@ import { toast } from 'vue-sonner'
 import { signOutCurrentUser } from '@/lib/auth'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
-import { getSetupRoute } from '@/lib/setup'
 
 const router = useRouter()
 
-const { data: setupStatus } = useConvexQuery(api.growmate.checkSetupStatus, {})
 const { data: profile } = useConvexQuery(api.growmate.currentUserProfile, {})
 const { mutate: updateProfile } = useConvexMutation(api.growmate.updateCurrentUserProfile)
 
@@ -23,14 +21,7 @@ const form = ref({
 const saving = ref(false)
 const loggingOut = ref(false)
 
-const isAdmin = computed(() => Boolean(setupStatus.value?.isAdmin))
-
-watch(setupStatus, async (status) => {
-  if (!status) return
-  if (!status.authenticated) {
-    await router.replace('/login')
-  }
-}, { immediate: true })
+const isAdmin = computed(() => profile.value?.role === 'admin')
 
 watch(profile, (value) => {
   if (!value) return
@@ -70,7 +61,7 @@ async function handleLogout() {
 }
 
 async function handleBack() {
-  await router.replace(getSetupRoute(setupStatus.value))
+  await router.replace(isAdmin.value ? '/admin' : '/')
 }
 </script>
 

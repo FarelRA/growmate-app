@@ -26,53 +26,6 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
   return user
 }
 
-/**
- * Get or create a user profile for the authenticated user
- * Used during registration/first login to set additional profile fields
- */
-export async function getOrCreateUser(
-  ctx: MutationCtx,
-  data: {
-    name: string
-    handle: string
-    avatar: string
-    tier?: 'basic' | 'advanced'
-    role?: 'grower' | 'company' | 'admin'
-  }
-) {
-  const userId = await getAuthUserId(ctx)
-  if (!userId) {
-    throw new Error('Authentication required')
-  }
-
-  const existing = await ctx.db.get(userId)
-
-  if (existing) {
-    // Update existing user with new data
-    await ctx.db.patch(userId, {
-      name: data.name,
-      handle: data.handle,
-      avatar: data.avatar,
-      tier: data.tier ?? existing.tier,
-      role: data.role ?? existing.role,
-    })
-    return await ctx.db.get(userId)
-  }
-
-  // Convex Auth creates the auth user up front; profile fields are added here.
-  await ctx.db.patch(userId, {
-    name: data.name,
-    handle: data.handle,
-    avatar: data.avatar,
-    tier: data.tier ?? 'basic',
-    role: data.role ?? 'grower',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  })
-
-  return await ctx.db.get(userId)
-}
-
 // ============================================
 // SENSOR COMPUTATION HELPERS
 // ============================================

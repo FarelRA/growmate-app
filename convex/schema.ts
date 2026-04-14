@@ -2,6 +2,13 @@ import { defineSchema, defineTable } from 'convex/server'
 import { authTables } from '@convex-dev/auth/server'
 import { v } from 'convex/values'
 
+const careScheduleCadence = {
+  cadenceUnit: v.union(v.literal('hours'), v.literal('days')),
+  cadenceValue: v.number(),
+  timeOfDayMinutes: v.optional(v.number()),
+  timezoneOffsetMinutes: v.optional(v.number()),
+}
+
 export default defineSchema({
   ...authTables,
   
@@ -132,7 +139,6 @@ export default defineSchema({
     lightingThreshold: v.number(),
     lightingHysteresis: v.number(),
     // Current State
-    pumpEnabled: v.boolean(),
     lightEnabled: v.boolean(),
     lastWatered: v.optional(v.number()),
     lastLightChange: v.optional(v.number()),
@@ -278,17 +284,12 @@ export default defineSchema({
     .index('by_timestamp', ['timestamp']),
 
   // ============================================
-  // CARE SCHEDULES - Changed: frequency → intervalDays, nextRun → nextRunAt
+  // CARE SCHEDULES
   // ============================================
   careSchedules: defineTable({
     plantId: v.id('plants'),
     title: v.string(),
-    cadenceUnit: v.optional(v.union(v.literal('hours'), v.literal('days'))),
-    cadenceValue: v.optional(v.number()),
-    timeOfDayMinutes: v.optional(v.number()),
-    timezoneOffsetMinutes: v.optional(v.number()),
-    intervalDays: v.number(),
-    intervalHours: v.optional(v.number()),
+    ...careScheduleCadence,
     nextRunAt: v.number(),
     lastRunAt: v.optional(v.number()),
     enabled: v.boolean(),
@@ -338,12 +339,9 @@ export default defineSchema({
       v.literal('urgent')
     ),
     topic: v.string(),
-    response: v.optional(v.string()),
     handledBy: v.optional(v.id('users')),
     createdAt: v.number(),
     updatedAt: v.number(),
-    resolvedAt: v.optional(v.number()),
-    respondedAt: v.optional(v.number()),
   })
     .index('by_user', ['userId'])
     .index('by_status', ['status']),
@@ -359,7 +357,7 @@ export default defineSchema({
     .index('by_request_and_createdAt', ['requestId', 'createdAt']),
 
   // ============================================
-  // PRODUCTS - Changed: seller → sellerId, distance → distanceMiles
+  // PRODUCTS
   // ============================================
   products: defineTable({
     title: v.string(),
@@ -373,10 +371,7 @@ export default defineSchema({
     quantityUnit: v.optional(v.string()),
     priceUnit: v.string(),
     locationLabel: v.optional(v.string()),
-    sellerNote: v.optional(v.string()),
     contactPreference: v.optional(v.union(v.literal('chat'), v.literal('pickup'), v.literal('delivery'))),
-    rating: v.number(),
-    distanceMiles: v.optional(v.number()),
     image: v.string(),
     imageStorageId: v.optional(v.id('_storage')),
     featured: v.boolean(),
@@ -476,16 +471,6 @@ export default defineSchema({
     .index('by_user_unread', ['userId', 'read'])
     .index('by_createdAt', ['createdAt']),
 
-  newsletterSubscriptions: defineTable({
-    email: v.string(),
-    userId: v.optional(v.id('users')),
-    source: v.string(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index('by_email', ['email'])
-    .index('by_user', ['userId']),
-
   // ============================================
   // LISTING DRAFTS - Restructured quantity/price
   // ============================================
@@ -530,21 +515,4 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_createdAt', ['createdAt']),
 
-  // ============================================
-  // USER BADGES - NEW: For achievements
-  // ============================================
-  userBadges: defineTable({
-    userId: v.id('users'),
-    badgeType: v.union(
-      v.literal('watering_streak'),
-      v.literal('solar_master'),
-      v.literal('soil_scientist'),
-      v.literal('community_contributor'),
-      v.literal('silver_leaf'),
-      v.literal('gold_leaf')
-    ),
-    earnedAt: v.number(),
-  })
-    .index('by_user', ['userId'])
-    .index('by_earnedAt', ['earnedAt']),
 })

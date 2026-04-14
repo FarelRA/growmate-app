@@ -4,8 +4,6 @@ import { mutation, query, internalMutation } from './_generated/server'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { getCurrentUser, requireAdmin, requireUser } from './helpers'
-import type { PlantPreset } from '../src/lib/plants'
-import { plantCatalogSeed } from './plantCatalogSeed'
 import {
   getSensorStatus,
   getSensorTarget,
@@ -129,38 +127,13 @@ function normalizeScheduleCadence(input: {
   cadenceValue?: CareScheduleDoc['cadenceValue']
   timeOfDayMinutes?: CareScheduleDoc['timeOfDayMinutes']
   timezoneOffsetMinutes?: CareScheduleDoc['timezoneOffsetMinutes']
-  intervalDays?: CareScheduleDoc['intervalDays']
-  intervalHours?: CareScheduleDoc['intervalHours']
-  nextRunAt?: CareScheduleDoc['nextRunAt']
 }): ScheduleCadence {
-  if (input.cadenceUnit && input.cadenceValue) {
-    return {
-      unit: input.cadenceUnit,
-      value: Math.max(1, Math.round(input.cadenceValue)),
-      timeOfDayMinutes: input.cadenceUnit === 'days' ? clampScheduleTimeOfDayMinutes(input.timeOfDayMinutes) : null,
-      timezoneOffsetMinutes: Math.round(input.timezoneOffsetMinutes ?? 0),
-    }
-  }
-
-  const intervalDays = Math.max(0, Math.round(input.intervalDays ?? 0))
-  const intervalHours = Math.max(0, Math.round(input.intervalHours ?? 0))
-  const totalHours = Math.max(1, intervalDays * 24 + intervalHours)
-
-  if (totalHours % 24 === 0) {
-    const nextRunDate = new Date(input.nextRunAt ?? Date.now())
-    return {
-      unit: 'days',
-      value: Math.max(1, totalHours / 24),
-      timeOfDayMinutes: nextRunDate.getHours() * 60 + nextRunDate.getMinutes(),
-      timezoneOffsetMinutes: -nextRunDate.getTimezoneOffset(),
-    }
-  }
-
+  const unit: ScheduleCadenceUnit = input.cadenceUnit === 'hours' ? 'hours' : 'days'
   return {
-    unit: 'hours',
-    value: totalHours,
-    timeOfDayMinutes: null,
-    timezoneOffsetMinutes: 0,
+    unit,
+    value: Math.max(1, Math.round(input.cadenceValue ?? 1)),
+    timeOfDayMinutes: unit === 'days' ? clampScheduleTimeOfDayMinutes(input.timeOfDayMinutes) : null,
+    timezoneOffsetMinutes: unit === 'days' ? Math.round(input.timezoneOffsetMinutes ?? 0) : 0,
   }
 }
 
@@ -182,20 +155,6 @@ function formatScheduleCadence(cadence: ScheduleCadence) {
   const dayLabel = cadence.value === 1 ? 'Every day' : `Every ${cadence.value} days`
   const timeLabel = formatScheduleTime(cadence.timeOfDayMinutes)
   return timeLabel ? `${dayLabel} at ${timeLabel}` : dayLabel
-}
-
-function getLegacyScheduleInterval(cadence: ScheduleCadence) {
-  if (cadence.unit === 'days') {
-    return {
-      intervalDays: cadence.value,
-      intervalHours: undefined,
-    }
-  }
-
-  return {
-    intervalDays: Math.floor(cadence.value / 24),
-    intervalHours: cadence.value % 24 || undefined,
-  }
 }
 
 function computeNextRunAtFromCadence(cadence: ScheduleCadence, fromTime: number) {
@@ -224,19 +183,13 @@ function formatScheduleSummary(input: {
   cadenceValue?: CareScheduleDoc['cadenceValue']
   timeOfDayMinutes?: CareScheduleDoc['timeOfDayMinutes']
   timezoneOffsetMinutes?: CareScheduleDoc['timezoneOffsetMinutes']
-  intervalDays?: CareScheduleDoc['intervalDays']
-  intervalHours?: CareScheduleDoc['intervalHours']
-  nextRunAt?: CareScheduleDoc['nextRunAt']
 }) {
   const cadence = normalizeScheduleCadence(input)
-  const legacy = getLegacyScheduleInterval(cadence)
 
   return {
     cadence,
     cadenceLabel: formatScheduleCadence(cadence),
     timeLabel: formatScheduleTime(cadence.timeOfDayMinutes),
-    intervalDays: legacy.intervalDays,
-    intervalHours: legacy.intervalHours ?? 0,
   }
 }
 
@@ -590,7 +543,6 @@ async function buildAssistantContext(ctx: Ctx, user: UserDoc, device: DeviceDoc 
           wateringCooldown: getDeviceWateringCooldown(device),
           lightingThreshold: device.lightingThreshold,
           lightingHysteresis: getDeviceLightingHysteresis(device),
-          pumpEnabled: device.pumpEnabled,
           lightEnabled: device.lightEnabled,
           lastSeen: formatTimestamp(device.lastSeen),
         }
@@ -616,8 +568,6 @@ async function buildAssistantContext(ctx: Ctx, user: UserDoc, device: DeviceDoc 
         enabled: schedule.enabled,
         nextRunAt: formatTimestamp(schedule.nextRunAt),
         lastRunAt: schedule.lastRunAt ? formatTimestamp(schedule.lastRunAt) : null,
-        intervalDays: summary.intervalDays,
-        intervalHours: summary.intervalHours,
         cadenceUnit: summary.cadence.unit,
         cadenceValue: summary.cadence.value,
         timeOfDayMinutes: summary.cadence.timeOfDayMinutes,
@@ -660,35 +610,6 @@ function getAutomationModeLabel(device: { autoWatering: boolean; autoLighting: b
   return 'Manual control'
 }
 
-async function upsertPlantCatalog(ctx: MutationCtx, preset: PlantPreset, now: number) {
-  const existing = await ctx.db.query('plantCatalog').withIndex('by_key', (q) => q.eq('key', preset.key)).first()
-  const payload = {
-    key: preset.key,
-    name: preset.name,
-    species: preset.species,
-    growthStage: preset.growthStage,
-    image: preset.image,
-    imageStorageId: undefined,
-    description: preset.description,
-    location: preset.location,
-    category: preset.category,
-    difficulty: preset.difficulty,
-    wateringThreshold: preset.wateringThreshold,
-    lightingThreshold: preset.lightingThreshold,
-    lifecycleProfile: preset.lifecycleProfile,
-    updatedAt: now,
-  }
-
-  if (existing) {
-    await ctx.db.patch(existing._id, payload)
-  } else {
-    await ctx.db.insert('plantCatalog', {
-      ...payload,
-      createdAt: now,
-    })
-  }
-}
-
 function normalizePlantPresetKey(value: string) {
   return value
     .trim()
@@ -711,7 +632,6 @@ async function enrichMarketplaceProduct(ctx: Ctx, product: ProductDoc, viewerId?
     sellerAvatar: seller?.avatar ?? 'GM',
     sellerId: seller?._id,
     image,
-    distance: product.distanceMiles ? `${product.distanceMiles} miles away` : null,
     priceLabel: `${formatCurrencyIdr(product.price)} / ${product.priceUnit}`,
     quantityLabel: `${product.quantityAvailable} ${product.quantityUnit ?? 'items'}`,
     statusLabel: formatMarketplaceStatus(product.status),
@@ -897,7 +817,6 @@ async function buildDeviceSummary(ctx: Ctx, device: DeviceDoc) {
     wateringCooldown: getDeviceWateringCooldown(device),
     lightingThreshold: device.lightingThreshold,
     lightingHysteresis: getDeviceLightingHysteresis(device),
-    pumpEnabled: device.pumpEnabled,
     lightEnabled: device.lightEnabled,
     lastWatered: device.lastWatered,
     lastSeen: device.lastSeen,
@@ -1166,19 +1085,6 @@ export const plantLibrary = query({
   },
 })
 
-export const syncPlantCatalog = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const now = Date.now()
-
-    for (const preset of plantCatalogSeed) {
-      await upsertPlantCatalog(ctx, preset, now)
-    }
-
-    return { success: true, count: plantCatalogSeed.length }
-  },
-})
-
 export const getUnclaimedDevice = query({
   args: {
     deviceId: v.string(),
@@ -1441,8 +1347,6 @@ export const dashboard = query({
       const summary = formatScheduleSummary(schedule)
       return {
         ...schedule,
-        intervalDays: summary.intervalDays,
-        intervalHours: summary.intervalHours,
         cadenceUnit: summary.cadence.unit,
         cadenceValue: summary.cadence.value,
         timeOfDayMinutes: summary.cadence.timeOfDayMinutes,
@@ -1681,11 +1585,7 @@ export const assistant = query({
       user,
       device: device ? await buildDeviceSummary(ctx, device) : null,
       plant: plant && !plant.archived ? plant : null,
-      thread: {
-        ...(thread ?? { title: 'Floral Assistant Chat' }),
-        assistantName: 'Floral Assistant',
-        mood: device ? 'Focused on your active device' : 'Waiting for your first pod',
-      },
+      thread: thread ?? { title: 'Floral Assistant Chat' },
       messages,
       supportRequests: supportThreads,
       recommendations,
@@ -1797,18 +1697,6 @@ export const community = query({
   },
 })
 
-export const updateUserTier = mutation({
-  args: {
-    userId: v.id('users'),
-    tier: v.union(v.literal('basic'), v.literal('advanced')),
-  },
-  handler: async (ctx, args) => {
-    await requireAdmin(ctx)
-    await ctx.db.patch(args.userId, { tier: args.tier, updatedAt: Date.now() })
-    return { success: true }
-  },
-})
-
 export const toggleCareSchedule = mutation({
   args: { scheduleId: v.id('careSchedules'), enabled: v.boolean() },
   handler: async (ctx, args) => {
@@ -1883,7 +1771,6 @@ export const saveCareSchedule = mutation({
       timeOfDayMinutes: args.timeOfDayMinutes,
       timezoneOffsetMinutes: args.timezoneOffsetMinutes,
     })
-    const legacy = getLegacyScheduleInterval(cadence)
     const nextRunAt = computeNextRunAtFromCadence(cadence, now)
     let scheduleId = args.scheduleId
 
@@ -1899,8 +1786,6 @@ export const saveCareSchedule = mutation({
         cadenceValue: cadence.value,
         timeOfDayMinutes: cadence.timeOfDayMinutes ?? undefined,
         timezoneOffsetMinutes: cadence.timezoneOffsetMinutes,
-        intervalDays: legacy.intervalDays,
-        intervalHours: legacy.intervalHours,
         nextRunAt,
       })
     } else {
@@ -1911,8 +1796,6 @@ export const saveCareSchedule = mutation({
         cadenceValue: cadence.value,
         timeOfDayMinutes: cadence.timeOfDayMinutes ?? undefined,
         timezoneOffsetMinutes: cadence.timezoneOffsetMinutes,
-        intervalDays: legacy.intervalDays,
-        intervalHours: legacy.intervalHours,
         nextRunAt,
         enabled: true,
         createdAt: now,
@@ -1976,59 +1859,6 @@ export const deleteCareSchedule = mutation({
     })
 
     return { success: true }
-  },
-})
-
-export const completeCareScheduleRun = mutation({
-  args: {
-    scheduleId: v.id('careSchedules'),
-  },
-  handler: async (ctx, args) => {
-    const user = await requireUser(ctx)
-    const schedule = await ctx.db.get(args.scheduleId)
-    if (!schedule) {
-      throw new Error('Schedule not found')
-    }
-
-    const plant = await ctx.db.get(schedule.plantId)
-    if (!plant) {
-      throw new Error('Plant not found')
-    }
-
-    const device = await ctx.db.get(plant.deviceId)
-    if (!device || device.userId !== user._id) {
-      throw new Error('Schedule not found')
-    }
-
-    const now = Date.now()
-    const cadence = normalizeScheduleCadence(schedule)
-    const nextRunAt = computeNextRunAtFromCadence(cadence, Math.max(now, schedule.nextRunAt))
-
-    await ctx.db.patch(args.scheduleId, {
-      lastRunAt: now,
-      nextRunAt,
-    })
-
-    await recordAutomationEvent(ctx, {
-      deviceId: device.deviceId,
-      plantId: plant._id,
-      action: 'schedule_completed',
-      timestamp: now,
-    })
-
-    await recordGrowEvent(ctx, {
-      deviceId: device._id,
-      plantId: plant._id,
-      userId: user._id,
-      source: 'user',
-      entityType: 'schedule',
-      eventType: 'care_schedule_completed',
-      title: 'Scheduled task completed',
-      detail: `${schedule.title} was marked done and rolled forward.`,
-      timestamp: now,
-    })
-
-    return { success: true, nextRunAt }
   },
 })
 
@@ -2416,7 +2246,6 @@ export const assistantCreateSchedule = internalMutation({
       throw new Error('Schedule title is required')
     }
     const cadence = normalizeScheduleCadence(args)
-    const legacy = getLegacyScheduleInterval(cadence)
     const nextRunAt = computeNextRunAtFromCadence(cadence, now)
     const scheduleId = await ctx.db.insert('careSchedules', {
       plantId: plant._id,
@@ -2425,8 +2254,6 @@ export const assistantCreateSchedule = internalMutation({
       cadenceValue: cadence.value,
       timeOfDayMinutes: cadence.timeOfDayMinutes ?? undefined,
       timezoneOffsetMinutes: cadence.timezoneOffsetMinutes,
-      intervalDays: legacy.intervalDays,
-      intervalHours: legacy.intervalHours,
       nextRunAt,
       enabled: true,
       createdAt: now,
@@ -2678,10 +2505,7 @@ export const publishMarketplaceDraft = mutation({
       quantityUnit: draft.quantityUnit,
       priceUnit: draft.priceUnit,
       locationLabel: draft.locationLabel,
-      sellerNote: draft.description,
       contactPreference: draft.contactPreference,
-      rating: 4.8,
-      distanceMiles: undefined,
       image: draft.image,
       imageStorageId: draft.imageStorageId,
       featured: false,
@@ -2770,7 +2594,6 @@ export const updateMarketplaceListing = mutation({
       image,
       imageStorageId,
       locationLabel: args.locationLabel.trim(),
-      sellerNote: args.description.trim(),
       contactPreference: args.contactPreference,
       updatedAt: Date.now(),
     })
@@ -2935,23 +2758,6 @@ export const deletePost = mutation({
   },
 })
 
-export const sharePost = mutation({
-  args: { postId: v.id('communityPosts') },
-  handler: async (ctx, args) => {
-    const user = await requireUser(ctx)
-    const post = await ctx.db.get(args.postId)
-    await ctx.db.insert('notifications', {
-      userId: user._id,
-      title: 'Post shared',
-      detail: `${post?.title ?? 'This post'} has been shared successfully.`,
-      kind: 'social',
-      read: false,
-      createdAt: Date.now(),
-    })
-    return { success: true }
-  },
-})
-
 export const createSupportRequest = mutation({
   args: {
     topic: v.string(),
@@ -3031,8 +2837,6 @@ export const sendSupportMessage = mutation({
       updatedAt: now,
       status: isAdmin ? 'in_progress' : request.status === 'closed' ? 'open' : request.status,
       handledBy: isAdmin ? user._id : request.handledBy,
-      respondedAt: isAdmin ? now : request.respondedAt,
-      response: isAdmin ? body : request.response,
     })
 
     const receiverId = isAdmin ? request.userId : request.handledBy
@@ -3065,7 +2869,6 @@ export const closeSupportRequest = mutation({
     const now = Date.now()
     await ctx.db.patch(args.requestId, {
       status: 'closed',
-      resolvedAt: now,
       updatedAt: now,
     })
 
@@ -3497,7 +3300,6 @@ export const adminSaveDevice = mutation({
     const deviceDocId = await ctx.db.insert('devices', {
       userId: undefined,
       plantId: undefined,
-      pumpEnabled: false,
       lightEnabled: false,
       lastWatered: undefined,
       lastLightChange: undefined,
@@ -3532,7 +3334,6 @@ export const adminUpdateSupportRequest = mutation({
     requestId: v.id('supportRequests'),
     status: v.union(v.literal('open'), v.literal('in_progress'), v.literal('resolved'), v.literal('closed')),
     priority: v.optional(v.union(v.literal('low'), v.literal('normal'), v.literal('high'), v.literal('urgent'))),
-    response: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx)
@@ -3542,21 +3343,17 @@ export const adminUpdateSupportRequest = mutation({
     }
 
     const now = Date.now()
-    const response = args.response?.trim()
     await ctx.db.patch(args.requestId, {
       status: args.status,
       priority: args.priority ?? request.priority,
-      response: response || request.response,
       handledBy: admin._id,
-      respondedAt: response ? now : request.respondedAt,
-      resolvedAt: args.status === 'resolved' || args.status === 'closed' ? now : undefined,
       updatedAt: now,
     })
 
     await ctx.db.insert('notifications', {
       userId: request.userId,
       title: 'Support ticket updated',
-      detail: response ? 'An admin responded to your support request.' : `Your support request is now ${args.status.replace('_', ' ')}.`,
+      detail: `Your support request is now ${args.status.replace('_', ' ')}.`,
       kind: 'assistant',
       read: false,
       createdAt: now,
@@ -3612,10 +3409,7 @@ export const adminSaveOfficialProduct = mutation({
       quantityUnit: undefined,
       priceUnit: args.priceUnit.trim(),
       locationLabel: 'Shopee',
-      sellerNote: undefined,
       contactPreference: undefined,
-      rating: 5,
-      distanceMiles: undefined,
       image,
       imageStorageId,
       featured: args.featured,
@@ -3806,7 +3600,7 @@ export const adminUpdateUserAccess = mutation({
   },
 })
 
-export const updateSensorData = mutation({
+export const updateSensorData = internalMutation({
   args: {
     deviceId: v.string(),
     plantId: v.id('plants'),
@@ -4019,7 +3813,7 @@ export const updateSensorData = mutation({
       },
       actions,
       state: {
-        pumpEnabled: false,
+        pumpEnabled: Boolean(actions.pump),
         lightEnabled: typeof deviceUpdates.lightEnabled === 'boolean' ? deviceUpdates.lightEnabled : device.lightEnabled,
         lastWatered: typeof deviceUpdates.lastWatered === 'number' ? deviceUpdates.lastWatered : device.lastWatered,
       },
@@ -4027,7 +3821,7 @@ export const updateSensorData = mutation({
   },
 })
 
-export const updatePlantImage = mutation({
+export const updatePlantImage = internalMutation({
   args: {
     plantId: v.id('plants'),
     image: v.string(),

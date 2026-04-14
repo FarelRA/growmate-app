@@ -13,7 +13,6 @@ import type * as growmate from "../growmate.js";
 import type * as helpers from "../helpers.js";
 import type * as http from "../http.js";
 import type * as openai from "../openai.js";
-import type * as plantCatalogSeed from "../plantCatalogSeed.js";
 
 import type {
   ApiFromModules,
@@ -27,7 +26,6 @@ declare const fullApi: ApiFromModules<{
   helpers: typeof helpers;
   http: typeof http;
   openai: typeof openai;
-  plantCatalogSeed: typeof plantCatalogSeed;
 }>;
 
 /**

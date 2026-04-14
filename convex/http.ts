@@ -1,6 +1,6 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 import { auth } from "./auth";
 
 const http = httpRouter();
@@ -69,7 +69,7 @@ http.route({
       }
       
       // Update sensors and get automation actions
-      const result = await ctx.runMutation(api.growmate.updateSensorData, {
+      const result = await ctx.runMutation(internal.growmate.updateSensorData, {
         deviceId: body.deviceId,
         plantId: body.plantId,
         sensors: sensors,
@@ -140,7 +140,7 @@ http.route({
       }
       
       // Update plant image
-      await ctx.runMutation(api.growmate.updatePlantImage, {
+      await ctx.runMutation(internal.growmate.updatePlantImage, {
         plantId: body.plantId,
         image: imageData,
       });

@@ -1,7 +1,8 @@
 import type { RouteLocationRaw } from 'vue-router'
 
-type SetupStatus = {
+export type SetupStatus = {
   authenticated?: boolean
+  setupComplete?: boolean
   nextStep?: 'complete-profile' | 'claim-device' | 'select-plant' | 'done'
   nextDeviceId?: string | null
   isAdmin?: boolean

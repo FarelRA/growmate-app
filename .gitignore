@@ -38,5 +38,9 @@ __screenshots__/
 # Vite
 *.timestamp-*-*.mjs
 
+# Nuxt
+.nuxt
+.output
+
 test-results/
 playwright-report/

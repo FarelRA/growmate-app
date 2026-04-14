@@ -11,6 +11,14 @@ const token = ref<string | null>(null)
 const isLoading = ref(true)
 const isAuthenticated = ref(false)
 
+export type SetupStatus = {
+  authenticated?: boolean
+  setupComplete?: boolean
+  nextStep?: 'complete-profile' | 'claim-device' | 'select-plant' | 'done'
+  nextDeviceId?: string | null
+  isAdmin?: boolean
+}
+
 function storageKey(key: string) {
   return `${key}_${encodeURIComponent(convexUrl)}`
 }
@@ -102,6 +110,20 @@ export async function signOutCurrentUser() {
     // Clearing local auth state is the important part here.
   } finally {
     storeTokens(null)
+  }
+}
+
+export async function fetchSetupStatus(): Promise<SetupStatus> {
+  try {
+    return await createClient(token.value ?? undefined).query(api.growmate.checkSetupStatus, {})
+  } catch {
+    return {
+      authenticated: false,
+      nextStep: 'complete-profile',
+      nextDeviceId: null,
+      isAdmin: false,
+      setupComplete: false,
+    }
   }
 }
 

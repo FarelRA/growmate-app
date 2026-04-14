@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-headline: 'Manrope', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --color-gm-primary: #006e1c;
+  --color-gm-primary-soft: #4caf50;
+  --color-gm-secondary: #7a5649;
+  --color-gm-secondary-soft: #fdcdbc;
+  --color-gm-surface: #f9f9f9;
+  --color-gm-surface-low: #f3f3f3;
+  --color-gm-surface-high: #e8e8e8;
+  --color-gm-text: #1a1c1c;
+  --color-gm-muted: #3f4a3c;
+}
+
+:root {
+  font-family: var(--font-body);
+  color: var(--color-gm-text);
+  background: var(--color-gm-surface);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(76, 175, 80, 0.08), transparent 32%),
+    linear-gradient(180deg, #f9f9f9 0%, #f4f6f2 100%);
+  color: var(--color-gm-text);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+#app {
+  min-height: 100vh;
+}

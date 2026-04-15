@@ -6,6 +6,7 @@ import { getErrorMessage } from '@/lib/errors'
 
 definePageMeta({
   public: true,
+  redirectIfAuthenticated: true,
 })
 
 const router = useRouter()
@@ -22,7 +23,7 @@ async function handleLogin() {
   try {
     await signInWithPassword('signIn', email.value, password.value)
     toast.success('Logged in successfully')
-    await router.replace('/')
+    await router.replace('/dashboard')
   } catch (error: unknown) {
     toast.error(getErrorMessage(error, 'Invalid email or password'))
   } finally {

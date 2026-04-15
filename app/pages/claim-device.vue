@@ -74,7 +74,7 @@ async function handleClaimDevice() {
 
     setActiveDeviceId(deviceId.value.trim())
     toast.success('Device claimed successfully. Pick a plant next.')
-    router.push({ path: '/select-plant', query: { deviceId: deviceId.value.trim(), onboarding: manualLinking.value ? undefined : '1', returnTo: manualLinking.value ? '/' : undefined } })
+    router.push({ path: '/select-plant', query: { deviceId: deviceId.value.trim(), onboarding: manualLinking.value ? undefined : '1', returnTo: manualLinking.value ? '/dashboard' : undefined } })
   } catch (error: unknown) {
     toast.error(getErrorMessage(error, 'Failed to claim device'))
   } finally {

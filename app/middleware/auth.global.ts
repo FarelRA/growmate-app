@@ -14,8 +14,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   if (to.meta.public) {
     if (!authState.isLoading.value && authState.isAuthenticated.value) {
-      const status = await fetchSetupStatus()
-      return navigateTo(getSetupRoute(status), { replace: true })
+      if (to.meta.redirectIfAuthenticated) {
+        const status = await fetchSetupStatus()
+        return navigateTo(getSetupRoute(status), { replace: true })
+      }
     }
     return
   }
@@ -48,7 +50,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (to.meta.onboarding) {
     const target = getSetupRoute(status)
     if (status.setupComplete) {
-      return navigateTo('/', { replace: true })
+      return navigateTo('/dashboard', { replace: true })
     }
     if (routePath(target) !== to.path) {
       return navigateTo(target, { replace: true })

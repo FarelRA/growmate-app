@@ -64,7 +64,7 @@ async function handleLogout() {
 }
 
 async function handleBack() {
-  await router.replace(isAdmin.value ? '/admin' : '/')
+  await router.replace(isAdmin.value ? '/admin' : '/dashboard')
 }
 </script>
 

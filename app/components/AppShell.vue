@@ -16,7 +16,7 @@ const { data: setupStatus } = useConvexQuery(api.growmate.checkSetupStatus, {})
 const { mutate: markNotificationRead } = useConvexMutation(api.growmate.markNotificationRead)
 
 const growerNavigation = [
-  { label: 'Dashboard', short: 'Home', icon: 'dashboard', to: '/' },
+  { label: 'Dashboard', short: 'Home', icon: 'dashboard', to: '/dashboard' },
   { label: 'Assistant', short: 'Assistant', icon: 'psychology', to: '/assistant' },
   { label: 'Market', short: 'Market', icon: 'shopping_basket', to: '/marketplace' },
   { label: 'Community', short: 'Community', icon: 'groups', to: '/community' },
@@ -30,7 +30,7 @@ const adminNavigation = [
 const canInstall = computed(() => installPromptEvent.value !== null)
 const showChrome = computed(() => !route.meta.public && !route.meta.onboarding)
 const navigation = computed(() => (setupStatus.value?.isAdmin ? adminNavigation : growerNavigation))
-const activePath = computed(() => (route.path === '/devices' || route.path === '/history' ? '/' : route.path))
+const activePath = computed(() => (route.path === '/devices' || route.path === '/history' ? '/dashboard' : route.path))
 
 function handleBeforeInstallPrompt(event: Event) {
   event.preventDefault()

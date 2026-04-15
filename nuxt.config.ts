@@ -11,7 +11,6 @@ export default defineNuxtConfig({
         lang: 'en',
       },
       title: 'GrowMate',
-      titleTemplate: (titleChunk) => titleChunk && titleChunk !== 'GrowMate' ? `${titleChunk} | GrowMate` : 'GrowMate',
       meta: [
         { name: 'application-name', content: 'GrowMate' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
@@ -73,7 +72,7 @@ export default defineNuxtConfig({
       display: 'standalone',
       orientation: 'portrait',
       scope: '/',
-      start_url: '/',
+      start_url: '/dashboard',
       icons: [
         {
           src: '/icons/icon-192.png',

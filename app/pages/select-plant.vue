@@ -142,7 +142,7 @@ async function handleAssignPlant() {
       return
     }
 
-    await router.replace('/')
+    await router.replace('/dashboard')
   } catch (error: unknown) {
     toast.error(getErrorMessage(error, 'Failed to save plant'))
   } finally {

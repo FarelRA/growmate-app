@@ -4,7 +4,7 @@ definePageMeta({
   requiresSetup: true,
 })
 
-await navigateTo({ path: '/', query: { panel: 'history' } }, { replace: true })
+await navigateTo({ path: '/dashboard', query: { panel: 'history' } }, { replace: true })
 </script>
 
 <template>

@@ -6,6 +6,7 @@ import { getErrorMessage } from '@/lib/errors'
 
 definePageMeta({
   public: true,
+  redirectIfAuthenticated: true,
 })
 
 const router = useRouter()

@@ -31,6 +31,6 @@ export function getSetupRoute(status: SetupStatus | null | undefined): SetupRout
         },
       }
     default:
-      return '/'
+      return '/dashboard'
   }
 }

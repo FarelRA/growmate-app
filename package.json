@@ -30,6 +30,7 @@
     "@tailwindcss/vite": "^4.2.2",
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "^24.12.2",
+    "@vite-pwa/nuxt": "^1.1.1",
     "@vue/eslint-config-typescript": "^14.7.0",
     "@vue/tsconfig": "^0.9.1",
     "@vueuse/core": "^14.2.1",

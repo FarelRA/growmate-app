@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { api } from '@/lib/api'
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>
+}
+
 const route = useRoute()
 const notificationsOpen = ref(false)
+const installPromptEvent = ref<BeforeInstallPromptEvent | null>(null)
 const { data: notifications } = useConvexQuery(api.growmate.headerNotifications, {})
 const { data: setupStatus } = useConvexQuery(api.growmate.checkSetupStatus, {})
 const { mutate: markNotificationRead } = useConvexMutation(api.growmate.markNotificationRead)
@@ -21,9 +27,19 @@ const adminNavigation = [
   { label: 'Profile', short: 'Profile', icon: 'person', to: '/profile' },
 ]
 
+const canInstall = computed(() => installPromptEvent.value !== null)
 const showChrome = computed(() => !route.meta.public && !route.meta.onboarding)
 const navigation = computed(() => (setupStatus.value?.isAdmin ? adminNavigation : growerNavigation))
 const activePath = computed(() => (route.path === '/devices' || route.path === '/history' ? '/' : route.path))
+
+function handleBeforeInstallPrompt(event: Event) {
+  event.preventDefault()
+  installPromptEvent.value = event as BeforeInstallPromptEvent
+}
+
+function handleAppInstalled() {
+  installPromptEvent.value = null
+}
 
 async function handleOpenNotifications() {
   notificationsOpen.value = !notificationsOpen.value
@@ -32,6 +48,29 @@ async function handleOpenNotifications() {
 async function handleNotificationClick(notificationId: string) {
   await markNotificationRead({ notificationId: notificationId as never })
 }
+
+async function handleInstallApp() {
+  if (!installPromptEvent.value)
+    return
+
+  await installPromptEvent.value.prompt()
+  const { outcome } = await installPromptEvent.value.userChoice
+
+  if (outcome !== 'accepted')
+    return
+
+  installPromptEvent.value = null
+}
+
+onMounted(() => {
+  window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+  window.addEventListener('appinstalled', handleAppInstalled)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+  window.removeEventListener('appinstalled', handleAppInstalled)
+})
 </script>
 
 <template>
@@ -43,6 +82,13 @@ async function handleNotificationClick(notificationId: string) {
           <h1 class="font-headline text-xl font-black italic tracking-tight text-gm-primary">GrowMate</h1>
         </div>
         <div class="flex items-center gap-3">
+          <button
+            v-if="canInstall"
+            class="rounded-full bg-gm-primary px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#0b7d29]"
+            @click="handleInstallApp"
+          >
+            Install App
+          </button>
           <button class="relative rounded-full p-2 text-slate-500 transition-colors hover:bg-[#f3f3f3]" @click="handleOpenNotifications">
             <span class="material-symbols-outlined">notifications</span>
             <span v-if="notifications?.unreadCount" class="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-gm-primary px-1 text-center text-[10px] font-bold text-white">{{ notifications.unreadCount }}</span>

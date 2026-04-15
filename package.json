@@ -22,13 +22,10 @@
   "dependencies": {
     "@convex-dev/auth": "^0.0.91",
     "@convex-vue/core": "^0.0.4",
-    "clsx": "^2.1.1",
     "convex": "^1.35.1",
     "nuxt": "^4.4.2",
     "openai": "^6.34.0",
-    "pinia": "^3.0.4",
     "vue": "^3.5.32",
-    "vue-router": "^5.0.4",
     "vue-sonner": "^2.0.9"
   },
   "devDependencies": {

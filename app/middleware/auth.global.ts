@@ -1,4 +1,4 @@
-import { authState, fetchSetupStatus } from '@/lib/auth'
+import { authState, fetchSetupStatus, initAuthState } from '@/lib/auth'
 import { getSetupRoute } from '@/lib/setup'
 
 function routePath(target: ReturnType<typeof getSetupRoute>) {
@@ -9,6 +9,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (import.meta.server) {
     return
   }
+
+  initAuthState()
 
   if (to.meta.public) {
     if (!authState.isLoading.value && authState.isAuthenticated.value) {

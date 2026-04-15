@@ -2,14 +2,13 @@ import { ref } from 'vue'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@/lib/api'
 
-const convexUrl = import.meta.env.VITE_CONVEX_URL
-
 const JWT_STORAGE_KEY = '__convexAuthJWT'
 const REFRESH_TOKEN_STORAGE_KEY = '__convexAuthRefreshToken'
 
 const token = ref<string | null>(null)
 const isLoading = ref(true)
 const isAuthenticated = ref(false)
+let authStateInitialized = false
 
 export type SetupStatus = {
   authenticated?: boolean
@@ -20,7 +19,15 @@ export type SetupStatus = {
 }
 
 function storageKey(key: string) {
-  return `${key}_${encodeURIComponent(convexUrl)}`
+  return `${key}_${encodeURIComponent(getConvexUrl())}`
+}
+
+function getConvexUrl() {
+  const convexUrl = useRuntimeConfig().public.convexUrl
+  if (!convexUrl) {
+    throw new Error('NUXT_PUBLIC_CONVEX_URL is not configured')
+  }
+  return convexUrl
 }
 
 function getStoredValue(key: string) {
@@ -63,22 +70,28 @@ function storeTokens(tokens: { token: string; refreshToken?: string } | null) {
 }
 
 function createClient(authToken?: string) {
-  const client = new ConvexHttpClient(convexUrl)
+  const client = new ConvexHttpClient(getConvexUrl())
   if (authToken) {
     client.setAuth(authToken)
   }
   return client
 }
 
-syncTokenFromStorage()
+export function initAuthState() {
+  if (import.meta.server || authStateInitialized) {
+    return
+  }
 
-if (typeof window !== 'undefined') {
+  syncTokenFromStorage()
+
   window.addEventListener('storage', (event) => {
     if (event.key === storageKey(JWT_STORAGE_KEY)) {
       token.value = event.newValue
       isAuthenticated.value = event.newValue !== null
     }
   })
+
+  authStateInitialized = true
 }
 
 export const authState = {

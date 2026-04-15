@@ -1,13 +1,38 @@
 import { ref } from 'vue'
 
-const storageKey = `__growmateActiveDevice_${encodeURIComponent(import.meta.env.VITE_CONVEX_URL)}`
+const activeDeviceId = ref<string | null>(null)
+let activeDeviceInitialized = false
+
+function storageKey() {
+  const convexUrl = useRuntimeConfig().public.convexUrl
+  if (!convexUrl) {
+    throw new Error('NUXT_PUBLIC_CONVEX_URL is not configured')
+  }
+  return `__growmateActiveDevice_${encodeURIComponent(convexUrl)}`
+}
 
 function readStoredDeviceId() {
   if (typeof window === 'undefined') return null
-  return window.localStorage.getItem(storageKey)
+  return window.localStorage.getItem(storageKey())
 }
 
-export const activeDeviceId = ref<string | null>(readStoredDeviceId())
+export function initActiveDeviceState() {
+  if (import.meta.server || activeDeviceInitialized) {
+    return
+  }
+
+  activeDeviceId.value = readStoredDeviceId()
+
+  window.addEventListener('storage', (event) => {
+    if (event.key === storageKey()) {
+      activeDeviceId.value = event.newValue
+    }
+  })
+
+  activeDeviceInitialized = true
+}
+
+export { activeDeviceId }
 
 export function setActiveDeviceId(deviceId: string | null) {
   activeDeviceId.value = deviceId
@@ -15,9 +40,9 @@ export function setActiveDeviceId(deviceId: string | null) {
   if (typeof window === 'undefined') return
 
   if (deviceId) {
-    window.localStorage.setItem(storageKey, deviceId)
+    window.localStorage.setItem(storageKey(), deviceId)
   } else {
-    window.localStorage.removeItem(storageKey)
+    window.localStorage.removeItem(storageKey())
   }
 }
 

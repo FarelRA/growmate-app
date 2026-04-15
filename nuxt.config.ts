@@ -9,7 +9,7 @@ export default defineNuxtConfig({
   },
   css: ['@/assets/main.css', 'vue-sonner/style.css'],
   alias: {
-    '@': fileURLToPath(new URL('./src', import.meta.url)),
+    '@': fileURLToPath(new URL('./app', import.meta.url)),
   },
   devServer: {
     host: '0.0.0.0',

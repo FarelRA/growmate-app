@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { api } from '@/lib/api'
 
@@ -48,7 +47,7 @@ async function handleNotificationClick(notificationId: string) {
             <span class="material-symbols-outlined">notifications</span>
             <span v-if="notifications?.unreadCount" class="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-gm-primary px-1 text-center text-[10px] font-bold text-white">{{ notifications.unreadCount }}</span>
           </button>
-          <RouterLink class="rounded-full bg-gm-surface-high px-4 py-2 text-xs font-bold text-gm-primary transition-colors hover:bg-[#f3f3f3]" to="/profile">Profile</RouterLink>
+          <NuxtLink class="rounded-full bg-gm-surface-high px-4 py-2 text-xs font-bold text-gm-primary transition-colors hover:bg-[#f3f3f3]" to="/profile">Profile</NuxtLink>
         </div>
       </div>
       <div v-if="notificationsOpen" class="mx-auto mt-4 max-w-7xl">
@@ -75,7 +74,7 @@ async function handleNotificationClick(notificationId: string) {
 
     <nav v-if="showChrome" class="fixed bottom-0 left-0 right-0 z-50 rounded-t-[1.5rem] bg-[#f9f9f9]/80 px-3 pt-2 pb-5 shadow-[0_-4px_32px_rgba(0,0,0,0.04)] backdrop-blur-lg sm:px-4 sm:pt-3 sm:pb-6">
       <div class="mx-auto grid max-w-7xl gap-2" :class="navigation.length <= 2 ? 'grid-cols-2' : 'grid-cols-4'">
-        <RouterLink
+        <NuxtLink
           v-for="item in navigation"
           :key="item.to"
           :to="item.to"
@@ -84,7 +83,7 @@ async function handleNotificationClick(notificationId: string) {
         >
           <span class="material-symbols-outlined text-[22px]" :style="activePath === item.to ? 'font-variation-settings: \'FILL\' 1;' : ''">{{ item.icon }}</span>
           <span class="mt-1 truncate text-[10px] font-medium uppercase tracking-wider">{{ item.short }}</span>
-        </RouterLink>
+        </NuxtLink>
       </div>
     </nav>
   </div>

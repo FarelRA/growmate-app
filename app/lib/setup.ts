@@ -1,5 +1,3 @@
-import type { RouteLocationRaw } from 'vue-router'
-
 export type SetupStatus = {
   authenticated?: boolean
   setupComplete?: boolean
@@ -8,7 +6,9 @@ export type SetupStatus = {
   isAdmin?: boolean
 }
 
-export function getSetupRoute(status: SetupStatus | null | undefined): RouteLocationRaw {
+export type SetupRoute = string | { path: string; query?: Record<string, string | undefined> }
+
+export function getSetupRoute(status: SetupStatus | null | undefined): SetupRoute {
   if (!status?.authenticated) {
     return '/login'
   }

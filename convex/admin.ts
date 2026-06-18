@@ -1,6 +1,7 @@
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
+import type { QueryCtx } from './_generated/server'
 import { requireAdmin, resolveStoredImageUrl,
   getDeviceWateringDuration, getDeviceWateringCooldown, getDeviceLightingHysteresis,
   formatTimestamp, isDeviceOnline, getSupportMessages,
@@ -19,7 +20,7 @@ function normalizePlantPresetKey(value: string) {
     .replace(/-+/g, '_')
 }
 
-async function batchGetUsers(ctx: import('./types').Ctx, ids: (Id<'users'> | undefined | null)[]): Promise<Map<string, Doc<'users'> | null>> {
+async function batchGetUsers(ctx: QueryCtx, ids: (Id<'users'> | undefined | null)[]): Promise<Map<string, Doc<'users'> | null>> {
   const uniqueIds = [...new Set(ids.filter((id): id is Id<'users'> => id != null).map(String))]
   const userDocs = await Promise.all(uniqueIds.map((id) => ctx.db.get(id as Id<'users'>)))
   const map = new Map<string, Doc<'users'> | null>()
@@ -27,7 +28,7 @@ async function batchGetUsers(ctx: import('./types').Ctx, ids: (Id<'users'> | und
   return map
 }
 
-async function batchGetPlants(ctx: import('./types').Ctx, ids: (Id<'plants'> | undefined | null)[]): Promise<Map<string, Doc<'plants'> | null>> {
+async function batchGetPlants(ctx: QueryCtx, ids: (Id<'plants'> | undefined | null)[]): Promise<Map<string, Doc<'plants'> | null>> {
   const uniqueIds = [...new Set(ids.filter((id): id is Id<'plants'> => id != null).map(String))]
   const plantDocs = await Promise.all(uniqueIds.map((id) => ctx.db.get(id as Id<'plants'>)))
   const map = new Map<string, Doc<'plants'> | null>()
@@ -35,157 +36,248 @@ async function batchGetPlants(ctx: import('./types').Ctx, ids: (Id<'plants'> | u
   return map
 }
 
+async function fetchAdminStats(ctx: QueryCtx) {
+  const [users, devices, plants, communityPosts, allProducts, blogPosts, supportRequests] = await Promise.all([
+    ctx.db.query('users').take(100),
+    ctx.db.query('devices').order('desc').take(40),
+    ctx.db.query('plants').take(100),
+    ctx.db.query('communityPosts').take(100),
+    ctx.db.query('products').take(100),
+    ctx.db.query('blogPosts').withIndex('by_createdAt').order('desc').take(24),
+    ctx.db.query('supportRequests').order('desc').take(30),
+  ])
+
+  const activePlants = plants.filter((plant) => !plant.archived)
+  const claimedDevices = devices.filter((device) => Boolean(device.userId))
+  const communityProducts = allProducts.filter((product) => product.type === 'community')
+  const activeOfficialProducts = allProducts.filter(
+    (product) => product.type === 'official' && product.status === 'active',
+  )
+
+  return {
+    totalUsers: users.length,
+    totalDevices: devices.length,
+    claimedDevices: claimedDevices.length,
+    activePlants: activePlants.length,
+    openTickets: supportRequests.filter(
+      (request) => request.status === 'open' || request.status === 'in_progress',
+    ).length,
+    officialProducts: activeOfficialProducts.length,
+    communityListings: communityProducts.length,
+    communityPosts: communityPosts.length,
+    blogPosts: blogPosts.length,
+  }
+}
+
+async function fetchAdminDevices(ctx: QueryCtx) {
+  const devices = await ctx.db.query('devices').order('desc').take(40)
+  const allPlantIds = devices.map((d) => d.plantId)
+  const plantMap = await batchGetPlants(ctx, allPlantIds)
+
+  const allUserIds = devices.map((d) => d.userId)
+  const userMap = await batchGetUsers(ctx, allUserIds)
+
+  return devices.map((device) => {
+    const owner = device.userId ? userMap.get(String(device.userId)) : null
+    const plant = device.plantId ? plantMap.get(String(device.plantId)) : null
+    return {
+      _id: device._id,
+      deviceId: device.deviceId,
+      name: device.name,
+      ownerName: owner?.name ?? null,
+      ownerEmail: owner?.email ?? null,
+      firmwareVersion: device.firmwareVersion ?? '',
+      isClaimed: Boolean(device.userId),
+      plantName: plant && !plant.archived ? plant.name : null,
+      autoWatering: device.autoWatering,
+      autoLighting: device.autoLighting,
+      wateringThreshold: device.wateringThreshold,
+      wateringDuration: getDeviceWateringDuration(device),
+      wateringCooldown: getDeviceWateringCooldown(device),
+      lightingThreshold: device.lightingThreshold,
+      lightingHysteresis: getDeviceLightingHysteresis(device),
+      lastSeen: device.lastSeen,
+      lastSeenLabel: formatTimestamp(device.lastSeen),
+      isOnline: isDeviceOnline(device.lastSeen),
+    }
+  })
+}
+
+async function fetchAdminSupport(ctx: QueryCtx) {
+  const supportRequests = await ctx.db.query('supportRequests').order('desc').take(30)
+  const allUserIds = [
+    ...supportRequests.map((r) => r.userId),
+    ...supportRequests.map((r) => r.handledBy),
+  ]
+  const userMap = await batchGetUsers(ctx, allUserIds)
+
+  return Promise.all(
+    supportRequests.map(async (request) => {
+      const owner = userMap.get(String(request.userId))
+      const handledBy = request.handledBy ? userMap.get(String(request.handledBy)) : null
+      const messages = await getSupportMessages(ctx, request._id, 24)
+      return {
+        ...request,
+        userName: owner?.name ?? owner?.email ?? 'Pengguna tidak diketahui',
+        userEmail: owner?.email ?? '',
+        handledByName: handledBy?.name ?? null,
+        createdAtLabel: formatTimestamp(request.createdAt),
+        updatedAtLabel: formatTimestamp(request.updatedAt),
+        messages: messages.map((message) => ({
+          ...message,
+          senderName:
+            message.senderRole === 'admin'
+              ? 'Admin'
+              : message.senderRole === 'system'
+                ? 'Sistem'
+                : (owner?.name ?? owner?.email ?? 'Pengguna'),
+          createdAtLabel: formatTimestamp(message.createdAt),
+        })),
+      }
+    }),
+  )
+}
+
+async function fetchAdminProducts(ctx: QueryCtx, adminId: Id<'users'>) {
+  const officialProducts = await ctx.db
+    .query('products')
+    .withIndex('by_type', (q) => q.eq('type', 'official'))
+    .order('desc')
+    .take(20)
+
+  return Promise.all(
+    officialProducts.map((product) => enrichMarketplaceProduct(ctx, product, adminId)),
+  )
+}
+
+async function fetchAdminPlantCatalog(ctx: QueryCtx) {
+  const plantCatalog = await ctx.db.query('plantCatalog').take(64)
+
+  return Promise.all(
+    plantCatalog.map(async (preset) => ({
+      ...preset,
+      image:
+        (await resolveStoredImageUrl(ctx, preset.imageStorageId, preset.image)) ?? preset.image,
+    })),
+  )
+}
+
+async function fetchAdminBlogPosts(ctx: QueryCtx) {
+  const blogPosts = await ctx.db.query('blogPosts').withIndex('by_createdAt').order('desc').take(24)
+  return Promise.all(blogPosts.map((post) => enrichBlogPost(ctx, post)))
+}
+
+async function fetchAdminUsers(ctx: QueryCtx) {
+  const users = await ctx.db.query('users').take(100)
+
+  return users
+    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+    .slice(0, 24)
+    .map((user) => ({
+      _id: user._id,
+      name: user.name ?? user.email ?? 'Pengguna tanpa nama',
+      email: user.email ?? '',
+      handle: user.handle ?? '',
+      tier: user.tier ?? 'basic',
+      role: user.role ?? 'grower',
+      setupComplete: Boolean(user.setupComplete),
+    }))
+}
+
+async function fetchAdminRecentEvents(ctx: QueryCtx) {
+  const recentEvents = await ctx.db.query('growEvents').withIndex('by_timestamp').order('desc').take(10)
+
+  return recentEvents.map((event) => ({
+    ...event,
+    timestampLabel: formatTimestamp(event.timestamp),
+  }))
+}
+
+export const adminOverview = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx)
+    const [stats, devices, recentEvents] = await Promise.all([
+      fetchAdminStats(ctx),
+      fetchAdminDevices(ctx),
+      fetchAdminRecentEvents(ctx),
+    ])
+    return { stats, devices, recentEvents }
+  },
+})
+
+export const adminDevicesList = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx)
+    return fetchAdminDevices(ctx)
+  },
+})
+
+export const adminSupportTickets = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx)
+    return fetchAdminSupport(ctx)
+  },
+})
+
+export const adminProductsList = query({
+  args: {},
+  handler: async (ctx) => {
+    const admin = await requireAdmin(ctx)
+    return fetchAdminProducts(ctx, admin._id)
+  },
+})
+
+export const adminPlantCatalogList = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx)
+    return fetchAdminPlantCatalog(ctx)
+  },
+})
+
+export const adminBlogPostsList = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx)
+    return fetchAdminBlogPosts(ctx)
+  },
+})
+
+export const adminUsersList = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx)
+    return fetchAdminUsers(ctx)
+  },
+})
+
 export const adminConsole = query({
   args: {},
   handler: async (ctx) => {
     const admin = await requireAdmin(ctx)
-    const [
+    const [stats, devices, supportRequests, officialProducts, plantCatalog, blogPosts, users, recentEvents] = await Promise.all([
+      fetchAdminStats(ctx),
+      fetchAdminDevices(ctx),
+      fetchAdminSupport(ctx),
+      fetchAdminProducts(ctx, admin._id),
+      fetchAdminPlantCatalog(ctx),
+      fetchAdminBlogPosts(ctx),
+      fetchAdminUsers(ctx),
+      fetchAdminRecentEvents(ctx),
+    ])
+
+    return {
+      stats,
       devices,
       supportRequests,
       officialProducts,
-      users,
-      plants,
-      communityPosts,
       blogPosts,
-      allProducts,
-      recentEvents,
       plantCatalog,
-    ] = await Promise.all([
-      ctx.db.query('devices').order('desc').take(40),
-      ctx.db.query('supportRequests').order('desc').take(30),
-      ctx.db
-        .query('products')
-        .withIndex('by_type', (q) => q.eq('type', 'official'))
-        .order('desc')
-        .take(20),
-      ctx.db.query('users').take(100),
-      ctx.db.query('plants').take(100),
-      ctx.db.query('communityPosts').take(100),
-      ctx.db.query('blogPosts').withIndex('by_createdAt').order('desc').take(24),
-      ctx.db.query('products').take(100),
-      ctx.db.query('growEvents').withIndex('by_timestamp').order('desc').take(10),
-      ctx.db.query('plantCatalog').take(64),
-    ])
-
-    const allUserIds = [
-      ...devices.map((d) => d.userId),
-      ...supportRequests.map((r) => r.userId),
-      ...supportRequests.map((r) => r.handledBy),
-      ...officialProducts.map((p) => p.sellerId),
-      ...blogPosts.map((p) => p.authorId),
-    ]
-    const allPlantIds = devices.map((d) => d.plantId)
-
-    const [userMap, plantMap] = await Promise.all([
-      batchGetUsers(ctx, allUserIds),
-      batchGetPlants(ctx, allPlantIds),
-    ])
-
-    const deviceRows = devices.map((device) => {
-      const owner = device.userId ? userMap.get(String(device.userId)) : null
-      const plant = device.plantId ? plantMap.get(String(device.plantId)) : null
-      return {
-        _id: device._id,
-        deviceId: device.deviceId,
-        name: device.name,
-        ownerName: owner?.name ?? null,
-        ownerEmail: owner?.email ?? null,
-        firmwareVersion: device.firmwareVersion ?? '',
-        isClaimed: Boolean(device.userId),
-        plantName: plant && !plant.archived ? plant.name : null,
-        autoWatering: device.autoWatering,
-        autoLighting: device.autoLighting,
-        wateringThreshold: device.wateringThreshold,
-        wateringDuration: getDeviceWateringDuration(device),
-        wateringCooldown: getDeviceWateringCooldown(device),
-        lightingThreshold: device.lightingThreshold,
-        lightingHysteresis: getDeviceLightingHysteresis(device),
-        lastSeen: device.lastSeen,
-        lastSeenLabel: formatTimestamp(device.lastSeen),
-        isOnline: isDeviceOnline(device.lastSeen),
-      }
-    })
-
-    const supportRows = await Promise.all(
-      supportRequests.map(async (request) => {
-        const owner = userMap.get(String(request.userId))
-        const handledBy = request.handledBy ? userMap.get(String(request.handledBy)) : null
-        const messages = await getSupportMessages(ctx, request._id, 24)
-        return {
-          ...request,
-          userName: owner?.name ?? owner?.email ?? 'Pengguna tidak diketahui',
-          userEmail: owner?.email ?? '',
-          handledByName: handledBy?.name ?? null,
-          createdAtLabel: formatTimestamp(request.createdAt),
-          updatedAtLabel: formatTimestamp(request.updatedAt),
-          messages: messages.map((message) => ({
-            ...message,
-            senderName:
-              message.senderRole === 'admin'
-                ? 'Admin'
-                : message.senderRole === 'system'
-                  ? 'Sistem'
-                  : (owner?.name ?? owner?.email ?? 'Pengguna'),
-            createdAtLabel: formatTimestamp(message.createdAt),
-          })),
-        }
-      }),
-    )
-
-    const officialRows = await Promise.all(
-      officialProducts.map((product) => enrichMarketplaceProduct(ctx, product, admin._id)),
-    )
-    const plantCatalogRows = await Promise.all(
-      plantCatalog.map(async (preset) => ({
-        ...preset,
-        image:
-          (await resolveStoredImageUrl(ctx, preset.imageStorageId, preset.image)) ?? preset.image,
-      })),
-    )
-    const blogRows = await Promise.all(blogPosts.map((post) => enrichBlogPost(ctx, post)))
-    const activePlants = plants.filter((plant) => !plant.archived)
-    const claimedDevices = devices.filter((device) => Boolean(device.userId))
-    const communityProducts = allProducts.filter((product) => product.type === 'community')
-    const activeOfficialProducts = allProducts.filter(
-      (product) => product.type === 'official' && product.status === 'active',
-    )
-    const recentEventRows = recentEvents.map((event) => ({
-      ...event,
-      timestampLabel: formatTimestamp(event.timestamp),
-    }))
-
-    return {
-      stats: {
-        totalUsers: users.length,
-        totalDevices: devices.length,
-        claimedDevices: claimedDevices.length,
-        activePlants: activePlants.length,
-        openTickets: supportRows.filter(
-          (request) => request.status === 'open' || request.status === 'in_progress',
-        ).length,
-        officialProducts: activeOfficialProducts.length,
-        communityListings: communityProducts.length,
-        communityPosts: communityPosts.length,
-        blogPosts: blogRows.length,
-      },
-      devices: deviceRows,
-      supportRequests: supportRows.sort((a, b) => b.updatedAt - a.updatedAt),
-      officialProducts: officialRows,
-      blogPosts: blogRows,
-      plantCatalog: plantCatalogRows.sort((a, b) => a.name.localeCompare(b.name)),
-      recentEvents: recentEventRows,
-      users: users
-        .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
-        .slice(0, 24)
-        .map((user) => ({
-          _id: user._id,
-          name: user.name ?? user.email ?? 'Pengguna tanpa nama',
-          email: user.email ?? '',
-          handle: user.handle ?? '',
-          tier: user.tier ?? 'basic',
-          role: user.role ?? 'grower',
-          setupComplete: Boolean(user.setupComplete),
-        })),
+      recentEvents,
+      users,
     }
   },
 })

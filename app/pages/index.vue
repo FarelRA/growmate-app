@@ -60,33 +60,6 @@ const heroImages = computed(() => {
 
   return Array.from({ length: 4 }, (_, index) => pool[index] ?? null)
 })
-const heroImagePrimary = computed(() => toOptimizedImageUrl(heroImages.value[0], { width: 900, height: 700, quality: 74 }))
-const heroImageSecondary = computed(() => toOptimizedImageUrl(heroImages.value[1], { width: 700, height: 700, quality: 72 }))
-const heroImageCommunity = computed(() => toOptimizedImageUrl(heroImages.value[2], { width: 700, height: 700, quality: 72 }))
-const heroImageLibrary = computed(() => toOptimizedImageUrl(heroImages.value[3], { width: 900, height: 700, quality: 72 }))
-
-const proofCards = [
-  {
-    title: 'Pendampingan yang mudah dipahami',
-    detail: 'Pengguna dibantu memahami apa yang perlu dilakukan sejak awal tanam hingga masa panen tanpa harus menebak kondisi tanaman.',
-    icon: 'verified',
-  },
-  {
-    title: 'Budidaya lebih konsisten',
-    detail: 'Pemantauan kondisi dan alur perawatan membantu menjaga tanaman tetap produktif serta mengurangi risiko perawatan yang terlewat.',
-    icon: 'routine',
-  },
-  {
-    title: 'Komunitas dan pasar dalam satu tempat',
-    detail: 'Pengguna dapat belajar dari pengalaman sesama petani sekaligus membuka peluang distribusi hasil panen secara langsung.',
-    icon: 'favorite',
-  },
-  {
-    title: 'Lebih hemat waktu dan tenaga',
-    detail: 'Pemantauan, penyiraman, dan keputusan harian menjadi lebih praktis karena dibantu data lapangan dan otomatisasi.',
-    icon: 'eco',
-  },
-]
 
 const marqueeWords = ['GrowMate Pods', 'Marketplace Panen', 'Pustaka Tanaman', 'Cerita Pengguna']
 const marqueeTopItems = computed(() =>
@@ -117,80 +90,7 @@ function blogExcerpt(excerpt: string, body: string) {
 
 <template>
   <MarketingPageShell>
-    <section class="relative overflow-hidden bg-[linear-gradient(135deg,#f6fbf2_0%,#edf7e8_50%,#dfeeda_100%)]">
-      <div class="mx-auto max-w-7xl px-4 pt-6 pb-12 sm:px-6 lg:px-8 lg:pt-10 lg:pb-20">
-        <div class="grid items-center gap-8 lg:grid-cols-2 lg:gap-12">
-          <RevealBlock as="div" class="order-2 text-center lg:order-1 lg:text-left">
-            <p class="mb-4 text-xs font-semibold tracking-[0.28em] text-gm-primary uppercase">
-              Platform Terpadu GrowMate
-            </p>
-            <h1 class="font-headline text-4xl leading-tight text-[#17351a] sm:text-5xl lg:text-6xl">
-              Petani makmur,<br />
-              tanpa lumpur.
-            </h1>
-            <p class="mx-auto mt-6 mb-8 max-w-md text-gray-700 lg:mx-0">
-              GrowMate adalah produk smart farming berteknologi tinggi yang memadukan Internet of Things dan asisten Artificial Intelligence untuk membantu perawatan tanaman yang praktis, efisien, dan mendukung ketahanan pangan berkelanjutan.
-            </p>
-            <div class="flex flex-wrap justify-center gap-3 lg:justify-start">
-              <NuxtLink
-                to="/products"
-                class="gm-soft-button inline-block rounded-full bg-[#17351a] px-8 py-3.5 text-sm font-medium text-white transition-colors hover:bg-gm-primary"
-              >
-                Jelajahi Produk
-              </NuxtLink>
-              <NuxtLink
-                to="/register"
-                class="gm-soft-button inline-block rounded-full border border-[#17351a]/15 bg-white px-8 py-3.5 text-sm font-medium text-[#17351a] transition-colors hover:bg-[#f5f7f2]"
-              >
-                Mulai dengan GrowMate
-              </NuxtLink>
-            </div>
-          </RevealBlock>
-
-          <RevealBlock as="div" origin="left" :delay="120" class="order-1 lg:order-2">
-            <div class="grid grid-cols-2 gap-3 lg:gap-4">
-              <div class="space-y-3 lg:space-y-4">
-                <div class="aspect-[4/3] overflow-hidden rounded-2xl shadow-lg">
-                  <img
-                    v-if="heroImages[0]"
-                    :src="heroImagePrimary || undefined"
-                    alt="Produk unggulan GrowMate"
-                    class="h-full w-full object-cover"
-                    fetchpriority="high"
-                    decoding="async"
-                    width="900"
-                    height="700"
-                  />
-                  <div v-else class="flex h-full items-center justify-center bg-[#ebf4e7] text-gm-primary">
-                    <span class="material-symbols-outlined gm-visual-icon">devices</span>
-                  </div>
-                </div>
-                <div class="aspect-square overflow-hidden rounded-2xl shadow-lg">
-                  <img v-if="heroImages[1]" :src="heroImageSecondary || undefined" alt="Produk GrowMate" class="h-full w-full object-cover" loading="eager" decoding="async" width="700" height="700" />
-                  <div v-else class="flex h-full items-center justify-center bg-[#f6efe8] text-gm-secondary">
-                    <span class="material-symbols-outlined gm-visual-icon">shopping_basket</span>
-                  </div>
-                </div>
-              </div>
-              <div class="space-y-3 pt-6 lg:space-y-4 lg:pt-10">
-                <div class="aspect-square overflow-hidden rounded-2xl shadow-lg">
-                  <img v-if="heroImages[2]" :src="heroImageCommunity || undefined" alt="Marketplace komunitas GrowMate" class="h-full w-full object-cover" loading="lazy" decoding="async" width="700" height="700" />
-                  <div v-else class="flex h-full items-center justify-center bg-[#e9f2ef] text-gm-primary">
-                    <span class="material-symbols-outlined gm-visual-icon">groups</span>
-                  </div>
-                </div>
-                <div class="aspect-[4/3] overflow-hidden rounded-2xl shadow-lg">
-                  <img v-if="heroImages[3]" :src="heroImageLibrary || undefined" alt="Pustaka tanaman GrowMate" class="h-full w-full object-cover" loading="lazy" decoding="async" width="900" height="700" />
-                  <div v-else class="flex h-full items-center justify-center bg-[#eef4e8] text-gm-primary">
-                    <span class="material-symbols-outlined gm-visual-icon">potted_plant</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </RevealBlock>
-        </div>
-      </div>
-    </section>
+    <MarketingHero :images="heroImages" />
 
     <section class="bg-[#f5f6f2] py-16 lg:py-24">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -329,22 +229,7 @@ function blogExcerpt(excerpt: string, body: string) {
       </div>
     </section>
 
-    <section class="bg-[#f4efe6] py-16 lg:py-24">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <RevealBlock as="h2" class="mb-16 text-center font-headline text-3xl text-gray-900 lg:text-4xl">Mengapa GrowMate Relevan untuk Pengguna</RevealBlock>
-
-        <div class="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
-          <RevealBlock v-for="(card, index) in proofCards" :key="card.title" as="div" :delay="index * 90" origin="up" class="gm-card-lift text-center">
-            <div class="mx-auto mb-4 flex h-20 w-20 items-center justify-center text-gray-800">
-              <span class="material-symbols-outlined gm-proof-icon">{{ card.icon }}</span>
-            </div>
-            <h3 class="mb-2 text-base font-semibold text-gray-900">{{ card.title }}</h3>
-            <p class="text-sm text-gray-600">{{ card.detail }}</p>
-          </RevealBlock>
-        </div>
-
-      </div>
-    </section>
+    <MarketingFeatures />
 
     <section class="overflow-hidden bg-white py-16 lg:py-24">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

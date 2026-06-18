@@ -1,0 +1,316 @@
+import type { Ctx, MutationCtx, DeviceDoc, DeviceQueuedCommands, QueuedDeviceAction } from '../types'
+import type { Id } from '../_generated/dataModel'
+import {
+  DEFAULT_WATERING_THRESHOLD, DEFAULT_LIGHTING_THRESHOLD,
+  DEFAULT_WATERING_DURATION, DEFAULT_WATERING_COOLDOWN, DEFAULT_LIGHTING_HYSTERESIS,
+} from '../types'
+import { resolveStoredImageUrl, formatTimestamp, isDeviceOnline } from './generic'
+import { formatPlantStage } from './plants'
+import { recordGrowEvent, recordAutomationEvent, getRecentGrowEvents } from './events'
+
+export function computeWaterReservoirDays(
+  waterLevel: number,
+  dailyUsage: number = 5,
+): number {
+  const reservoirCapacity = 60
+  const currentLiters = (waterLevel / 100) * reservoirCapacity
+  return Math.floor(currentLiters / dailyUsage)
+}
+
+export function getDeviceWateringDuration(device: Pick<DeviceDoc, 'wateringDuration'>) {
+  return Number.isFinite(device.wateringDuration)
+    ? device.wateringDuration
+    : DEFAULT_WATERING_DURATION
+}
+
+export function getDeviceWateringCooldown(device: Pick<DeviceDoc, 'wateringCooldown'>) {
+  return Number.isFinite(device.wateringCooldown)
+    ? device.wateringCooldown
+    : DEFAULT_WATERING_COOLDOWN
+}
+
+export function getDeviceLightingHysteresis(device: Pick<DeviceDoc, 'lightingHysteresis'>) {
+  return Number.isFinite(device.lightingHysteresis)
+    ? device.lightingHysteresis
+    : DEFAULT_LIGHTING_HYSTERESIS
+}
+
+export function getQueuedDeviceCommands(device: DeviceDoc): DeviceQueuedCommands {
+  return (
+    device.queuedCommands ?? {
+      pump: null,
+      light: null,
+    }
+  )
+}
+
+export function buildDeviceCommandList(device: DeviceDoc) {
+  return Object.values(getQueuedDeviceCommands(device)).filter(
+    (command): command is QueuedDeviceAction => command !== null,
+  )
+}
+
+export function buildQueuedPumpAction(device: DeviceDoc, durationSeconds: number) {
+  const queuedCommands = getQueuedDeviceCommands(device)
+  return {
+    queuedCommands: {
+      ...queuedCommands,
+      pump: { kind: 'pump' as const, durationMs: durationSeconds * 1000 },
+    },
+  }
+}
+
+export function buildQueuedLightAction(device: DeviceDoc, enabled: boolean) {
+  const queuedCommands = getQueuedDeviceCommands(device)
+  return {
+    queuedCommands: {
+      ...queuedCommands,
+      light: { kind: 'light' as const, enabled },
+    },
+  }
+}
+
+export async function getDeviceByExternalId(ctx: Ctx, deviceId: string) {
+  return await ctx.db
+    .query('devices')
+    .withIndex('by_deviceId', (q) => q.eq('deviceId', deviceId))
+    .first()
+}
+
+export function getDefaultDeviceName(deviceId: string) {
+  const normalized = deviceId.trim()
+  const suffix = normalized.length > 6 ? normalized.slice(-6) : normalized
+  return `GrowMate ${suffix.toUpperCase()}`
+}
+
+export async function ensureDeviceExists(ctx: MutationCtx, deviceId: string, firmwareVersion?: string) {
+  const normalizedDeviceId = deviceId.trim()
+  const existing = await getDeviceByExternalId(ctx, normalizedDeviceId)
+  if (existing) return existing
+
+  const now = Date.now()
+  const deviceDocId = await ctx.db.insert('devices', {
+    deviceId: normalizedDeviceId,
+    name: getDefaultDeviceName(normalizedDeviceId),
+    autoWatering: true,
+    autoLighting: true,
+    wateringThreshold: DEFAULT_WATERING_THRESHOLD,
+    wateringDuration: DEFAULT_WATERING_DURATION,
+    wateringCooldown: DEFAULT_WATERING_COOLDOWN,
+    lightingThreshold: DEFAULT_LIGHTING_THRESHOLD,
+    lightingHysteresis: DEFAULT_LIGHTING_HYSTERESIS,
+    lightEnabled: false,
+    queuedCommands: { pump: null, light: null },
+    reportedLightEnabled: false,
+    reportedPumpEnabled: false,
+    lastSeen: now,
+    firmwareVersion: firmwareVersion?.trim() || undefined,
+    createdAt: now,
+    updatedAt: now,
+  })
+
+  return (await ctx.db.get(deviceDocId))!
+}
+
+export async function getUserDevices(ctx: Ctx, userId: Id<'users'>) {
+  const devices = await ctx.db
+    .query('devices')
+    .withIndex('by_user', (q) => q.eq('userId', userId))
+    .collect()
+
+  return devices.sort((a, b) => b.updatedAt - a.updatedAt)
+}
+
+export async function requireOwnedDevice(ctx: Ctx, userId: Id<'users'>, deviceId: string) {
+  const device = await getDeviceByExternalId(ctx, deviceId)
+  if (!device || device.userId !== userId) {
+    throw new Error('Perangkat tidak ditemukan')
+  }
+  return device
+}
+
+export async function getSelectedDevice(ctx: Ctx, userId: Id<'users'>, deviceId?: string) {
+  if (deviceId) return await requireOwnedDevice(ctx, userId, deviceId)
+  const devices = await getUserDevices(ctx, userId)
+  return devices[0] ?? null
+}
+
+export async function archivePlant(
+  ctx: MutationCtx,
+  plantId: Id<'plants'>,
+  archivedAt: number,
+  userId?: Id<'users'>,
+  reason = 'Tanaman diarsipkan',
+) {
+  const plant = await ctx.db.get(plantId)
+  if (!plant || plant.archived) return plant
+
+  await ctx.db.patch(plantId, {
+    archived: true,
+    archivedAt,
+    updatedAt: archivedAt,
+  })
+
+  await recordGrowEvent(ctx, {
+    deviceId: plant.deviceId,
+    plantId,
+    userId,
+    source: userId ? 'user' : 'system',
+    entityType: 'plant',
+    eventType: 'plant_archived',
+    title: reason,
+    detail: `${plant.name} dipindahkan ke riwayat arsip.`,
+    data: { archived: true, archivedAt },
+    timestamp: archivedAt,
+  })
+
+  return await ctx.db.get(plantId)
+}
+
+export async function buildDeviceSummary(ctx: Ctx, device: DeviceDoc) {
+  const currentPlant = device.plantId ? await ctx.db.get(device.plantId) : null
+  const archivedPlants = await ctx.db
+    .query('plants')
+    .withIndex('by_device_archived', (q) => q.eq('deviceId', device._id).eq('archived', true))
+    .collect()
+  const recentEvents = await getRecentGrowEvents(ctx, device._id, 4)
+
+  const plantImage =
+    currentPlant && !currentPlant.archived
+      ? await resolveStoredImageUrl(ctx, currentPlant.imageStorageId, currentPlant.image)
+      : null
+
+  return {
+    _id: device._id,
+    deviceId: device.deviceId,
+    name: device.name,
+    firmwareVersion: device.firmwareVersion,
+    autoWatering: device.autoWatering,
+    autoLighting: device.autoLighting,
+    wateringThreshold: device.wateringThreshold,
+    wateringDuration: getDeviceWateringDuration(device),
+    wateringCooldown: getDeviceWateringCooldown(device),
+    lightingThreshold: device.lightingThreshold,
+    lightingHysteresis: getDeviceLightingHysteresis(device),
+    lightEnabled: device.lightEnabled,
+    lastWatered: device.lastWatered,
+    lastSeen: device.lastSeen,
+    isOnline: isDeviceOnline(device.lastSeen),
+    hasPlant: Boolean(currentPlant && !currentPlant.archived),
+    plant:
+      currentPlant && !currentPlant.archived
+        ? {
+            _id: currentPlant._id,
+            name: currentPlant.name,
+            species: currentPlant.species,
+            growthStage: currentPlant.growthStage,
+            growthStageLabel: formatPlantStage(currentPlant.growthStage),
+            wateringThreshold: currentPlant.wateringThreshold,
+            lightingThreshold: currentPlant.lightingThreshold,
+            location: currentPlant.location,
+            image: plantImage,
+            plantedAt: currentPlant.plantedAt,
+          }
+        : null,
+    archivedPlantCount: archivedPlants.length,
+    archivedPlants: archivedPlants
+      .sort((a, b) => (b.archivedAt ?? b.updatedAt) - (a.archivedAt ?? a.updatedAt))
+      .slice(0, 3)
+      .map((plant) => ({
+        _id: plant._id,
+        name: plant.name,
+        species: plant.species,
+        growthStage: plant.growthStage,
+        growthStageLabel: formatPlantStage(plant.growthStage),
+        archivedAt: plant.archivedAt,
+        archivedAtLabel: plant.archivedAt ? formatTimestamp(plant.archivedAt) : null,
+      })),
+    recentEvents,
+  }
+}
+
+export async function executeManualWatering(
+  ctx: MutationCtx,
+  user: { _id: Id<'users'>; name?: string },
+  device: DeviceDoc,
+  now = Date.now(),
+) {
+  const plant = device.plantId ? await ctx.db.get(device.plantId) : null
+  const durationSeconds = getDeviceWateringDuration(device)
+
+  await ctx.db.patch(device._id, {
+    ...buildQueuedPumpAction(device, durationSeconds),
+    updatedAt: now,
+  })
+
+  if (plant && !plant.archived) {
+    await recordAutomationEvent(ctx, {
+      deviceId: device._id,
+      plantId: plant._id,
+      action: 'manual_pump',
+      duration: durationSeconds,
+      timestamp: now,
+    })
+
+    await recordGrowEvent(ctx, {
+      deviceId: device._id,
+      plantId: plant._id,
+      userId: user._id,
+      source: 'user',
+      entityType: 'automation',
+      eventType: 'manual_watering_triggered',
+      title: 'Penyiraman manual dipicu',
+      detail: `${device.name} memulai siklus penyiraman manual.`,
+      data: { duration: durationSeconds },
+      timestamp: now,
+    })
+  }
+
+  await ctx.db.insert('notifications', {
+    userId: user._id,
+    title: 'Penyiraman manual dipicu',
+    detail: `${device.name} berhasil menjalankan siklus penyiraman manual.`,
+    kind: 'system',
+    read: false,
+    createdAt: now,
+  })
+}
+
+export async function executeManualLighting(
+  ctx: MutationCtx,
+  user: { _id: Id<'users'>; name?: string },
+  device: DeviceDoc,
+  enabled: boolean,
+  now = Date.now(),
+) {
+  const plant = device.plantId ? await ctx.db.get(device.plantId) : null
+
+  await ctx.db.patch(device._id, {
+    ...buildQueuedLightAction(device, enabled),
+    lightEnabled: enabled,
+    updatedAt: now,
+  })
+
+  if (plant && !plant.archived) {
+    await recordAutomationEvent(ctx, {
+      deviceId: device._id,
+      plantId: plant._id,
+      action: 'manual_light',
+      lightValue: undefined,
+      timestamp: now,
+    })
+
+    await recordGrowEvent(ctx, {
+      deviceId: device._id,
+      plantId: plant._id,
+      userId: user._id,
+      source: 'user',
+      entityType: 'automation',
+      eventType: 'manual_lighting_triggered',
+      title: enabled ? 'Pencahayaan manual dinyalakan' : 'Pencahayaan manual dimatikan',
+      detail: `${device.name} lampu tumbuh ${enabled ? 'dinyalakan' : 'dimatikan'} secara manual.`,
+      data: { enabled },
+      timestamp: now,
+    })
+  }
+}

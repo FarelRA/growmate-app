@@ -7,10 +7,8 @@ import { createBreadcrumbSchema, toAbsoluteUrl, toMetaDescription } from '@/lib/
 definePageMeta({ public: true })
 
 const route = useRoute()
-const storyId = computed(() => String(route.params.id || ''))
-const { data } = await usePublicConvexQuery('public-story-detail', api.growmate.community, {})
-
-const story = computed(() => (data.value?.posts ?? []).find((item) => item._id === storyId.value) ?? null)
+const storyId = String(route.params.id || '')
+const { data: story, pending, error } = await usePublicConvexQuery(`public-story-detail-${storyId}`, api.community.getPostById, { postId: storyId })
 const storyImage = computed(() => toOptimizedImageUrl(story.value?.image, { width: 1440, height: 960, quality: 74 }))
 
 usePublicSeo({
@@ -66,7 +64,15 @@ usePublicSeo({
   <MarketingPageShell>
     <section class="bg-white py-16 lg:py-20">
       <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-        <div v-if="story">
+        <div v-if="pending" class="flex items-center justify-center py-24">
+          <div class="h-10 w-10 animate-spin rounded-full border-4 border-gm-primary border-t-transparent" />
+        </div>
+
+        <div v-else-if="error" class="rounded-[2rem] bg-red-50 p-10 text-center text-sm text-red-600">
+          Gagal memuat cerita. Silakan coba lagi nanti.
+        </div>
+
+        <div v-else-if="story">
           <RevealBlock as="div">
             <p class="mb-4 text-xs font-semibold tracking-[0.28em] text-gm-primary uppercase">Cerita GrowMate</p>
             <h1 class="font-headline text-4xl text-gm-text sm:text-5xl">{{ story.title }}</h1>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { api } from '@/lib/api'
@@ -14,6 +14,7 @@ import {
   type PlantLifecycleStage,
 } from '@/lib/plants'
 import { readSelectedImage, uploadImageFile } from '@/lib/uploads'
+import type { Id } from '@/lib/convex-types'
 
 definePageMeta({
   requiresAuth: true,
@@ -38,12 +39,17 @@ const sensorProfile = ref<PlantSensorProfile>({ ...defaultPlantSensorProfile })
 const lifecycleProfile = ref<LifecycleProfile>({ ...defaultCustomPlantPreset.lifecycleProfile })
 const saving = ref(false)
 const imageFile = ref<File | null>(null)
+const imagePreviewBlobUrl = ref<string | null>(null)
 
-const { data: setupStatus } = useConvexQuery(api.growmate.checkSetupStatus, {})
-const { data: devices } = useConvexQuery(api.growmate.userDevices, {})
-const { data: plantLibrary } = useConvexQuery(api.growmate.plantLibrary, {})
-const { mutate: assignPlantToDevice } = useConvexMutation(api.growmate.assignPlantToDevice)
-const { mutate: generateImageUploadUrl } = useConvexMutation(api.growmate.generateImageUploadUrl)
+onBeforeUnmount(() => {
+  if (imagePreviewBlobUrl.value) URL.revokeObjectURL(imagePreviewBlobUrl.value)
+})
+
+const { data: setupStatus } = useConvexQuery(api.users.checkSetupStatus, {})
+const { data: devices } = useConvexQuery(api.devices.userDevices, {})
+const { data: plantLibrary } = useConvexQuery(api.plants.plantLibrary, {})
+const { mutate: assignPlantToDevice } = useConvexMutation(api.devices.assignPlantToDevice)
+const { mutate: generateImageUploadUrl } = useConvexMutation(api.images.generateImageUploadUrl)
 
 const categories = [
   'all',
@@ -143,7 +149,9 @@ function handleImageChange(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0] ?? null
   imageFile.value = file
-  imagePreview.value = readSelectedImage(file) ?? imagePreview.value
+  if (imagePreviewBlobUrl.value) URL.revokeObjectURL(imagePreviewBlobUrl.value)
+  imagePreviewBlobUrl.value = readSelectedImage(file)
+  imagePreview.value = imagePreviewBlobUrl.value ?? imagePreview.value
 }
 
 async function handleAssignPlant() {
@@ -202,7 +210,7 @@ async function handleAssignPlant() {
         maturitySenescenceDays: Number(lifecycleProfile.value.maturitySenescenceDays),
       },
       location: location.value.trim() || undefined,
-      imageStorageId: imageStorageId as never,
+      imageStorageId: imageStorageId as Id<'_storage'>,
     })
 
     setActiveDeviceId(deviceId)

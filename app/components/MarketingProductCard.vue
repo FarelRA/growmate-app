@@ -33,18 +33,29 @@ const isExternal = computed(() =>
 const isCommunity = computed(() => props.product.type === 'community')
 const cardImage = computed(() => toOptimizedImageUrl(props.product.image, { width: 720, height: 720, quality: 72 }))
 
+const cardComponent = computed(() => {
+  if (isExternal.value) return 'a'
+  if (isCommunity.value) return 'button'
+  return 'NuxtLink'
+})
+
+const cardAttrs = computed(() => {
+  if (isExternal.value) return { href: target.value, target: '_blank', rel: 'noreferrer' }
+  if (isCommunity.value) return { type: 'button' }
+  return { to: target.value }
+})
+
 function openCommunityListing() {
   return navigateTo('/login')
 }
 </script>
 
 <template>
-  <a
-    v-if="isExternal"
-    :href="target"
-    target="_blank"
-    rel="noreferrer"
-    class="gm-card-lift group block cursor-pointer"
+  <component
+    :is="cardComponent"
+    v-bind="cardAttrs"
+    :class="['gm-card-lift group block cursor-pointer', { 'w-full text-left': isCommunity }]"
+    @click="isCommunity ? openCommunityListing() : undefined"
   >
     <div class="relative mb-3 aspect-square overflow-hidden rounded-xl bg-[#f5f6f2]">
       <span
@@ -80,84 +91,5 @@ function openCommunityListing() {
       <h3 class="mb-1 text-sm font-medium text-gray-900">{{ product.title }}</h3>
       <p class="text-sm text-gray-600">{{ product.priceLabel || product.sellerName || 'Lihat detail' }}</p>
     </div>
-  </a>
-
-  <button
-    v-else-if="isCommunity"
-    type="button"
-    class="gm-card-lift group block w-full cursor-pointer text-left"
-    @click="openCommunityListing"
-  >
-    <div class="relative mb-3 aspect-square overflow-hidden rounded-xl bg-[#f5f6f2]">
-      <span
-        v-if="product.statusLabel && product.statusLabel !== 'Active'"
-        class="absolute top-3 left-3 z-10 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium text-gm-text backdrop-blur-sm"
-      >
-        {{ product.statusLabel }}
-      </span>
-      <img
-        v-if="product.image"
-        :src="cardImage || undefined"
-        :alt="product.title"
-        class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-        loading="lazy"
-        decoding="async"
-        width="720"
-        height="720"
-      />
-      <div
-        v-else
-        class="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,#b7d8b1,transparent_45%),linear-gradient(135deg,#eef5ea,#f7efe5)] text-center"
-      >
-        <div>
-          <span class="material-symbols-outlined text-4xl text-gm-primary">potted_plant</span>
-          <p class="mt-2 px-4 text-sm font-semibold text-gm-text">{{ product.title }}</p>
-        </div>
-      </div>
-    </div>
-    <div :class="centered ? 'text-center' : ''">
-      <div v-if="product.category" class="mb-1 text-[11px] uppercase tracking-[0.18em] text-gm-muted">
-        {{ product.category }}
-      </div>
-      <h3 class="mb-1 text-sm font-medium text-gray-900">{{ product.title }}</h3>
-      <p class="text-sm text-gray-600">{{ product.priceLabel || product.sellerName || 'Lihat detail' }}</p>
-    </div>
-  </button>
-
-  <NuxtLink v-else :to="target" class="gm-card-lift group block cursor-pointer">
-    <div class="relative mb-3 aspect-square overflow-hidden rounded-xl bg-[#f5f6f2]">
-      <span
-        v-if="product.statusLabel && product.statusLabel !== 'Active'"
-        class="absolute top-3 left-3 z-10 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium text-gm-text backdrop-blur-sm"
-      >
-        {{ product.statusLabel }}
-      </span>
-      <img
-        v-if="product.image"
-        :src="cardImage || undefined"
-        :alt="product.title"
-        class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-        loading="lazy"
-        decoding="async"
-        width="720"
-        height="720"
-      />
-      <div
-        v-else
-        class="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,#b7d8b1,transparent_45%),linear-gradient(135deg,#eef5ea,#f7efe5)] text-center"
-      >
-        <div>
-          <span class="material-symbols-outlined text-4xl text-gm-primary">potted_plant</span>
-          <p class="mt-2 px-4 text-sm font-semibold text-gm-text">{{ product.title }}</p>
-        </div>
-      </div>
-    </div>
-    <div :class="centered ? 'text-center' : ''">
-      <div v-if="product.category" class="mb-1 text-[11px] uppercase tracking-[0.18em] text-gm-muted">
-        {{ product.category }}
-      </div>
-      <h3 class="mb-1 text-sm font-medium text-gray-900">{{ product.title }}</h3>
-      <p class="text-sm text-gray-600">{{ product.priceLabel || product.sellerName || 'Lihat detail' }}</p>
-    </div>
-  </NuxtLink>
+  </component>
 </template>

@@ -27,7 +27,7 @@ usePublicSeo({
   ],
 })
 
-const { data } = await usePublicConvexQuery('public-stories-index', api.growmate.community, {})
+const { data } = await usePublicConvexQuery('public-stories-index', api.community.community, {})
 const stories = computed(() => data.value?.posts ?? [])
 </script>
 

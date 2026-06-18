@@ -9,7 +9,7 @@ definePageMeta({ public: true })
 
 const route = useRoute()
 const postId = computed(() => String(route.params.id || ''))
-const { data } = await usePublicConvexQuery('public-blog-detail', api.growmate.publicBlog, {})
+const { data } = await usePublicConvexQuery('public-blog-detail', api.blog.publicBlog, {})
 
 const post = computed(() => (data.value ?? []).find((item) => item._id === postId.value) ?? null)
 const renderedBody = computed(() => renderMarkdown(post.value?.body ?? ''))

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -60,6 +60,8 @@ onMounted(() => {
   )
 
   observer.observe(el)
+
+  onBeforeUnmount(() => observer.disconnect())
 })
 </script>
 

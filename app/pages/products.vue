@@ -29,7 +29,7 @@ usePublicSeo({
 })
 
 const query = ref('')
-const { data } = await usePublicConvexQuery('public-marketplace-products', api.growmate.marketplace, {})
+const { data } = await usePublicConvexQuery('public-marketplace-products', api.marketplace.marketplace, {})
 
 const officialProducts = computed(() => data.value?.official ?? [])
 const featured = computed(() => data.value?.featured ?? officialProducts.value[0] ?? null)

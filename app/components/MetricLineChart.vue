@@ -9,15 +9,15 @@ type Point = {
 const props = withDefaults(defineProps<{
   points: Point[]
   height?: number
+  width?: number
   stroke?: string
   fill?: string
 }>(), {
   height: 84,
+  width: 240,
   stroke: '#00a86b',
   fill: 'rgba(0, 168, 107, 0.12)',
 })
-
-const width = 240
 const padding = 8
 
 const normalizedPoints = computed(() => {

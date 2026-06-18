@@ -29,7 +29,7 @@ usePublicSeo({
 })
 
 const selectedCategory = ref<'all' | string>('all')
-const { data } = await usePublicConvexQuery('public-plant-library', api.growmate.plantLibrary, {})
+const { data } = await usePublicConvexQuery('public-plant-library', api.plants.plantLibrary, {})
 
 const categories = computed(() => ['all', ...new Set((data.value ?? []).map((item) => item.category))])
 const filtered = computed(() => {

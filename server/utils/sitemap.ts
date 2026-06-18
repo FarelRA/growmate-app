@@ -37,21 +37,21 @@ export async function buildSitemapXml(convexUrl?: string) {
   if (convexUrl) {
     const client = new ConvexHttpClient(convexUrl)
     const [marketplace, community, blogPosts] = await Promise.all([
-      client.query(api.growmate.marketplace, {}),
-      client.query(api.growmate.community, {}),
-      client.query(api.growmate.publicBlog, {}),
+      client.query(api.marketplace.marketplace, {}),
+      client.query(api.community.community, {}),
+      client.query(api.blog.publicBlog, {}),
     ])
 
     dynamicEntries = [
-      ...(marketplace.official ?? []).map((product) => ({
+      ...(marketplace.official ?? []).map((product: { _id: unknown; updatedAt?: number }) => ({
         loc: `${GROWMATE_SITE_URL}/products/${product._id}`,
         lastmod: toIsoDate(product.updatedAt),
       })),
-      ...(community.posts ?? []).map((story) => ({
+      ...(community.posts ?? []).map((story: { _id: unknown; updatedAt?: number }) => ({
         loc: `${GROWMATE_SITE_URL}/stories/${story._id}`,
         lastmod: toIsoDate(story.updatedAt),
       })),
-      ...(blogPosts ?? []).map((post) => ({
+      ...(blogPosts ?? []).map((post: { _id: unknown; updatedAt?: number }) => ({
         loc: `${GROWMATE_SITE_URL}/blog/${post._id}`,
         lastmod: toIsoDate(post.updatedAt),
       })),

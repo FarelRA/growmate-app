@@ -9,12 +9,21 @@ const careScheduleCadence = {
   timezoneOffsetMinutes: v.optional(v.number()),
 }
 
-const plantSensorProfile = v.object({
+export const plantSensorProfile = v.object({
   soil: v.object({ min: v.number(), max: v.number() }),
   light: v.object({ min: v.number(), max: v.number() }),
   temperature: v.object({ min: v.number(), max: v.number() }),
   air: v.object({ min: v.number(), max: v.number() }),
   water: v.object({ min: v.number(), max: v.number() }),
+})
+
+export const lifecycleProfileValidator = v.object({
+  seedDormancyDays: v.number(),
+  germinationDays: v.number(),
+  seedlingDevelopmentDays: v.number(),
+  vegetativeGrowthDays: v.number(),
+  floweringReproductionDays: v.number(),
+  maturitySenescenceDays: v.number(),
 })
 
 export default defineSchema({
@@ -39,6 +48,8 @@ export default defineSchema({
     role: v.optional(v.union(v.literal('grower'), v.literal('company'), v.literal('admin'))),
     // Onboarding status
     setupComplete: v.optional(v.boolean()),
+    // Points (materialized for leaderboard)
+    points: v.optional(v.number()),
     // Timestamps
     createdAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
@@ -75,14 +86,7 @@ export default defineSchema({
     wateringThreshold: v.number(),
     lightingThreshold: v.number(),
     sensorProfile: v.optional(plantSensorProfile),
-    lifecycleProfile: v.object({
-      seedDormancyDays: v.number(),
-      germinationDays: v.number(),
-      seedlingDevelopmentDays: v.number(),
-      vegetativeGrowthDays: v.number(),
-      floweringReproductionDays: v.number(),
-      maturitySenescenceDays: v.number(),
-    }),
+    lifecycleProfile: lifecycleProfileValidator,
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -110,14 +114,7 @@ export default defineSchema({
     wateringThreshold: v.number(),
     lightingThreshold: v.number(),
     sensorProfile: v.optional(plantSensorProfile),
-    lifecycleProfile: v.object({
-      seedDormancyDays: v.number(),
-      germinationDays: v.number(),
-      seedlingDevelopmentDays: v.number(),
-      vegetativeGrowthDays: v.number(),
-      floweringReproductionDays: v.number(),
-      maturitySenescenceDays: v.number(),
-    }),
+    lifecycleProfile: lifecycleProfileValidator,
     location: v.string(),
     image: v.optional(v.string()),
     imageStorageId: v.optional(v.id('_storage')),
@@ -188,7 +185,7 @@ export default defineSchema({
   // SENSORS - Removed: status, target, label, accent, sort (all computed)
   // ============================================
   sensors: defineTable({
-    deviceId: v.string(),
+    deviceId: v.id('devices'),
     plantId: v.optional(v.id('plants')),
     kind: v.union(
       v.literal('soil'),
@@ -213,7 +210,7 @@ export default defineSchema({
   // SENSOR READINGS - NEW: Historical sensor data
   // ============================================
   sensorReadings: defineTable({
-    deviceId: v.string(),
+    deviceId: v.id('devices'),
     plantId: v.optional(v.id('plants')),
     kind: v.union(
       v.literal('soil'),
@@ -230,6 +227,7 @@ export default defineSchema({
     .index('by_plant_kind', ['plantId', 'kind'])
     .index('by_device_and_kind', ['deviceId', 'kind'])
     .index('by_device', ['deviceId'])
+    .index('by_plant_kind_measuredAt', ['plantId', 'kind', 'measuredAt'])
     .index('by_measuredAt', ['measuredAt']),
 
   // ============================================
@@ -250,7 +248,7 @@ export default defineSchema({
   // AUTOMATION LOGS - Removed: reason (descriptive text)
   // ============================================
   automationLogs: defineTable({
-    deviceId: v.string(),
+    deviceId: v.id('devices'),
     plantId: v.optional(v.id('plants')),
     timestamp: v.number(),
     action: v.union(
@@ -304,6 +302,7 @@ export default defineSchema({
       v.literal('automation_action_executed'),
       v.literal('care_schedule_saved'),
       v.literal('care_schedule_completed'),
+      v.literal('care_schedule_deleted'),
       v.literal('manual_lighting_triggered'),
     ),
     title: v.string(),
@@ -485,6 +484,11 @@ export default defineSchema({
     productId: v.id('products'),
     buyerId: v.id('users'),
     sellerId: v.id('users'),
+    buyerName: v.optional(v.string()),
+    sellerName: v.optional(v.string()),
+    productTitle: v.optional(v.string()),
+    productImage: v.optional(v.string()),
+    productStatus: v.optional(v.union(v.literal('active'), v.literal('reserved'), v.literal('sold'), v.literal('archived'))),
     lastMessagePreview: v.string(),
     lastMessageAt: v.number(),
     buyerUnreadCount: v.number(),

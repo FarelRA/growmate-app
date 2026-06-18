@@ -4,6 +4,7 @@ import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
+import type { Id } from '@/lib/convex-types'
 
 definePageMeta({
   requiresAuth: true,
@@ -13,10 +14,10 @@ definePageMeta({
 const route = useRoute()
 const router = useRouter()
 
-const { data } = useConvexQuery(api.growmate.supportInbox, {})
-const { mutate: createSupportRequest } = useConvexMutation(api.growmate.createSupportRequest)
-const { mutate: sendSupportMessage } = useConvexMutation(api.growmate.sendSupportMessage)
-const { mutate: closeSupportRequest } = useConvexMutation(api.growmate.closeSupportRequest)
+const { data } = useConvexQuery(api.support.supportInbox, {})
+const { mutate: createSupportRequest } = useConvexMutation(api.support.createSupportRequest)
+const { mutate: sendSupportMessage } = useConvexMutation(api.support.sendSupportMessage)
+const { mutate: closeSupportRequest } = useConvexMutation(api.support.closeSupportRequest)
 
 const newTicketTopic = ref('')
 const replyMessage = ref('')
@@ -76,7 +77,7 @@ async function handleSendReply() {
   sendingReply.value = true
   try {
     await sendSupportMessage({
-      requestId: selectedRequest.value._id as never,
+      requestId: selectedRequest.value._id as Id<'supportRequests'>,
       body: replyMessage.value,
     })
     replyMessage.value = ''
@@ -105,7 +106,7 @@ async function handleCloseTicket() {
 
   closingTicket.value = true
   try {
-    await closeSupportRequest({ requestId: selectedRequest.value._id as never })
+    await closeSupportRequest({ requestId: selectedRequest.value._id as Id<'supportRequests'> })
     toast.success('Tiket ditutup')
   } catch (error: unknown) {
     toast.error(getErrorMessage(error, 'Gagal menutup tiket'))
@@ -150,12 +151,15 @@ async function handleCloseTicket() {
             Tuliskan kebutuhan bantuan, kendala perangkat, atau hal yang perlu ditindaklanjuti.
           </div>
         </div>
-        <textarea
-          v-model="newTicketTopic"
-          rows="4"
-          class="w-full rounded-[1.5rem] bg-[#f7f7f7] px-4 py-3 text-sm outline-none"
-          placeholder="Apa yang Anda butuhkan bantuannya?"
-        />
+        <label class="block">
+          <span class="mb-2 block text-sm font-semibold text-gm-text">Topik bantuan</span>
+          <textarea
+            v-model="newTicketTopic"
+            rows="4"
+            class="w-full rounded-[1.5rem] bg-[#f7f7f7] px-4 py-3 text-sm outline-none"
+            placeholder="Apa yang Anda butuhkan bantuannya?"
+          />
+        </label>
         <button
           class="rounded-full bg-[#ffdbcf] px-5 py-3 text-sm font-bold text-[#795548] disabled:opacity-50"
           :disabled="creatingTicket"
@@ -251,15 +255,19 @@ async function handleCloseTicket() {
 
           <div class="rounded-[1.5rem] bg-[#e8e8e8] p-2">
             <div class="flex items-end gap-3">
-              <textarea
-                v-model="replyMessage"
-                rows="2"
-                class="min-h-[56px] flex-1 resize-none rounded-[1.25rem] bg-white px-4 py-3 text-sm outline-none"
-                placeholder="Tulis balasan atau informasi tambahan untuk tim dukungan..."
-                @keyup.enter.exact.prevent="!sendingReply && handleSendReply()"
-              />
+              <label class="flex-1">
+                <span class="sr-only">Balasan</span>
+                <textarea
+                  v-model="replyMessage"
+                  rows="2"
+                  class="min-h-[56px] w-full resize-none rounded-[1.25rem] bg-white px-4 py-3 text-sm outline-none"
+                  placeholder="Tulis balasan atau informasi tambahan untuk tim dukungan..."
+                  @keyup.enter.exact.prevent="!sendingReply && handleSendReply()"
+                />
+              </label>
               <button
                 class="rounded-full bg-gm-primary p-4 text-white disabled:opacity-50"
+                aria-label="Kirim pesan"
                 :disabled="sendingReply"
                 @click="handleSendReply"
               >

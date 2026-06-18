@@ -14,7 +14,7 @@ definePageMeta({
 
 const router = useRouter()
 
-const { data: devices } = useConvexQuery(api.growmate.userDevices, {})
+const { data: devices } = useConvexQuery(api.devices.userDevices, {})
 
 watch(
   devices,
@@ -30,12 +30,12 @@ const currentDeviceId = computed(
 )
 
 const { data } = useConvexQuery(
-  api.growmate.assistant,
+  api.assistant.assistant,
   computed(() => ({ deviceId: currentDeviceId.value })),
 )
 
-const { mutate: sendMessage } = useConvexMutation(api.growmate.sendAssistantMessage)
-const { mutate: resetAssistantThread } = useConvexMutation(api.growmate.resetAssistantThread)
+const { mutate: sendMessage } = useConvexMutation(api.assistant.sendAssistantMessage)
+const { mutate: resetAssistantThread } = useConvexMutation(api.assistant.resetAssistantThread)
 
 const messageInput = ref('')
 const sending = ref(false)

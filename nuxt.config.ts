@@ -59,7 +59,7 @@ export default defineNuxtConfig({
         'Cross-Origin-Opener-Policy': 'same-origin',
         'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
         'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-        'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+        'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob: https://*.convex.cloud https://growmate.bond; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
       },
     },
     '/dashboard': { ssr: false },

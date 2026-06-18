@@ -22,7 +22,7 @@ const unclaimedDevice = ref<{ deviceId: string; name: string; firmwareVersion?: 
 )
 
 const convexClient = new ConvexHttpClient(useRuntimeConfig().public.convexUrl)
-const { mutate: claimDevice } = useConvexMutation(api.growmate.claimDevice)
+const { mutate: claimDevice } = useConvexMutation(api.users.claimDevice)
 
 const manualLinking = computed(() => route.query.manual === '1')
 const pageTitle = computed(() =>
@@ -49,7 +49,7 @@ async function checkDevice() {
 
   checkingDevice.value = true
   try {
-    const result = await convexClient.query(api.growmate.getUnclaimedDevice, { deviceId: trimmed })
+    const result = await convexClient.query(api.devices.getUnclaimedDevice, { deviceId: trimmed })
     unclaimedDevice.value = result
     if (result) {
       toast.success(`Perangkat ditemukan: ${unclaimedDevice.value.name}`)

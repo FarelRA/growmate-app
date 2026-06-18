@@ -1,23 +1,24 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
 import { readSelectedImage, uploadImageFile } from '@/lib/uploads'
+import type { Id } from '@/lib/convex-types'
 
 definePageMeta({
   requiresAuth: true,
   requiresSetup: true,
 })
 
-const { data } = useConvexQuery(api.growmate.community, {})
+const { data } = useConvexQuery(api.community.community, {})
 
-const { mutate: createPost } = useConvexMutation(api.growmate.createPost)
-const { mutate: likePost } = useConvexMutation(api.growmate.likePost)
-const { mutate: createComment } = useConvexMutation(api.growmate.createComment)
-const { mutate: deletePost } = useConvexMutation(api.growmate.deletePost)
-const { mutate: generateImageUploadUrl } = useConvexMutation(api.growmate.generateImageUploadUrl)
+const { mutate: createPost } = useConvexMutation(api.community.createPost)
+const { mutate: likePost } = useConvexMutation(api.community.likePost)
+const { mutate: createComment } = useConvexMutation(api.community.createComment)
+const { mutate: deletePost } = useConvexMutation(api.community.deletePost)
+const { mutate: generateImageUploadUrl } = useConvexMutation(api.images.generateImageUploadUrl)
 
 const showCreatePostModal = ref(false)
 const expandedComments = ref<string | null>(null)
@@ -26,10 +27,15 @@ const newPostBody = ref('')
 const newPostImagePreview = ref<string | null>(null)
 const commentText = ref<Record<string, string>>({})
 
+onBeforeUnmount(() => {
+  if (postImageBlobUrl.value) URL.revokeObjectURL(postImageBlobUrl.value)
+})
+
 const creatingPost = ref(false)
 const likingPosts = ref<Set<string>>(new Set())
 const commentingPosts = ref<Set<string>>(new Set())
 const deletingPosts = ref<Set<string>>(new Set())
+const postImageBlobUrl = ref<string | null>(null)
 
 async function handleCreatePost() {
   creatingPost.value = true
@@ -41,7 +47,7 @@ async function handleCreatePost() {
     await createPost({
       title: newPostTitle.value,
       body: newPostBody.value,
-      imageStorageId: imageStorageId as never,
+      imageStorageId: imageStorageId as Id<'_storage'>,
     })
     toast.success('Postingan dipublikasikan')
     newPostTitle.value = ''
@@ -62,13 +68,15 @@ function handlePostImageChange(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0] ?? null
   newPostImageFile.value = file
-  newPostImagePreview.value = readSelectedImage(file)
+  if (postImageBlobUrl.value) URL.revokeObjectURL(postImageBlobUrl.value)
+  postImageBlobUrl.value = readSelectedImage(file)
+  newPostImagePreview.value = postImageBlobUrl.value
 }
 
 async function handleLike(postId: string) {
   likingPosts.value.add(postId)
   try {
-    const result = await likePost({ postId: postId as never })
+    const result = await likePost({ postId: postId as Id<'communityPosts'> })
     toast.success(result.liked ? 'Postingan disukai' : 'Suka dihapus')
   } catch (error: unknown) {
     toast.error(getErrorMessage(error, 'Gagal memperbarui suka'))
@@ -80,7 +88,7 @@ async function handleLike(postId: string) {
 async function handleComment(postId: string) {
   commentingPosts.value.add(postId)
   try {
-    await createComment({ postId: postId as never, body: commentText.value[postId] ?? '' })
+    await createComment({ postId: postId as Id<'communityPosts'>, body: commentText.value[postId] ?? '' })
     commentText.value[postId] = ''
     expandedComments.value = postId
     toast.success('Komentar diposting')
@@ -98,7 +106,7 @@ async function handleDeletePost(postId: string) {
 
   deletingPosts.value.add(postId)
   try {
-    await deletePost({ postId: postId as never })
+    await deletePost({ postId: postId as Id<'communityPosts'> })
     toast.success('Postingan dihapus')
   } catch (error: unknown) {
     toast.error(getErrorMessage(error, 'Gagal menghapus postingan'))
@@ -191,6 +199,7 @@ async function handleDeletePost(postId: string) {
               post.viewerHasLiked ? 'bg-[#ffe5ea] text-[#c2415d]' : 'bg-[#f3f3f3] text-gm-muted'
             "
             :disabled="likingPosts.has(post._id)"
+            :aria-label="`Suka postingan ${post.title}`"
           >
             <span class="material-symbols-outlined text-sm">favorite</span>
             {{ post.likeCount }}
@@ -206,12 +215,15 @@ async function handleDeletePost(postId: string) {
 
         <div class="mt-5 rounded-[1.5rem] bg-[#f7f7f7] p-4">
           <div class="flex flex-col gap-3 sm:flex-row">
-            <input
-              v-model="commentText[post._id]"
-              @keyup.enter="!commentingPosts.has(post._id) && handleComment(post._id)"
-              class="flex-1 rounded-full bg-white px-5 py-3 text-sm outline-none"
-              placeholder="Tambahkan komentar yang bermakna..."
-            />
+            <label class="flex-1">
+              <span class="sr-only">Tulis komentar</span>
+              <input
+                v-model="commentText[post._id]"
+                @keyup.enter="!commentingPosts.has(post._id) && handleComment(post._id)"
+                class="w-full rounded-full bg-white px-5 py-3 text-sm outline-none"
+                placeholder="Tambahkan komentar yang bermakna..."
+              />
+            </label>
             <button
               @click="handleComment(post._id)"
               class="rounded-full bg-gm-primary px-5 py-3 text-sm font-bold text-white"
@@ -288,6 +300,9 @@ async function handleDeletePost(postId: string) {
 
   <div
     v-if="showCreatePostModal"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Buat postingan komunitas"
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
     @click="showCreatePostModal = false"
   >
@@ -299,22 +314,28 @@ async function handleDeletePost(postId: string) {
             Bagikan update budidaya, pelajaran yang didapat, atau momen panen.
           </p>
         </div>
-        <button class="rounded-full p-2 hover:bg-[#f3f3f3]" @click="showCreatePostModal = false">
+        <button class="rounded-full p-2 hover:bg-[#f3f3f3]" aria-label="Tutup" @click="showCreatePostModal = false">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
       <div class="mt-6 space-y-4">
-        <input
-          v-model="newPostTitle"
-          class="w-full rounded-2xl bg-[#f7f7f7] px-5 py-3 text-sm outline-none"
-          placeholder="Judul postingan"
-        />
-        <textarea
-          v-model="newPostBody"
-          rows="7"
-          class="w-full rounded-2xl bg-[#f7f7f7] px-5 py-4 text-sm outline-none"
-          placeholder="Ceritakan ke komunitas apa yang terjadi, apa yang Anda pelajari, dan apa yang perlu diperhatikan pengguna lain..."
-        />
+        <label class="block">
+          <span class="mb-2 block text-sm font-semibold text-gm-text">Judul postingan</span>
+          <input
+            v-model="newPostTitle"
+            class="w-full rounded-2xl bg-[#f7f7f7] px-5 py-3 text-sm outline-none"
+            placeholder="Judul postingan"
+          />
+        </label>
+        <label class="block">
+          <span class="mb-2 block text-sm font-semibold text-gm-text">Isi postingan</span>
+          <textarea
+            v-model="newPostBody"
+            rows="7"
+            class="w-full rounded-2xl bg-[#f7f7f7] px-5 py-4 text-sm outline-none"
+            placeholder="Ceritakan ke komunitas apa yang terjadi, apa yang Anda pelajari, dan apa yang perlu diperhatikan pengguna lain..."
+          />
+        </label>
         <label class="block rounded-2xl bg-[#f7f7f7] px-5 py-4 text-sm text-gm-muted">
           <span class="mb-2 block font-semibold text-gm-text">Gambar opsional</span>
           <input

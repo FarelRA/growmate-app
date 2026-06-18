@@ -15,8 +15,29 @@ http.route({
   method: 'POST',
   handler: httpAction(async (ctx, request) => {
     try {
-      // Parse request body
+      const contentLength = request.headers.get('content-length')
+      if (contentLength && Number(contentLength) > 1024 * 100) {
+        return new Response(JSON.stringify({ error: 'Request body too large' }), {
+          status: 413,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
       const body = await request.json()
+
+      if (body.sensors) {
+        for (const sensor of body.sensors) {
+          if (typeof sensor.value === 'number' && (sensor.value < 0 || sensor.value > 100)) {
+            return new Response(
+              JSON.stringify({ error: `Sensor value for ${sensor.kind} must be between 0-100 (got ${sensor.value})` }),
+              {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+              },
+            )
+          }
+        }
+      }
 
       // Validate API key (optional - check environment variable)
       const apiKey = request.headers.get('x-api-key')
@@ -70,7 +91,7 @@ http.route({
       }
 
       // Update sensors and get automation actions
-      const result = await ctx.runMutation(internal.growmate.updateSensorData, {
+      const result = await ctx.runMutation(internal.sensors.updateSensorData, {
         deviceId: body.deviceId,
         firmwareVersion: body.firmwareVersion,
         currentState: body.currentState,
@@ -78,9 +99,9 @@ http.route({
       })
 
       if (result.commands.length > 0) {
-        await ctx.runMutation(internal.growmate.clearDeliveredDeviceCommands, {
+        await ctx.runMutation(internal.sensors.clearDeliveredDeviceCommands, {
           deviceId: body.deviceId,
-          commands: result.commands.map((command) => command.kind),
+          commands: result.commands.map((command: { kind: string }) => command.kind),
         })
       }
 
@@ -138,6 +159,14 @@ http.route({
         })
       }
 
+      const imageLength = request.headers.get('content-length')
+      if (imageLength && Number(imageLength) > 20 * 1024 * 1024) {
+        return new Response(JSON.stringify({ error: 'Image too large (max 20MB)' }), {
+          status: 413,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
       const imageBuffer = await request.arrayBuffer()
       if (imageBuffer.byteLength === 0) {
         return new Response(JSON.stringify({ error: 'image body is required' }), {
@@ -151,7 +180,7 @@ http.route({
       )
 
       // Update plant image
-      await ctx.runMutation(internal.growmate.updatePlantImage, {
+      await ctx.runMutation(internal.sensors.updatePlantImage, {
         deviceId,
         imageStorageId,
       })

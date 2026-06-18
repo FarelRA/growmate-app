@@ -29,10 +29,10 @@ usePublicSeo({
   ],
 })
 
-const { data: marketplace } = await usePublicConvexQuery('public-marketplace-home', api.growmate.marketplace, {})
-const { data: community } = await usePublicConvexQuery('public-community-home', api.growmate.community, {})
-const { data: plantLibrary } = await usePublicConvexQuery('public-plant-library-home', api.growmate.plantLibrary, {})
-const { data: blogPosts } = await usePublicConvexQuery('public-blog-home', api.growmate.publicBlog, {})
+const { data: marketplace } = await usePublicConvexQuery('public-marketplace-home', api.marketplace.marketplace, {})
+const { data: community } = await usePublicConvexQuery('public-community-home', api.community.community, {})
+const { data: plantLibrary } = await usePublicConvexQuery('public-plant-library-home', api.plants.plantLibrary, {})
+const { data: blogPosts } = await usePublicConvexQuery('public-blog-home', api.blog.publicBlog, {})
 
 const carouselPosition = ref(0)
 
@@ -377,7 +377,7 @@ function blogExcerpt(excerpt: string, body: string) {
             <div
               class="flex gap-6 transition-transform duration-500"
               :class="carouselStories.length <= 3 ? 'justify-center' : ''"
-              :style="`transform: translateX(-${carouselPosition * 100}%);`"
+              :style="`transform: translateX(-${carouselPosition * 33.333}%);`"
             >
               <div
                 v-for="story in carouselStories"

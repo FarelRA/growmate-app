@@ -28,7 +28,7 @@ usePublicSeo({
   ],
 })
 
-const { data } = await usePublicConvexQuery('public-blog-index', api.growmate.publicBlog, {})
+const { data } = await usePublicConvexQuery('public-blog-index', api.blog.publicBlog, {})
 const posts = computed(() => data.value ?? [])
 
 function excerpt(post: { excerpt: string; body: string }) {

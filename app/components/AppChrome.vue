@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { api } from '@/lib/api'
 import { growmateTerms } from '@/lib/glossary'
+import type { Id } from '@/lib/convex-types'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -12,9 +13,9 @@ interface BeforeInstallPromptEvent extends Event {
 const route = useRoute()
 const notificationsOpen = ref(false)
 const installPromptEvent = ref<BeforeInstallPromptEvent | null>(null)
-const { data: notifications } = useConvexQuery(api.growmate.headerNotifications, {})
-const { data: setupStatus } = useConvexQuery(api.growmate.checkSetupStatus, {})
-const { mutate: markNotificationRead } = useConvexMutation(api.growmate.markNotificationRead)
+const { data: notifications } = useConvexQuery(api.notifications.headerNotifications, {})
+const { data: setupStatus } = useConvexQuery(api.users.checkSetupStatus, {})
+const { mutate: markNotificationRead } = useConvexMutation(api.notifications.markNotificationRead)
 
 const growerNavigation = [
   { label: growmateTerms.workspaceNav.dashboard, short: 'Beranda', icon: 'dashboard', to: '/dashboard' },
@@ -48,7 +49,7 @@ async function handleOpenNotifications() {
 }
 
 async function handleNotificationClick(notificationId: string) {
-  await markNotificationRead({ notificationId: notificationId as never })
+  await markNotificationRead({ notificationId: notificationId as Id<'notifications'> })
 }
 
 async function handleInstallApp() {
@@ -93,9 +94,10 @@ onBeforeUnmount(() => {
           </button>
           <button
             class="relative rounded-full p-2 text-slate-500 transition-colors hover:bg-[#f3f3f3]"
+            aria-label="Buka notifikasi"
             @click="handleOpenNotifications"
           >
-            <span class="material-symbols-outlined">notifications</span>
+            <span class="material-symbols-outlined" aria-hidden="true">notifications</span>
             <span
               v-if="notifications?.unreadCount"
               class="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-gm-primary px-1 text-center text-[10px] font-bold text-white"
@@ -144,6 +146,7 @@ onBeforeUnmount(() => {
     </main>
 
     <nav
+      aria-label="Navigasi utama"
       class="fixed bottom-0 left-0 right-0 z-50 rounded-t-[1.5rem] bg-[#f9f9f9]/80 px-3 pt-2 pb-5 shadow-[0_-4px_32px_rgba(0,0,0,0.04)] backdrop-blur-lg sm:px-4 sm:pt-3 sm:pb-6"
     >
       <div

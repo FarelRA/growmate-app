@@ -13,8 +13,8 @@ definePageMeta({
 
 const router = useRouter()
 
-const { data: profile } = useConvexQuery(api.growmate.currentUserProfile, {})
-const { mutate: updateProfile } = useConvexMutation(api.growmate.updateCurrentUserProfile)
+const { data: profile } = useConvexQuery(api.users.currentUserProfile, {})
+const { mutate: updateProfile } = useConvexMutation(api.users.updateCurrentUserProfile)
 
 const form = ref({
   name: '',

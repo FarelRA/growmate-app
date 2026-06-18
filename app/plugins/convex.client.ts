@@ -21,7 +21,8 @@ export default defineNuxtPlugin((nuxtApp) => {
       installNavigationGuard: false,
       needsAuth: (to: { meta?: { requiresAuth?: boolean } }) => Boolean(to.meta?.requiresAuth),
       redirectTo: () => ({ path: '/login' }),
-    } as never,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any,
   })
 
   nuxtApp.vueApp.use(convexPlugin as unknown as Plugin)

@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import type { ActionCtx } from "./_generated/server";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 
 const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
 const OPENAI_BASE_URL = env.OPENAI_BASE_URL ?? "https://generativelanguage.googleapis.com/v1beta/openai/";
@@ -133,19 +134,19 @@ async function executeTool(ctx: ActionCtx, args: {
 
   switch (args.name) {
     case "trigger_watering":
-      return await ctx.runMutation(internal.growmate.assistantTriggerWatering, {
-        userId: args.userId as never,
+      return await ctx.runMutation(internal.assistant.assistantTriggerWatering, {
+        userId: args.userId as Id<'users'>,
         deviceId: args.deviceId,
       });
     case "set_lighting":
-      return await ctx.runMutation(internal.growmate.assistantTriggerLighting, {
-        userId: args.userId as never,
+      return await ctx.runMutation(internal.assistant.assistantTriggerLighting, {
+        userId: args.userId as Id<'users'>,
         deviceId: args.deviceId,
         enabled: Boolean(parsed.enabled),
       });
     case "create_schedule":
-      return await ctx.runMutation(internal.growmate.assistantCreateSchedule, {
-        userId: args.userId as never,
+      return await ctx.runMutation(internal.assistant.assistantCreateSchedule, {
+        userId: args.userId as Id<'users'>,
         deviceId: args.deviceId,
         title: String(parsed.title ?? ""),
         cadenceUnit: parsed.cadenceUnit === "hours" ? "hours" : "days",
@@ -154,23 +155,23 @@ async function executeTool(ctx: ActionCtx, args: {
         timezoneOffsetMinutes: -new Date().getTimezoneOffset(),
       });
     case "toggle_schedule":
-      return await ctx.runMutation(internal.growmate.assistantToggleSchedule, {
-        userId: args.userId as never,
-        scheduleId: parsed.scheduleId as never,
+      return await ctx.runMutation(internal.assistant.assistantToggleSchedule, {
+        userId: args.userId as Id<'users'>,
+        scheduleId: parsed.scheduleId as Id<'careSchedules'>,
         enabled: Boolean(parsed.enabled),
       });
     case "delete_schedule":
-      return await ctx.runMutation(internal.growmate.assistantDeleteSchedule, {
-        userId: args.userId as never,
-        scheduleId: parsed.scheduleId as never,
+      return await ctx.runMutation(internal.assistant.assistantDeleteSchedule, {
+        userId: args.userId as Id<'users'>,
+        scheduleId: parsed.scheduleId as Id<'careSchedules'>,
       });
     case "create_support_ticket":
-      return await ctx.runMutation(internal.growmate.assistantCreateSupportRequest, {
-        userId: args.userId as never,
+      return await ctx.runMutation(internal.assistant.assistantCreateSupportRequest, {
+        userId: args.userId as Id<'users'>,
         topic: String(parsed.topic ?? ""),
       });
     default:
-      throw new Error(`Unknown tool: ${args.name}`);
+      throw new Error(`Alat tidak dikenal: ${args.name}`);
   }
 }
 
@@ -191,8 +192,8 @@ export const generateAIResponse = internalAction({
     const apiKey = env.OPENAI_API_KEY;
 
     if (!apiKey) {
-      const message = "Floral Assistant is unavailable because OPENAI_API_KEY is not configured.";
-      await ctx.runMutation(internal.growmate.insertAIResponse, {
+      const message = "Asisten Floral tidak tersedia karena OPENAI_API_KEY belum dikonfigurasi.";
+      await ctx.runMutation(internal.assistant.insertAIResponse, {
         assistantMessageId: args.assistantMessageId,
         body: message,
         status: "error",
@@ -229,7 +230,7 @@ export const generateAIResponse = internalAction({
 
         if (!assistantMessage.tool_calls?.length) {
           const aiResponse = assistantMessage.content?.trim() || "I couldn't generate a useful response from the latest GrowMate context.";
-          await ctx.runMutation(internal.growmate.insertAIResponse, {
+          await ctx.runMutation(internal.assistant.insertAIResponse, {
             assistantMessageId: args.assistantMessageId,
             body: aiResponse,
             status: "complete",
@@ -271,7 +272,7 @@ export const generateAIResponse = internalAction({
       }
 
       const fallback = "I couldn't complete that action safely. Please try again with a more specific request.";
-      await ctx.runMutation(internal.growmate.insertAIResponse, {
+      await ctx.runMutation(internal.assistant.insertAIResponse, {
         assistantMessageId: args.assistantMessageId,
         body: fallback,
         status: "complete",
@@ -282,7 +283,7 @@ export const generateAIResponse = internalAction({
       const message = error instanceof Error
         ? `Floral Assistant failed: ${error.message}`
         : "Floral Assistant failed unexpectedly.";
-      await ctx.runMutation(internal.growmate.insertAIResponse, {
+      await ctx.runMutation(internal.assistant.insertAIResponse, {
         assistantMessageId: args.assistantMessageId,
         body: message,
         status: "error",

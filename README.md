@@ -26,9 +26,14 @@ bun run convex:dev   # Convex dev session (separate terminal)
 ## Quality
 
 ```sh
-bun run check        # type-check + lint + build
+bun run check        # typecheck + lint + test + build
+bun run typecheck    # nuxt typecheck
 bun run lint         # oxlint + eslint
 bun run format       # prettier
+bun run test         # unit tests (vitest)
+bun run test:watch   # unit tests (watch mode)
+bun run test:ui      # unit tests (vitest UI)
+bun run test:e2e     # e2e tests (playwright)
 ```
 
 ## Project Structure

@@ -7,12 +7,8 @@ import { createBreadcrumbSchema, toAbsoluteUrl, toMetaDescription } from '@/lib/
 definePageMeta({ public: true })
 
 const route = useRoute()
-const productId = computed(() => String(route.params.id || ''))
-const { data } = await usePublicConvexQuery('public-marketplace-product-detail', api.growmate.marketplace, {})
-
-const allProducts = computed(() => [...(data.value?.official ?? []), ...(data.value?.community ?? [])])
-const product = computed(() => allProducts.value.find((item) => item._id === productId.value) ?? null)
-const related = computed(() => allProducts.value.filter((item) => item._id !== productId.value).slice(0, 4))
+const productId = String(route.params.id || '')
+const { data: product, pending, error } = await usePublicConvexQuery(`public-marketplace-product-detail-${productId}`, api.marketplace.getProductById, { productId })
 const productImage = computed(() => toOptimizedImageUrl(product.value?.image, { width: 1200, height: 1200, quality: 74 }))
 
 usePublicSeo({
@@ -64,7 +60,15 @@ usePublicSeo({
   <MarketingPageShell>
     <section class="bg-white py-16 lg:py-20">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div v-if="product" class="grid gap-10 lg:grid-cols-[1fr_0.92fr] lg:items-start">
+        <div v-if="pending" class="flex items-center justify-center py-24">
+          <div class="h-10 w-10 animate-spin rounded-full border-4 border-gm-primary border-t-transparent" />
+        </div>
+
+        <div v-else-if="error" class="rounded-[2rem] bg-red-50 p-10 text-center text-sm text-red-600">
+          Gagal memuat detail produk. Silakan coba lagi nanti.
+        </div>
+
+        <div v-else-if="product" class="grid gap-10 lg:grid-cols-[1fr_0.92fr] lg:items-start">
           <RevealBlock as="div" origin="right" class="gm-card-lift overflow-hidden rounded-[2rem] bg-[#f5f6f2] p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <div class="aspect-square overflow-hidden rounded-[1.5rem] bg-white">
               <img v-if="product.image" :src="productImage || undefined" :alt="product.title" class="h-full w-full object-cover" fetchpriority="high" decoding="async" width="1200" height="1200" />
@@ -122,17 +126,6 @@ usePublicSeo({
 
         <div v-else class="rounded-[2rem] bg-[#f5f6f2] p-10 text-center text-sm text-gm-muted">
           Produk tidak ditemukan.
-        </div>
-      </div>
-    </section>
-
-    <section v-if="related.length" class="bg-[#f5f6f2] py-16 lg:py-20">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <RevealBlock as="h2" class="mb-8 font-headline text-2xl text-gm-text sm:text-3xl">Pilihan lain dari GrowMate</RevealBlock>
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
-          <RevealBlock v-for="(item, index) in related" :key="item._id" as="div" :delay="index * 70" origin="up">
-            <MarketingProductCard :product="item" />
-          </RevealBlock>
         </div>
       </div>
     </section>

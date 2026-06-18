@@ -2,6 +2,7 @@ import { ref } from 'vue'
 
 const activeDeviceId = ref<string | null>(null)
 let activeDeviceInitialized = false
+let storageListener: ((event: StorageEvent) => void) | null = null
 
 function storageKey() {
   const convexUrl = useRuntimeConfig().public.convexUrl
@@ -23,13 +24,22 @@ export function initActiveDeviceState() {
 
   activeDeviceId.value = readStoredDeviceId()
 
-  window.addEventListener('storage', (event) => {
+  storageListener = (event: StorageEvent) => {
     if (event.key === storageKey()) {
       activeDeviceId.value = event.newValue
     }
-  })
+  }
+  window.addEventListener('storage', storageListener)
 
   activeDeviceInitialized = true
+}
+
+export function cleanupActiveDeviceState() {
+  if (storageListener) {
+    window.removeEventListener('storage', storageListener)
+    storageListener = null
+  }
+  activeDeviceInitialized = false
 }
 
 export { activeDeviceId }

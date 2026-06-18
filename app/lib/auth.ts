@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { ConvexHttpClient } from 'convex/browser'
+import { ConvexError } from 'convex/values'
 import { api } from '@/lib/api'
 
 const JWT_STORAGE_KEY = '__convexAuthJWT'
@@ -9,6 +10,7 @@ const token = ref<string | null>(null)
 const isLoading = ref(true)
 const isAuthenticated = ref(false)
 let authStateInitialized = false
+let storageListener: ((event: StorageEvent) => void) | null = null
 
 export type SetupStatus = {
   authenticated?: boolean
@@ -84,14 +86,23 @@ export function initAuthState() {
 
   syncTokenFromStorage()
 
-  window.addEventListener('storage', (event) => {
+  storageListener = (event: StorageEvent) => {
     if (event.key === storageKey(JWT_STORAGE_KEY)) {
       token.value = event.newValue
       isAuthenticated.value = event.newValue !== null
     }
-  })
+  }
+  window.addEventListener('storage', storageListener)
 
   authStateInitialized = true
+}
+
+export function cleanupAuthState() {
+  if (storageListener) {
+    window.removeEventListener('storage', storageListener)
+    storageListener = null
+  }
+  authStateInitialized = false
 }
 
 export const authState = {
@@ -126,15 +137,41 @@ export async function signOutCurrentUser() {
   }
 }
 
-export async function fetchSetupStatus(): Promise<SetupStatus | null> {
-  try {
-    return await createClient(token.value ?? undefined).query(api.growmate.checkSetupStatus, {})
-  } catch {
-    return null
+export class AuthNotReadyError extends Error {
+  constructor() {
+    super('Auth state not yet initialized')
   }
 }
 
-export async function getAuthToken({ forceRefreshToken }: { forceRefreshToken: boolean }) {
+export async function fetchSetupStatus(retries = 2): Promise<SetupStatus | null> {
+  if (!authStateInitialized) {
+    throw new AuthNotReadyError()
+  }
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await createClient(token.value ?? undefined).query(api.users.checkSetupStatus, {})
+    } catch (error: unknown) {
+      if (error instanceof ConvexError) {
+        throw error
+      }
+
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        if (attempt < retries) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
+          continue
+        }
+        return null
+      }
+
+      return null
+    }
+  }
+
+  return null
+}
+
+export async function getAuthToken({ forceRefreshToken }: { forceRefreshToken?: boolean } = {}) {
   if (!forceRefreshToken) {
     return token.value
   }

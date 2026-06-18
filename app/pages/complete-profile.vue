@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import { useConvexMutation } from '@convex-vue/core'
 import { api } from '@/lib/api'
@@ -17,7 +17,20 @@ const role = ref('grower')
 const avatar = ref('')
 const loading = ref(false)
 
-const { mutate: completeProfile } = useConvexMutation(api.growmate.completeProfile)
+const { mutate: completeProfile } = useConvexMutation(api.users.completeProfile)
+
+function normalizeHandle(input: string) {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s.]/g, '')
+    .replace(/\s+/g, '.')
+}
+
+const previewHandle = computed(() => {
+  if (!handle.value.trim()) return ''
+  return normalizeHandle(handle.value)
+})
 
 async function handleCompleteProfile() {
   if (!name.value || !handle.value) {
@@ -117,6 +130,10 @@ async function handleCompleteProfile() {
           <span class="mt-2 block text-xs text-gm-muted"
             >Nama pengguna ini akan tampil saat Anda berbagi cerita atau aktivitas di komunitas.</span
           >
+          <span
+            v-if="previewHandle"
+            class="mt-1 block text-xs text-gm-primary"
+          >Akan ditampilkan sebagai: {{ previewHandle }}</span>
         </label>
 
         <label class="block">

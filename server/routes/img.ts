@@ -3,6 +3,7 @@ import sharp from 'sharp'
 const MAX_WIDTH = 2200
 const MAX_HEIGHT = 2200
 const DEFAULT_QUALITY = 72
+const MAX_BYTES = 10 * 1024 * 1024
 
 function parseDimension(value: string | undefined, max: number) {
   const parsed = Number(value)
@@ -44,7 +45,23 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: response.status, statusMessage: 'Image fetch failed' })
   }
 
-  const input = Buffer.from(await response.arrayBuffer())
+  if (!response.headers.get('content-type')?.startsWith('image/')) {
+    throw createError({ statusCode: 400, statusMessage: 'Invalid content type' })
+  }
+
+  const contentLength = response.headers.get('content-length')
+  if (contentLength && Number(contentLength) > MAX_BYTES) {
+    throw createError({ statusCode: 413, statusMessage: 'Image too large' })
+  }
+
+  const chunks: Uint8Array[] = []
+  let received = 0
+  for await (const chunk of response.body!) {
+    received += chunk.length
+    if (received > MAX_BYTES) throw createError({ statusCode: 413, statusMessage: 'Image too large' })
+    chunks.push(chunk)
+  }
+  const input = Buffer.concat(chunks)
   const output = await sharp(input)
     .rotate()
     .resize({

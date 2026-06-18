@@ -60,8 +60,9 @@ export {
 export {
   enrichMarketplaceProduct,
   getMarketplaceThreadsForUser,
-  formatCurrencyIdr,
 } from './marketplace'
+
+export { formatCurrencyIdr } from './generic'
 
 export { enrichBlogPost } from './blog'
 

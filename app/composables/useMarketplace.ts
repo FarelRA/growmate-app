@@ -69,7 +69,7 @@ export function useMarketplace() {
         !selectedThreadId.value ||
         !threads.some((thread: { _id: string }) => thread._id === selectedThreadId.value)
       ) {
-        selectedThreadId.value = threads[0]._id
+        selectedThreadId.value = threads[0]!._id
       }
     },
     { immediate: true },
@@ -206,7 +206,7 @@ export function useMarketplace() {
     savingDraft.value = true
     try {
       const imageStorageId = draftImageFile.value
-        ? await uploadImageFile(draftImageFile.value, () => generateImageUploadUrl({}))
+        ? await uploadImageFile(draftImageFile.value, () => generateImageUploadUrl({}) as Promise<string>)
         : undefined
       if (editingListingId.value) {
         await updateMarketplaceListing({
@@ -298,8 +298,8 @@ export function useMarketplace() {
     sendingInquiry.value = true
     try {
       await sendMarketplaceMessage({
-        productId: inquiryListing.value._id,
-        threadId: inquiryListing.value.contactThreadId ?? undefined,
+        productId: inquiryListing.value._id as Id<'products'>,
+        threadId: (inquiryListing.value.contactThreadId ?? undefined) as Id<'marketplaceThreads'> | undefined,
         body: inquiryMessage.value,
       })
       toast.success(`Pertanyaan dikirim ke ${inquiryListing.value.sellerName}`)

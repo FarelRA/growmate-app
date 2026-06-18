@@ -189,7 +189,7 @@ export function useDashboard() {
         fill: 'rgba(0, 164, 237, 0.12)',
       },
     ].map((metric) => {
-      const points = metricHistory[metric.key] ?? []
+      const points = (metricHistory as Record<string, Array<{ value: number; measuredAt: number }>>)[metric.key] ?? []
       const latest = points[points.length - 1]?.value
       return { ...metric, points, latest }
     })
@@ -331,7 +331,7 @@ export function useDashboard() {
 
   async function handleToggleSchedule(scheduleId: string, enabled: boolean) {
     try {
-      await toggleSchedule({ scheduleId, enabled: !enabled })
+      await toggleSchedule({ scheduleId: scheduleId as Id<'careSchedules'>, enabled: !enabled })
       toast.success(enabled ? 'Jadwal dijeda' : 'Jadwal diaktifkan')
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, 'Gagal memperbarui jadwal'))

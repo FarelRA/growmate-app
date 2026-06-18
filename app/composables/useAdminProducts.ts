@@ -83,7 +83,7 @@ export function useAdminProducts(activeTab: Ref<AdminTab>) {
   async function handleSaveProduct() {
     savingProduct.value = true
     try {
-      const imageStorageId = img.file.value ? await uploadImageFile(img.file.value, () => generateImageUploadUrl({})) : undefined
+      const imageStorageId = img.file.value ? await uploadImageFile(img.file.value, () => generateImageUploadUrl({}) as Promise<string>) : undefined
       await saveOfficialProduct({
         title: productForm.value.title,
         description: productForm.value.description,

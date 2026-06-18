@@ -101,7 +101,7 @@ http.route({
       if (result.commands.length > 0) {
         await ctx.runMutation(internal.sensors.clearDeliveredDeviceCommands, {
           deviceId: body.deviceId,
-          commands: result.commands.map((command: { kind: string }) => command.kind),
+          commands: result.commands.map((command) => command.kind),
         })
       }
 

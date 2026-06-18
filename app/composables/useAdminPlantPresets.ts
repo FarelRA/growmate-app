@@ -110,7 +110,7 @@ export function useAdminPlantPresets(activeTab: Ref<AdminTab>) {
   async function handleSavePlantPreset() {
     savingPlantPreset.value = true
     try {
-      const imageStorageId = img.file.value ? await uploadImageFile(img.file.value, () => generateImageUploadUrl({})) : undefined
+      const imageStorageId = img.file.value ? await uploadImageFile(img.file.value, () => generateImageUploadUrl({}) as Promise<string>) : undefined
       await savePlantPreset({
         key: plantPresetForm.value.key || undefined,
         name: plantPresetForm.value.name,

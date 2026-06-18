@@ -1,6 +1,8 @@
 import type { Doc } from './_generated/dataModel'
 import type { QueryCtx, MutationCtx } from './_generated/server'
 
+export type { QueryCtx, MutationCtx }
+
 export type Ctx = QueryCtx | MutationCtx
 
 export type SensorKind = 'soil' | 'light' | 'temperature' | 'air' | 'water'

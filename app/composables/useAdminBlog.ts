@@ -68,7 +68,7 @@ export function useAdminBlog(activeTab: Ref<AdminTab>) {
   async function handleSaveBlogPost() {
     savingBlogPost.value = true
     try {
-      const imageStorageId = img.file.value ? await uploadImageFile(img.file.value, () => generateImageUploadUrl({})) : undefined
+      const imageStorageId = img.file.value ? await uploadImageFile(img.file.value, () => generateImageUploadUrl({}) as Promise<string>) : undefined
       await saveBlogPost({
         title: blogPostForm.value.title,
         excerpt: blogPostForm.value.excerpt,

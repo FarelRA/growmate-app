@@ -44,3 +44,26 @@ __screenshots__/
 
 test-results/
 playwright-report/
+
+# Convex generated
+convex/_generated/
+
+# Env files
+.env
+.env.*.local
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.vscode/*
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+.nyc_output/

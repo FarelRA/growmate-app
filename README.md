@@ -1,44 +1,57 @@
 # GrowMate App
 
-GrowMate is a Bun-based Nuxt app for smart urban farming. It combines a grow dashboard, AI gardening assistant, community hub, marketplace, and support workflows on top of a Convex backend.
+Smart urban farming platform with IoT device monitoring, AI gardening assistant, community hub, marketplace, and support workflows.
 
-## Stack
+Built on **Nuxt 4** + **Vue 3** + **Convex** + **Tailwind CSS v4**, managed with **Bun**.
 
-- Nuxt 4
-- Vue 3
-- Tailwind CSS v4
-- Convex
-- Bun
+## Setup
+
+```sh
+bun install
+```
+
+Copy `.env.local` and configure your Convex deployment and API keys:
+
+```sh
+cp .env.local .env
+```
 
 ## Development
 
 ```sh
-bun install
-bun run dev
+bun run dev          # Nuxt dev server
+bun run convex:dev   # Convex dev session (separate terminal)
 ```
 
-## Convex
-
-Backend code lives in `convex/`.
-
-Start a Convex dev session with:
+## Quality
 
 ```sh
-bun run convex:dev
+bun run check        # type-check + lint + build
+bun run lint         # oxlint + eslint
+bun run format       # prettier
 ```
 
-Set `NUXT_PUBLIC_CONVEX_URL` for the Nuxt app. `VITE_CONVEX_URL` is still accepted as a fallback for local transition, but `NUXT_PUBLIC_CONVEX_URL` is the intended runtime variable.
+## Project Structure
 
-## Quality Checks
-
-```sh
-bun run type-check
-bun run lint
-bun run build-only
+```
+app/          # Nuxt pages, components, composables, lib
+convex/       # Convex backend (schema, auth, queries, mutations)
+server/       # Nitro server routes (sitemap, image optimization)
+public/       # Static assets (icons, favicon, robots.txt)
 ```
 
-Run the full local verification suite with:
+## Environment
 
-```sh
-bun run check
-```
+| Variable | Required | Description |
+|---|---|---|
+| `NUXT_PUBLIC_CONVEX_URL` | Yes | Convex deployment URL |
+| `OPENAI_API_KEY` | For AI | Gemini/OpenAI API key |
+| `SENSOR_API_KEY` | For IoT | Device telemetry auth |
+
+## Stack
+
+- **Frontend:** Nuxt 4, Vue 3, Tailwind v4, PWA
+- **Backend:** Convex (schema, auth, real-time queries)
+- **AI:** Google Gemini via OpenAI-compatible API
+- **Auth:** Convex Auth with password providers
+- **Infra:** Bun, Nitro, sharp (image optimization)

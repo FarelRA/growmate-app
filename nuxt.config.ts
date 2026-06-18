@@ -142,7 +142,7 @@ export default defineNuxtConfig({
     workbox: {
       globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
       navigateFallback: '/',
-      navigateFallbackDenylist: [/^\/sitemap\.xml$/, /^\/sitemaps\.xml$/, /^\/robots\.txt$/],
+      navigateFallbackDenylist: [/^\/sitemap\.xml$/, /^\/robots\.txt$/],
       cleanupOutdatedCaches: true,
       clientsClaim: true,
       skipWaiting: true,

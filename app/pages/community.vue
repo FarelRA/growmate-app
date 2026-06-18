@@ -43,14 +43,14 @@ async function handleCreatePost() {
       body: newPostBody.value,
       imageStorageId: imageStorageId as never,
     })
-    toast.success('Post published')
+    toast.success('Postingan dipublikasikan')
     newPostTitle.value = ''
     newPostBody.value = ''
     newPostImageFile.value = null
     newPostImagePreview.value = null
     showCreatePostModal.value = false
   } catch (error: unknown) {
-    toast.error(getErrorMessage(error, 'Failed to publish post'))
+    toast.error(getErrorMessage(error, 'Gagal mempublikasikan postingan'))
   } finally {
     creatingPost.value = false
   }
@@ -69,9 +69,9 @@ async function handleLike(postId: string) {
   likingPosts.value.add(postId)
   try {
     const result = await likePost({ postId: postId as never })
-    toast.success(result.liked ? 'Post liked' : 'Like removed')
+    toast.success(result.liked ? 'Postingan disukai' : 'Suka dihapus')
   } catch (error: unknown) {
-    toast.error(getErrorMessage(error, 'Failed to update like'))
+    toast.error(getErrorMessage(error, 'Gagal memperbarui suka'))
   } finally {
     likingPosts.value.delete(postId)
   }
@@ -83,30 +83,29 @@ async function handleComment(postId: string) {
     await createComment({ postId: postId as never, body: commentText.value[postId] ?? '' })
     commentText.value[postId] = ''
     expandedComments.value = postId
-    toast.success('Comment posted')
+    toast.success('Komentar diposting')
   } catch (error: unknown) {
-    toast.error(getErrorMessage(error, 'Failed to post comment'))
+    toast.error(getErrorMessage(error, 'Gagal memposting komentar'))
   } finally {
     commentingPosts.value.delete(postId)
   }
 }
 
 async function handleDeletePost(postId: string) {
-  if (!window.confirm('Delete this post? This cannot be undone.')) {
+  if (!window.confirm('Hapus postingan ini? Tindakan ini tidak dapat dibatalkan.')) {
     return
   }
 
   deletingPosts.value.add(postId)
   try {
     await deletePost({ postId: postId as never })
-    toast.success('Post deleted')
+    toast.success('Postingan dihapus')
   } catch (error: unknown) {
-    toast.error(getErrorMessage(error, 'Failed to delete post'))
+    toast.error(getErrorMessage(error, 'Gagal menghapus postingan'))
   } finally {
     deletingPosts.value.delete(postId)
   }
 }
-
 </script>
 
 <template>
@@ -115,29 +114,59 @@ async function handleDeletePost(postId: string) {
       <section class="rounded-[2rem] bg-white p-5 sm:p-8 shadow-[0_12px_40px_rgba(15,23,42,0.05)]">
         <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p class="text-xs font-bold uppercase tracking-[0.24em] text-gm-primary">Community</p>
-            <h1 class="mt-2 font-headline text-3xl font-black tracking-tight text-gm-text sm:text-4xl">A grower community feed.</h1>
-            <p class="mt-3 max-w-3xl text-sm leading-relaxed text-gm-muted">Post updates, react to other growers, and discuss actual plant progress in threaded comments.</p>
+            <p class="text-xs font-bold uppercase tracking-[0.24em] text-gm-primary">Komunitas</p>
+            <h1
+              class="mt-2 font-headline text-3xl font-black tracking-tight text-gm-text sm:text-4xl"
+            >
+              Feed komunitas pengguna.
+            </h1>
+            <p class="mt-3 max-w-3xl text-sm leading-relaxed text-gm-muted">
+              Bagikan pembaruan, beri reaksi ke pengguna lain, dan diskusikan perkembangan tanaman
+              melalui komentar berantai.
+            </p>
           </div>
-          <button @click="showCreatePostModal = true" class="rounded-full bg-gm-primary px-6 py-3 text-sm font-bold text-white">Create Post</button>
+          <button
+            @click="showCreatePostModal = true"
+            class="rounded-full bg-gm-primary px-6 py-3 text-sm font-bold text-white"
+          >
+            Buat Postingan
+          </button>
         </div>
       </section>
 
-      <div v-if="!data.posts.length" class="rounded-[2rem] bg-[#f3f3f3] p-8 text-center text-sm text-gm-muted">
-        No community posts yet. Publish the first grow update.
+      <div
+        v-if="!data.posts.length"
+        class="rounded-[2rem] bg-[#f3f3f3] p-8 text-center text-sm text-gm-muted"
+      >
+        Belum ada postingan komunitas. Publikasikan update budidaya pertama.
       </div>
 
-      <article v-for="post in data.posts" :key="post._id" class="rounded-[2rem] bg-white p-5 sm:p-6 shadow-[0_12px_40px_rgba(15,23,42,0.05)]">
+      <article
+        v-for="post in data.posts"
+        :key="post._id"
+        class="rounded-[2rem] bg-white p-5 sm:p-6 shadow-[0_12px_40px_rgba(15,23,42,0.05)]"
+      >
         <div class="flex items-start justify-between gap-4">
           <div class="flex items-center gap-4">
-            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-gm-primary text-xs font-bold text-white">{{ post.user?.avatar || 'GM' }}</div>
+            <div
+              class="flex h-12 w-12 items-center justify-center rounded-full bg-gm-primary text-xs font-bold text-white"
+            >
+              {{ post.user?.avatar || 'GM' }}
+            </div>
             <div>
-              <div class="text-sm font-bold text-gm-text">{{ post.user?.name || 'GrowMate member' }}</div>
+              <div class="text-sm font-bold text-gm-text">
+                {{ post.user?.name || 'Anggota GrowMate' }}
+              </div>
               <div class="text-xs text-gm-muted">{{ post.timestamp }}</div>
             </div>
           </div>
-          <button v-if="data.viewerId && data.viewerId === post.userId" @click="handleDeletePost(post._id)" class="rounded-full bg-[#ffdbcf] px-4 py-2 text-xs font-bold text-[#795548] disabled:opacity-50" :disabled="deletingPosts.has(post._id)">
-            {{ deletingPosts.has(post._id) ? 'Deleting...' : 'Delete' }}
+          <button
+            v-if="data.viewerId && data.viewerId === post.userId"
+            @click="handleDeletePost(post._id)"
+            class="rounded-full bg-[#ffdbcf] px-4 py-2 text-xs font-bold text-[#795548] disabled:opacity-50"
+            :disabled="deletingPosts.has(post._id)"
+          >
+            {{ deletingPosts.has(post._id) ? 'Menghapus...' : 'Hapus' }}
           </button>
         </div>
 
@@ -146,42 +175,79 @@ async function handleDeletePost(postId: string) {
             <h2 class="font-headline text-2xl font-bold text-gm-text">{{ post.title }}</h2>
             <p class="mt-3 text-sm leading-relaxed text-gm-muted">{{ post.body }}</p>
           </div>
-          <img v-if="post.image" :src="post.image" :alt="post.title" class="h-64 w-full rounded-[1.5rem] object-cover sm:h-[360px]" />
+          <img
+            v-if="post.image"
+            :src="post.image"
+            :alt="post.title"
+            class="h-64 w-full rounded-[1.5rem] object-cover sm:h-[360px]"
+          />
         </div>
 
         <div class="mt-6 flex flex-wrap items-center gap-3 pt-4 text-sm">
-          <button @click="handleLike(post._id)" class="flex items-center gap-2 rounded-full px-4 py-2 font-semibold" :class="post.viewerHasLiked ? 'bg-[#ffe5ea] text-[#c2415d]' : 'bg-[#f3f3f3] text-gm-muted'" :disabled="likingPosts.has(post._id)">
+          <button
+            @click="handleLike(post._id)"
+            class="flex items-center gap-2 rounded-full px-4 py-2 font-semibold"
+            :class="
+              post.viewerHasLiked ? 'bg-[#ffe5ea] text-[#c2415d]' : 'bg-[#f3f3f3] text-gm-muted'
+            "
+            :disabled="likingPosts.has(post._id)"
+          >
             <span class="material-symbols-outlined text-sm">favorite</span>
             {{ post.likeCount }}
           </button>
-          <button @click="expandedComments = expandedComments === post._id ? null : post._id" class="flex items-center gap-2 rounded-full bg-[#f3f3f3] px-4 py-2 font-semibold text-gm-muted">
+          <button
+            @click="expandedComments = expandedComments === post._id ? null : post._id"
+            class="flex items-center gap-2 rounded-full bg-[#f3f3f3] px-4 py-2 font-semibold text-gm-muted"
+          >
             <span class="material-symbols-outlined text-sm">chat_bubble</span>
-            {{ post.commentCount }} comments
+            {{ post.commentCount }} komentar
           </button>
         </div>
 
         <div class="mt-5 rounded-[1.5rem] bg-[#f7f7f7] p-4">
           <div class="flex flex-col gap-3 sm:flex-row">
-            <input v-model="commentText[post._id]" @keyup.enter="!commentingPosts.has(post._id) && handleComment(post._id)" class="flex-1 rounded-full bg-white px-5 py-3 text-sm outline-none" placeholder="Add a thoughtful comment..." />
-            <button @click="handleComment(post._id)" class="rounded-full bg-gm-primary px-5 py-3 text-sm font-bold text-white" :disabled="commentingPosts.has(post._id)">
-              {{ commentingPosts.has(post._id) ? 'Posting...' : 'Comment' }}
+            <input
+              v-model="commentText[post._id]"
+              @keyup.enter="!commentingPosts.has(post._id) && handleComment(post._id)"
+              class="flex-1 rounded-full bg-white px-5 py-3 text-sm outline-none"
+              placeholder="Tambahkan komentar yang bermakna..."
+            />
+            <button
+              @click="handleComment(post._id)"
+              class="rounded-full bg-gm-primary px-5 py-3 text-sm font-bold text-white"
+              :disabled="commentingPosts.has(post._id)"
+            >
+              {{ commentingPosts.has(post._id) ? 'Memposting...' : 'Komentar' }}
             </button>
           </div>
 
           <div v-if="expandedComments === post._id" class="mt-4 space-y-3">
-            <div v-for="comment in post.comments" :key="comment._id" class="rounded-[1.25rem] bg-white p-4">
+            <div
+              v-for="comment in post.comments"
+              :key="comment._id"
+              class="rounded-[1.25rem] bg-white p-4"
+            >
               <div class="flex items-center gap-3">
-                <div class="flex h-9 w-9 items-center justify-center rounded-full bg-[#e8e8e8] text-[11px] font-bold text-gm-text">{{ comment.user?.avatar || 'CM' }}</div>
+                <div
+                  class="flex h-9 w-9 items-center justify-center rounded-full bg-[#e8e8e8] text-[11px] font-bold text-gm-text"
+                >
+                  {{ comment.user?.avatar || 'CM' }}
+                </div>
                 <div>
-                  <div class="text-sm font-bold text-gm-text">{{ comment.user?.name || 'Community member' }}</div>
+                  <div class="text-sm font-bold text-gm-text">
+                    {{ comment.user?.name || 'Anggota komunitas' }}
+                  </div>
                   <div class="text-[11px] text-gm-muted">{{ comment.createdAtLabel }}</div>
                 </div>
               </div>
               <p class="mt-3 text-sm leading-relaxed text-gm-muted">{{ comment.body }}</p>
             </div>
 
-            <div v-if="!post.comments.length" class="rounded-[1.25rem] bg-white p-4 text-sm text-gm-muted">
-              No comments yet. Start the discussion.
+            <div
+              v-if="!post.comments.length"
+              class="rounded-[1.25rem] bg-white p-4 text-sm text-gm-muted"
+            >
+              Belum ada komentar. Mulai diskusinya.
             </div>
           </div>
         </div>
@@ -191,16 +257,28 @@ async function handleDeletePost(postId: string) {
     <div class="space-y-8">
       <section class="rounded-[2rem] bg-[#e8e8e8] p-5 sm:p-6">
         <div class="mb-6 flex items-center justify-between">
-          <h2 class="font-headline text-lg font-bold text-gm-text">Top Growers</h2>
-          <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-gm-muted">Leaderboard</span>
+          <h2 class="font-headline text-lg font-bold text-gm-text">Pengguna Teratas</h2>
+          <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-gm-muted"
+            >Papan Peringkat</span
+          >
         </div>
         <div class="space-y-4">
-          <div v-for="(user, index) in data.leaderboard" :key="user._id" class="flex items-center gap-4 rounded-[1.25rem] bg-white p-3">
-            <div class="w-8 text-center font-headline text-lg font-black text-gm-primary">#{{ index + 1 }}</div>
-            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gm-primary text-xs font-bold text-white">{{ user.avatar }}</div>
+          <div
+            v-for="(user, index) in data.leaderboard"
+            :key="user._id"
+            class="flex items-center gap-4 rounded-[1.25rem] bg-white p-3"
+          >
+            <div class="w-8 text-center font-headline text-lg font-black text-gm-primary">
+              #{{ index + 1 }}
+            </div>
+            <div
+              class="flex h-10 w-10 items-center justify-center rounded-full bg-gm-primary text-xs font-bold text-white"
+            >
+              {{ user.avatar }}
+            </div>
             <div class="flex-1">
               <div class="text-sm font-bold text-gm-text">{{ user.name }}</div>
-              <div class="text-[11px] text-gm-muted">{{ user.points }} growth points</div>
+              <div class="text-[11px] text-gm-muted">{{ user.points }} poin pertumbuhan</div>
             </div>
           </div>
         </div>
@@ -208,29 +286,65 @@ async function handleDeletePost(postId: string) {
     </div>
   </div>
 
-  <div v-if="showCreatePostModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm" @click="showCreatePostModal = false">
+  <div
+    v-if="showCreatePostModal"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
+    @click="showCreatePostModal = false"
+  >
     <div class="w-full max-w-2xl rounded-[2rem] bg-white p-5 sm:p-8 shadow-2xl" @click.stop>
       <div class="flex items-center justify-between gap-4">
         <div>
-          <h2 class="font-headline text-2xl font-bold text-gm-text">Create Community Post</h2>
-          <p class="mt-1 text-sm text-gm-muted">Share a grow update, lesson learned, or harvest moment.</p>
+          <h2 class="font-headline text-2xl font-bold text-gm-text">Buat Postingan Komunitas</h2>
+          <p class="mt-1 text-sm text-gm-muted">
+            Bagikan update budidaya, pelajaran yang didapat, atau momen panen.
+          </p>
         </div>
         <button class="rounded-full p-2 hover:bg-[#f3f3f3]" @click="showCreatePostModal = false">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
       <div class="mt-6 space-y-4">
-        <input v-model="newPostTitle" class="w-full rounded-2xl bg-[#f7f7f7] px-5 py-3 text-sm outline-none" placeholder="Post title" />
-        <textarea v-model="newPostBody" rows="7" class="w-full rounded-2xl bg-[#f7f7f7] px-5 py-4 text-sm outline-none" placeholder="Tell the community what happened, what you learned, and what others should watch for..." />
+        <input
+          v-model="newPostTitle"
+          class="w-full rounded-2xl bg-[#f7f7f7] px-5 py-3 text-sm outline-none"
+          placeholder="Judul postingan"
+        />
+        <textarea
+          v-model="newPostBody"
+          rows="7"
+          class="w-full rounded-2xl bg-[#f7f7f7] px-5 py-4 text-sm outline-none"
+          placeholder="Ceritakan ke komunitas apa yang terjadi, apa yang Anda pelajari, dan apa yang perlu diperhatikan pengguna lain..."
+        />
         <label class="block rounded-2xl bg-[#f7f7f7] px-5 py-4 text-sm text-gm-muted">
-          <span class="mb-2 block font-semibold text-gm-text">Optional image</span>
-          <input type="file" accept="image/*" class="block w-full" @change="handlePostImageChange" />
+          <span class="mb-2 block font-semibold text-gm-text">Gambar opsional</span>
+          <input
+            type="file"
+            accept="image/*"
+            class="block w-full"
+            @change="handlePostImageChange"
+          />
         </label>
-        <img v-if="newPostImagePreview" :src="newPostImagePreview" alt="Selected post image" class="h-56 w-full rounded-[1.5rem] object-cover" />
+        <img
+          v-if="newPostImagePreview"
+          :src="newPostImagePreview"
+          alt="Gambar postingan terpilih"
+          class="h-56 w-full rounded-[1.5rem] object-cover"
+        />
       </div>
       <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-        <button @click="handleCreatePost" class="flex-1 rounded-full bg-gm-primary px-6 py-4 text-sm font-bold text-white" :disabled="creatingPost">{{ creatingPost ? 'Publishing...' : 'Publish Post' }}</button>
-        <button @click="showCreatePostModal = false" class="rounded-full bg-[#e8e8e8] px-6 py-4 text-sm font-bold text-gm-text">Cancel</button>
+        <button
+          @click="handleCreatePost"
+          class="flex-1 rounded-full bg-gm-primary px-6 py-4 text-sm font-bold text-white"
+          :disabled="creatingPost"
+        >
+          {{ creatingPost ? 'Mempublikasikan...' : 'Publikasikan Postingan' }}
+        </button>
+        <button
+          @click="showCreatePostModal = false"
+          class="rounded-full bg-[#e8e8e8] px-6 py-4 text-sm font-bold text-gm-text"
+        >
+          Batal
+        </button>
       </div>
     </div>
   </div>

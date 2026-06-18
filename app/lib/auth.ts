@@ -126,17 +126,11 @@ export async function signOutCurrentUser() {
   }
 }
 
-export async function fetchSetupStatus(): Promise<SetupStatus> {
+export async function fetchSetupStatus(): Promise<SetupStatus | null> {
   try {
     return await createClient(token.value ?? undefined).query(api.growmate.checkSetupStatus, {})
   } catch {
-    return {
-      authenticated: false,
-      nextStep: 'complete-profile',
-      nextDeviceId: null,
-      isAdmin: false,
-      setupComplete: false,
-    }
+    return null
   }
 }
 

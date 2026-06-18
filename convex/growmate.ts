@@ -11,12 +11,15 @@ import {
   getSensorAccent,
   getSensorSort,
   computePlantHealth,
+  defaultPlantSensorProfile,
   isDeviceOnline,
   computeWaterReservoirDays,
   formatTimestamp,
   getRelativeTime,
   generateAlerts,
+  getSensorRange,
   getActivityPoints,
+  normalizePlantSensorProfile,
   type SensorKind,
 } from './helpers'
 
@@ -58,6 +61,7 @@ type SensorDoc = Doc<'sensors'>
 type CareScheduleDoc = Doc<'careSchedules'>
 type ProductDoc = Doc<'products'>
 type CommunityPostDoc = Doc<'communityPosts'>
+type BlogPostDoc = Doc<'blogPosts'>
 type DeviceAutomationKey =
   | 'autoWatering'
   | 'autoLighting'
@@ -76,6 +80,21 @@ type ScheduleCadence = {
   timezoneOffsetMinutes: number
 }
 
+type QueuedDeviceAction =
+  | {
+      kind: 'pump'
+      durationMs: number
+    }
+  | {
+      kind: 'light'
+      enabled: boolean
+    }
+
+type DeviceQueuedCommands = {
+  pump: Extract<QueuedDeviceAction, { kind: 'pump' }> | null
+  light: Extract<QueuedDeviceAction, { kind: 'light' }> | null
+}
+
 type LifecycleProfile = {
   seedDormancyDays: number
   germinationDays: number
@@ -84,6 +103,23 @@ type LifecycleProfile = {
   floweringReproductionDays: number
   maturitySenescenceDays: number
 }
+
+const lifecycleProfileValidator = v.object({
+  seedDormancyDays: v.number(),
+  germinationDays: v.number(),
+  seedlingDevelopmentDays: v.number(),
+  vegetativeGrowthDays: v.number(),
+  floweringReproductionDays: v.number(),
+  maturitySenescenceDays: v.number(),
+})
+
+const plantSensorProfileValidator = v.object({
+  soil: v.object({ min: v.number(), max: v.number() }),
+  light: v.object({ min: v.number(), max: v.number() }),
+  temperature: v.object({ min: v.number(), max: v.number() }),
+  air: v.object({ min: v.number(), max: v.number() }),
+  water: v.object({ min: v.number(), max: v.number() }),
+})
 
 type PlantStageValue =
   | 'seed_dormancy'
@@ -103,19 +139,55 @@ const defaultLifecycleProfile: LifecycleProfile = {
 }
 
 const lifecycleStages = [
-  { key: 'seed_dormancy', label: 'Seed dormancy', durationKey: 'seedDormancyDays' },
-  { key: 'germination', label: 'Germination', durationKey: 'germinationDays' },
-  { key: 'seedling_development', label: 'Seedling development', durationKey: 'seedlingDevelopmentDays' },
-  { key: 'vegetative_growth', label: 'Vegetative growth', durationKey: 'vegetativeGrowthDays' },
-  { key: 'flowering_reproduction', label: 'Flowering / reproduction', durationKey: 'floweringReproductionDays' },
-  { key: 'maturity_senescence', label: 'Maturity / senescence', durationKey: 'maturitySenescenceDays' },
+  { key: 'seed_dormancy', label: 'Dormansi benih', durationKey: 'seedDormancyDays' },
+  { key: 'germination', label: 'Perkecambahan', durationKey: 'germinationDays' },
+  {
+    key: 'seedling_development',
+    label: 'Perkembangan bibit',
+    durationKey: 'seedlingDevelopmentDays',
+  },
+  { key: 'vegetative_growth', label: 'Pertumbuhan vegetatif', durationKey: 'vegetativeGrowthDays' },
+  {
+    key: 'flowering_reproduction',
+    label: 'Pembungaan / reproduksi',
+    durationKey: 'floweringReproductionDays',
+  },
+  {
+    key: 'maturity_senescence',
+    label: 'Kematangan / senesens',
+    durationKey: 'maturitySenescenceDays',
+  },
 ] as const
 
 const sensorKinds: SensorKind[] = ['soil', 'light', 'temperature', 'air', 'water']
 
+const DEFAULT_WATERING_THRESHOLD = 35
+const DEFAULT_LIGHTING_THRESHOLD = 40
 const DEFAULT_WATERING_DURATION = 8
 const DEFAULT_WATERING_COOLDOWN = 6 * 60 * 60
 const DEFAULT_LIGHTING_HYSTERESIS = 8
+const ADC_RAW_MIN = 0
+const ADC_RAW_MAX = 4095
+
+function clampPercent(value: number) {
+  return Math.max(0, Math.min(100, value))
+}
+
+function normalizeRawSensorValue(kind: SensorKind, raw: number) {
+  const clampedRaw = Math.max(ADC_RAW_MIN, Math.min(ADC_RAW_MAX, raw))
+  const range = ADC_RAW_MAX - ADC_RAW_MIN
+  if (range === 0) return 0
+
+  switch (kind) {
+    case 'soil':
+    case 'light':
+      return clampPercent(Math.round(((ADC_RAW_MAX - clampedRaw) / range) * 100))
+    case 'water':
+      return clampPercent(Math.round((clampedRaw / range) * 100))
+    default:
+      return clampedRaw
+  }
+}
 
 function clampScheduleTimeOfDayMinutes(value?: number | null) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 8 * 60
@@ -132,7 +204,8 @@ function normalizeScheduleCadence(input: {
   return {
     unit,
     value: Math.max(1, Math.round(input.cadenceValue ?? 1)),
-    timeOfDayMinutes: unit === 'days' ? clampScheduleTimeOfDayMinutes(input.timeOfDayMinutes) : null,
+    timeOfDayMinutes:
+      unit === 'days' ? clampScheduleTimeOfDayMinutes(input.timeOfDayMinutes) : null,
     timezoneOffsetMinutes: unit === 'days' ? Math.round(input.timezoneOffsetMinutes ?? 0) : 0,
   }
 }
@@ -142,19 +215,17 @@ function formatScheduleTime(minutes: number | null) {
   const normalized = clampScheduleTimeOfDayMinutes(minutes)
   const hours24 = Math.floor(normalized / 60)
   const mins = normalized % 60
-  const suffix = hours24 >= 12 ? 'PM' : 'AM'
-  const hours12 = hours24 % 12 || 12
-  return `${hours12}:${String(mins).padStart(2, '0')} ${suffix}`
+  return `${String(hours24).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
 }
 
 function formatScheduleCadence(cadence: ScheduleCadence) {
   if (cadence.unit === 'hours') {
-    return cadence.value === 1 ? 'Every hour' : `Every ${cadence.value} hours`
+    return cadence.value === 1 ? 'Setiap jam' : `Setiap ${cadence.value} jam`
   }
 
-  const dayLabel = cadence.value === 1 ? 'Every day' : `Every ${cadence.value} days`
+  const dayLabel = cadence.value === 1 ? 'Setiap hari' : `Setiap ${cadence.value} hari`
   const timeLabel = formatScheduleTime(cadence.timeOfDayMinutes)
-  return timeLabel ? `${dayLabel} at ${timeLabel}` : dayLabel
+  return timeLabel ? `${dayLabel} pukul ${timeLabel}` : dayLabel
 }
 
 function computeNextRunAtFromCadence(cadence: ScheduleCadence, fromTime: number) {
@@ -170,9 +241,13 @@ function computeNextRunAtFromCadence(cadence: ScheduleCadence, fromTime: number)
   const localHours = Math.floor(timeOfDayMinutes / 60)
   const localMinutes = timeOfDayMinutes % 60
 
-  let candidate = Date.UTC(localYear, localMonth, localDate, localHours, localMinutes) - cadence.timezoneOffsetMinutes * 60 * 1000
+  let candidate =
+    Date.UTC(localYear, localMonth, localDate, localHours, localMinutes) -
+    cadence.timezoneOffsetMinutes * 60 * 1000
   if (candidate <= fromTime) {
-    candidate = Date.UTC(localYear, localMonth, localDate + cadence.value, localHours, localMinutes) - cadence.timezoneOffsetMinutes * 60 * 1000
+    candidate =
+      Date.UTC(localYear, localMonth, localDate + cadence.value, localHours, localMinutes) -
+      cadence.timezoneOffsetMinutes * 60 * 1000
   }
 
   return candidate
@@ -197,24 +272,30 @@ function normalizeLifecycleProfile(profile?: Partial<LifecycleProfile> | null): 
   return {
     seedDormancyDays: profile?.seedDormancyDays ?? defaultLifecycleProfile.seedDormancyDays,
     germinationDays: profile?.germinationDays ?? defaultLifecycleProfile.germinationDays,
-    seedlingDevelopmentDays: profile?.seedlingDevelopmentDays ?? defaultLifecycleProfile.seedlingDevelopmentDays,
-    vegetativeGrowthDays: profile?.vegetativeGrowthDays ?? defaultLifecycleProfile.vegetativeGrowthDays,
-    floweringReproductionDays: profile?.floweringReproductionDays ?? defaultLifecycleProfile.floweringReproductionDays,
-    maturitySenescenceDays: profile?.maturitySenescenceDays ?? defaultLifecycleProfile.maturitySenescenceDays,
+    seedlingDevelopmentDays:
+      profile?.seedlingDevelopmentDays ?? defaultLifecycleProfile.seedlingDevelopmentDays,
+    vegetativeGrowthDays:
+      profile?.vegetativeGrowthDays ?? defaultLifecycleProfile.vegetativeGrowthDays,
+    floweringReproductionDays:
+      profile?.floweringReproductionDays ?? defaultLifecycleProfile.floweringReproductionDays,
+    maturitySenescenceDays:
+      profile?.maturitySenescenceDays ?? defaultLifecycleProfile.maturitySenescenceDays,
   }
 }
 
 function formatPlantStage(stage: PlantStageValue) {
-  return stage
-    .split('_')
-    .map((part) => part[0]!.toUpperCase() + part.slice(1))
-    .join(' ')
+  return lifecycleStages.find((item) => item.key === stage)?.label ?? stage
 }
 
-function computePlantProgress(plant: Pick<PlantDoc, 'growthStage' | 'plantedAt' | 'lifecycleProfile'>) {
+function computePlantProgress(
+  plant: Pick<PlantDoc, 'growthStage' | 'plantedAt' | 'lifecycleProfile'>,
+) {
   const lifecycleProfile = normalizeLifecycleProfile(plant.lifecycleProfile)
   const normalizedStage = plant.growthStage as PlantStageValue
-  const elapsedDays = Math.max(0, Math.floor((Date.now() - plant.plantedAt) / (24 * 60 * 60 * 1000)))
+  const elapsedDays = Math.max(
+    0,
+    Math.floor((Date.now() - plant.plantedAt) / (24 * 60 * 60 * 1000)),
+  )
 
   let offsetDays = 0
   for (const stage of lifecycleStages) {
@@ -225,7 +306,10 @@ function computePlantProgress(plant: Pick<PlantDoc, 'growthStage' | 'plantedAt' 
   }
 
   const progressDays = offsetDays + elapsedDays
-  const totalDays = lifecycleStages.reduce((total, stage) => total + lifecycleProfile[stage.durationKey], 0)
+  const totalDays = lifecycleStages.reduce(
+    (total, stage) => total + lifecycleProfile[stage.durationKey],
+    0,
+  )
 
   let cursor = 0
   let activeStage = lifecycleStages[lifecycleStages.length - 1]!
@@ -262,25 +346,26 @@ function computePlantProgress(plant: Pick<PlantDoc, 'growthStage' | 'plantedAt' 
   }
 }
 
-function getHealthComputationGuide() {
+function getHealthComputationGuide(profile = defaultPlantSensorProfile) {
+  const normalized = normalizePlantSensorProfile(profile)
   return {
     sensorOptimalRanges: {
-      soil: '30 to 80',
-      light: '30 to 80',
-      temperature: '18 to 28',
-      air: '40 to 70',
-      water: '20 to 90',
+      soil: `${normalized.soil.min} to ${normalized.soil.max}`,
+      light: `${normalized.light.min} to ${normalized.light.max}`,
+      temperature: `${normalized.temperature.min} to ${normalized.temperature.max}`,
+      air: `${normalized.air.min} to ${normalized.air.max}`,
+      water: `${normalized.water.min} to ${normalized.water.max}`,
     },
     scoring: {
-      perSensor: '100 if optimal, 50 if low or high',
-      noSensorData: 'score 0 and health poor',
-      finalScore: 'average of all sensor scores rounded to nearest whole number',
+      perSensor: '100 jika optimal, 50 jika terlalu rendah atau terlalu tinggi',
+      noSensorData: 'skor 0 dan kondisi tanaman dianggap kurang stabil',
+      finalScore: 'rata-rata semua skor sensor yang dibulatkan ke bilangan bulat terdekat',
     },
     labels: {
-      excellent: '80 to 100',
-      good: '60 to 79',
-      fair: '40 to 59',
-      poor: '0 to 39',
+      excellent: '80 sampai 100',
+      good: '60 sampai 79',
+      fair: '40 sampai 59',
+      poor: '0 sampai 39',
     },
   }
 }
@@ -295,11 +380,17 @@ const plantStagePoints: Record<PlantStageValue, number> = {
 }
 
 async function computeUserPlantPoints(ctx: QueryCtx, userId: Id<'users'>) {
-  const devices = await ctx.db.query('devices').withIndex('by_user', (q) => q.eq('userId', userId)).take(32)
+  const devices = await ctx.db
+    .query('devices')
+    .withIndex('by_user', (q) => q.eq('userId', userId))
+    .take(32)
   let total = 0
 
   for (const device of devices) {
-    const plants = await ctx.db.query('plants').withIndex('by_device', (q) => q.eq('deviceId', device._id)).take(32)
+    const plants = await ctx.db
+      .query('plants')
+      .withIndex('by_device', (q) => q.eq('deviceId', device._id))
+      .take(32)
     for (const plant of plants) {
       total += plantStagePoints[plant.growthStage as PlantStageValue] ?? 0
     }
@@ -315,15 +406,21 @@ function formatEventValue(value: string | number | boolean | null | undefined) {
 }
 
 function getDeviceWateringDuration(device: Pick<DeviceDoc, 'wateringDuration'>) {
-  return Number.isFinite(device.wateringDuration) ? device.wateringDuration : DEFAULT_WATERING_DURATION
+  return Number.isFinite(device.wateringDuration)
+    ? device.wateringDuration
+    : DEFAULT_WATERING_DURATION
 }
 
 function getDeviceWateringCooldown(device: Pick<DeviceDoc, 'wateringCooldown'>) {
-  return Number.isFinite(device.wateringCooldown) ? device.wateringCooldown : DEFAULT_WATERING_COOLDOWN
+  return Number.isFinite(device.wateringCooldown)
+    ? device.wateringCooldown
+    : DEFAULT_WATERING_COOLDOWN
 }
 
 function getDeviceLightingHysteresis(device: Pick<DeviceDoc, 'lightingHysteresis'>) {
-  return Number.isFinite(device.lightingHysteresis) ? device.lightingHysteresis : DEFAULT_LIGHTING_HYSTERESIS
+  return Number.isFinite(device.lightingHysteresis)
+    ? device.lightingHysteresis
+    : DEFAULT_LIGHTING_HYSTERESIS
 }
 
 async function recordGrowEvent(
@@ -347,9 +444,9 @@ async function recordGrowEvent(
 async function recordPlantImage(
   ctx: MutationCtx,
   args: {
-    plantId: Id<'plants'>
+    plantId?: Id<'plants'>
     deviceId: Id<'devices'>
-    image: string
+    imageStorageId: Id<'_storage'>
     source: 'camera' | 'manual'
     capturedAt: number
   },
@@ -357,12 +454,27 @@ async function recordPlantImage(
   await ctx.db.insert('plantImages', args)
 }
 
+async function buildPlantView(ctx: Ctx, plant: PlantDoc) {
+  return {
+    ...plant,
+    sensorProfile: normalizePlantSensorProfile(plant.sensorProfile),
+    image: await resolveStoredImageUrl(ctx, plant.imageStorageId, plant.image),
+  }
+}
+
 async function recordAutomationEvent(
   ctx: MutationCtx,
   args: {
     deviceId: string
     plantId?: Id<'plants'>
-    action: 'pump_enabled' | 'pump_disabled' | 'light_on' | 'light_off' | 'manual_pump' | 'manual_light' | 'schedule_completed'
+    action:
+      | 'pump_enabled'
+      | 'pump_disabled'
+      | 'light_on'
+      | 'light_off'
+      | 'manual_pump'
+      | 'manual_light'
+      | 'schedule_completed'
     soilValue?: number
     lightValue?: number
     threshold?: number
@@ -395,7 +507,12 @@ async function getSensorHistory(ctx: Ctx, plantId: Id<'plants'>, limit = 24) {
         .order('desc')
         .take(limit)
 
-      return [kind, readings.reverse().map((reading) => ({ value: reading.value, measuredAt: reading.measuredAt }))]
+      return [
+        kind,
+        readings
+          .reverse()
+          .map((reading) => ({ value: reading.value, measuredAt: reading.measuredAt })),
+      ]
     }),
   )
 
@@ -409,13 +526,15 @@ async function getPlantImageHistory(ctx: Ctx, plantId: Id<'plants'>, limit = 8) 
     .order('desc')
     .take(limit)
 
-  return images.map((image) => ({
-    _id: image._id,
-    image: image.image,
-    source: image.source,
-    capturedAt: image.capturedAt,
-    capturedAtLabel: formatTimestamp(image.capturedAt),
-  }))
+  return await Promise.all(
+    images.map(async (image) => ({
+      _id: image._id,
+      image: await resolveStoredImageUrl(ctx, image.imageStorageId),
+      source: image.source,
+      capturedAt: image.capturedAt,
+      capturedAtLabel: formatTimestamp(image.capturedAt),
+    })),
+  )
 }
 
 async function getRecentGrowEvents(ctx: Ctx, deviceDocId: Id<'devices'>, limit = 10) {
@@ -467,7 +586,10 @@ function getStartOfToday() {
 }
 
 async function getAssistantThread(ctx: Ctx, userId: Id<'users'>) {
-  return await ctx.db.query('assistantThreads').withIndex('by_user', (q) => q.eq('userId', userId)).first()
+  return await ctx.db
+    .query('assistantThreads')
+    .withIndex('by_user', (q) => q.eq('userId', userId))
+    .first()
 }
 
 async function getAssistantMessages(ctx: Ctx, threadId: Id<'assistantThreads'>, limit = 24) {
@@ -480,15 +602,21 @@ async function getAssistantMessages(ctx: Ctx, threadId: Id<'assistantThreads'>, 
   return messages.reverse()
 }
 
-async function getAssistantUsage(ctx: Ctx, threadId: Id<'assistantThreads'>, tier?: 'basic' | 'advanced') {
+async function getAssistantUsage(
+  ctx: Ctx,
+  threadId: Id<'assistantThreads'>,
+  tier?: 'basic' | 'advanced',
+) {
   const startOfToday = getStartOfToday()
-    const recentMessages = await ctx.db
-      .query('assistantMessages')
-      .withIndex('by_createdAt', (q) => q.eq('threadId', threadId))
-      .order('desc')
-      .take(160)
+  const recentMessages = await ctx.db
+    .query('assistantMessages')
+    .withIndex('by_createdAt', (q) => q.eq('threadId', threadId))
+    .order('desc')
+    .take(160)
 
-  const usedToday = recentMessages.filter((message) => message.role === 'user' && message.createdAt >= startOfToday).length
+  const usedToday = recentMessages.filter(
+    (message) => message.role === 'user' && message.createdAt >= startOfToday,
+  ).length
   const limit = getAssistantMessageLimit(tier)
 
   return {
@@ -499,7 +627,12 @@ async function getAssistantUsage(ctx: Ctx, threadId: Id<'assistantThreads'>, tie
   }
 }
 
-async function buildAssistantContext(ctx: Ctx, user: UserDoc, device: DeviceDoc | null, plant: PlantDoc | null) {
+async function buildAssistantContext(
+  ctx: Ctx,
+  user: UserDoc,
+  device: DeviceDoc | null,
+  plant: PlantDoc | null,
+) {
   const activePlant = plant && !plant.archived ? plant : null
   const deviceWithPlant = plant && !plant.archived && device ? device : null
   let sensors: SensorDoc[] = []
@@ -509,8 +642,14 @@ async function buildAssistantContext(ctx: Ctx, user: UserDoc, device: DeviceDoc 
 
   if (deviceWithPlant && activePlant) {
     ;[sensors, schedules, recentEvents, automationLogs] = await Promise.all([
-      ctx.db.query('sensors').withIndex('by_plant', (q) => q.eq('plantId', activePlant._id)).collect(),
-      ctx.db.query('careSchedules').withIndex('by_plant', (q) => q.eq('plantId', activePlant._id)).take(5),
+      ctx.db
+        .query('sensors')
+        .withIndex('by_plant', (q) => q.eq('plantId', activePlant._id))
+        .collect(),
+      ctx.db
+        .query('careSchedules')
+        .withIndex('by_plant', (q) => q.eq('plantId', activePlant._id))
+        .take(5),
       getRecentGrowEvents(ctx, deviceWithPlant._id, 8),
       getRecentAutomationLogs(ctx, activePlant._id, 6),
     ])
@@ -518,18 +657,25 @@ async function buildAssistantContext(ctx: Ctx, user: UserDoc, device: DeviceDoc 
     recentEvents = device ? await getRecentGrowEvents(ctx, device._id, 8) : []
   }
 
+  const sensorProfile = activePlant ? normalizePlantSensorProfile(activePlant.sensorProfile) : null
+
   const sensorSummaries = sensors.map((sensor) => ({
     kind: sensor.kind,
     label: getSensorLabel(sensor.kind as SensorKind),
     value: sensor.value,
     unit: sensor.unit,
-    status: getSensorStatus(sensor.kind as SensorKind, sensor.value),
-    target: getSensorTarget(sensor.kind as SensorKind, sensor.value, getSensorStatus(sensor.kind as SensorKind, sensor.value)),
+    status: getSensorStatus(sensor.kind as SensorKind, sensor.value, sensorProfile),
+    target: getSensorTarget(
+      sensor.kind as SensorKind,
+      sensor.value,
+      getSensorStatus(sensor.kind as SensorKind, sensor.value, sensorProfile),
+      sensorProfile,
+    ),
   }))
 
   return {
     user: {
-      name: user.name ?? 'GrowMate user',
+      name: user.name ?? 'Pengguna GrowMate',
       tier: user.tier ?? 'basic',
     },
     activeDevice: device
@@ -547,19 +693,24 @@ async function buildAssistantContext(ctx: Ctx, user: UserDoc, device: DeviceDoc 
           lastSeen: formatTimestamp(device.lastSeen),
         }
       : null,
-    activePlant: plant && !plant.archived
-      ? {
-          name: plant.name,
-          species: plant.species,
-          health: computePlantHealth(sensorSummaries.map((sensor) => ({ kind: sensor.kind, value: sensor.value }))),
-          growthStage: formatPlantStage(plant.growthStage),
-          location: plant.location,
-          wateringThreshold: plant.wateringThreshold,
-          lightingThreshold: plant.lightingThreshold,
-          progress: computePlantProgress(plant),
-          lifecycleProfile: plant.lifecycleProfile,
-        }
-      : null,
+    activePlant:
+      plant && !plant.archived
+        ? {
+            name: plant.name,
+            species: plant.species,
+            health: computePlantHealth(
+              sensorSummaries.map((sensor) => ({ kind: sensor.kind, value: sensor.value })),
+              sensorProfile,
+            ),
+            growthStage: formatPlantStage(plant.growthStage),
+            location: plant.location,
+            wateringThreshold: plant.wateringThreshold,
+            lightingThreshold: plant.lightingThreshold,
+            sensorProfile,
+            progress: computePlantProgress(plant),
+            lifecycleProfile: plant.lifecycleProfile,
+          }
+        : null,
     sensors: sensorSummaries,
     schedules: schedules.map((schedule) => {
       const summary = formatScheduleSummary(schedule)
@@ -594,20 +745,20 @@ async function buildAssistantContext(ctx: Ctx, user: UserDoc, device: DeviceDoc 
 function formatMarketplaceStatus(status: 'active' | 'reserved' | 'sold' | 'archived') {
   switch (status) {
     case 'active':
-      return 'Available'
+      return 'Tersedia'
     case 'reserved':
-      return 'Reserved'
+      return 'Dipesan'
     case 'sold':
-      return 'Sold'
+      return 'Terjual'
     case 'archived':
-      return 'Archived'
+      return 'Diarsipkan'
   }
 }
 
 function getAutomationModeLabel(device: { autoWatering: boolean; autoLighting: boolean }) {
-  if (device.autoWatering && device.autoLighting) return 'Full automation'
-  if (device.autoWatering || device.autoLighting) return 'Partial automation'
-  return 'Manual control'
+  if (device.autoWatering && device.autoLighting) return 'Otomasi penuh'
+  if (device.autoWatering || device.autoLighting) return 'Otomasi sebagian'
+  return 'Kontrol manual'
 }
 
 function normalizePlantPresetKey(value: string) {
@@ -622,18 +773,24 @@ function normalizePlantPresetKey(value: string) {
 async function enrichMarketplaceProduct(ctx: Ctx, product: ProductDoc, viewerId?: Id<'users'>) {
   const seller = await ctx.db.get(product.sellerId)
   const image = await resolveStoredImageUrl(ctx, product.imageStorageId, product.image)
-  const thread = viewerId && product.type === 'community'
-    ? await ctx.db.query('marketplaceThreads').withIndex('by_product_and_buyer', (q) => q.eq('productId', product._id).eq('buyerId', viewerId)).first()
-    : null
+  const thread =
+    viewerId && product.type === 'community'
+      ? await ctx.db
+          .query('marketplaceThreads')
+          .withIndex('by_product_and_buyer', (q) =>
+            q.eq('productId', product._id).eq('buyerId', viewerId),
+          )
+          .first()
+      : null
 
   return {
     ...product,
-    sellerName: seller?.name ?? 'Unknown grower',
+    sellerName: seller?.name ?? 'Penjual tidak diketahui',
     sellerAvatar: seller?.avatar ?? 'GM',
     sellerId: seller?._id,
     image,
     priceLabel: `${formatCurrencyIdr(product.price)} / ${product.priceUnit}`,
-    quantityLabel: `${product.quantityAvailable} ${product.quantityUnit ?? 'items'}`,
+    quantityLabel: `${product.quantityAvailable} ${product.quantityUnit ?? 'item'}`,
     statusLabel: formatMarketplaceStatus(product.status),
     contactThreadId: thread?._id ?? null,
   }
@@ -664,43 +821,70 @@ async function resolveStoredImageUrl(
 
 async function getMarketplaceThreadsForUser(ctx: Ctx, userId: Id<'users'>) {
   const [buyerThreads, sellerThreads] = await Promise.all([
-    ctx.db.query('marketplaceThreads').withIndex('by_buyer_and_lastMessageAt', (q) => q.eq('buyerId', userId)).order('desc').take(12),
-    ctx.db.query('marketplaceThreads').withIndex('by_seller_and_lastMessageAt', (q) => q.eq('sellerId', userId)).order('desc').take(12),
+    ctx.db
+      .query('marketplaceThreads')
+      .withIndex('by_buyer_and_lastMessageAt', (q) => q.eq('buyerId', userId))
+      .order('desc')
+      .take(12),
+    ctx.db
+      .query('marketplaceThreads')
+      .withIndex('by_seller_and_lastMessageAt', (q) => q.eq('sellerId', userId))
+      .order('desc')
+      .take(12),
   ])
 
   const uniqueThreads = [...buyerThreads, ...sellerThreads].filter(
-    (thread, index, list) => list.findIndex((item) => String(item._id) === String(thread._id)) === index,
+    (thread, index, list) =>
+      list.findIndex((item) => String(item._id) === String(thread._id)) === index,
   )
 
-  return await Promise.all(uniqueThreads.map(async (thread) => {
+  return await Promise.all(
+    uniqueThreads.map(async (thread) => {
       const [product, buyer, seller, messages] = await Promise.all([
         ctx.db.get(thread.productId),
         ctx.db.get(thread.buyerId),
         ctx.db.get(thread.sellerId),
-        ctx.db.query('marketplaceMessages').withIndex('by_thread_and_createdAt', (q) => q.eq('threadId', thread._id)).order('desc').take(16),
+        ctx.db
+          .query('marketplaceMessages')
+          .withIndex('by_thread_and_createdAt', (q) => q.eq('threadId', thread._id))
+          .order('desc')
+          .take(16),
       ])
 
-    return {
-      ...thread,
-      role: String(thread.sellerId) === String(userId) ? 'seller' : 'buyer',
-      productTitle: product?.title ?? 'Unknown listing',
-      productImage: product?.image,
-      productStatus: product?.status ?? 'archived',
-      participantName: String(thread.sellerId) === String(userId) ? buyer?.name ?? 'Buyer' : seller?.name ?? 'Seller',
-      participantAvatar: String(thread.sellerId) === String(userId) ? buyer?.avatar ?? 'BY' : seller?.avatar ?? 'SL',
-      messages: messages.reverse().map((message) => ({
-        ...message,
-        createdAtLabel: formatTimestamp(message.createdAt),
-        mine: String(message.senderId) === String(userId),
-      })),
-    }
-  }))
+      return {
+        ...thread,
+        role: String(thread.sellerId) === String(userId) ? 'seller' : 'buyer',
+        productTitle: product?.title ?? 'Listing tidak diketahui',
+        productImage: product?.image,
+        productStatus: product?.status ?? 'archived',
+        participantName:
+          String(thread.sellerId) === String(userId)
+            ? (buyer?.name ?? 'Pembeli')
+            : (seller?.name ?? 'Penjual'),
+        participantAvatar:
+          String(thread.sellerId) === String(userId)
+            ? (buyer?.avatar ?? 'BY')
+            : (seller?.avatar ?? 'SL'),
+        messages: messages.reverse().map((message) => ({
+          ...message,
+          createdAtLabel: formatTimestamp(message.createdAt),
+          mine: String(message.senderId) === String(userId),
+        })),
+      }
+    }),
+  )
 }
 
 async function getCommunityPostView(ctx: Ctx, post: CommunityPostDoc, viewerId?: Id<'users'>) {
   const [likes, comments, postUser] = await Promise.all([
-    ctx.db.query('postLikes').withIndex('by_post', (q) => q.eq('postId', post._id)).collect(),
-    ctx.db.query('postComments').withIndex('by_post', (q) => q.eq('postId', post._id)).collect(),
+    ctx.db
+      .query('postLikes')
+      .withIndex('by_post', (q) => q.eq('postId', post._id))
+      .collect(),
+    ctx.db
+      .query('postComments')
+      .withIndex('by_post', (q) => q.eq('postId', post._id))
+      .collect(),
     ctx.db.get(post.userId),
   ])
   const image = await resolveStoredImageUrl(ctx, post.imageStorageId, post.image)
@@ -718,7 +902,9 @@ async function getCommunityPostView(ctx: Ctx, post: CommunityPostDoc, viewerId?:
     user: postUser,
     likeCount: likes.length,
     commentCount: comments.length,
-    viewerHasLiked: viewerId ? likes.some((like) => String(like.userId) === String(viewerId)) : false,
+    viewerHasLiked: viewerId
+      ? likes.some((like) => String(like.userId) === String(viewerId))
+      : false,
     timestamp: getRelativeTime(post.createdAt),
     comments: comments
       .sort((a, b) => a.createdAt - b.createdAt)
@@ -728,6 +914,21 @@ async function getCommunityPostView(ctx: Ctx, post: CommunityPostDoc, viewerId?:
         user: commentUsers.get(String(comment.userId)),
         createdAtLabel: getRelativeTime(comment.createdAt),
       })),
+  }
+}
+
+async function enrichBlogPost(ctx: Ctx, post: BlogPostDoc) {
+  const [author, image] = await Promise.all([
+    ctx.db.get(post.authorId),
+    resolveStoredImageUrl(ctx, post.imageStorageId, post.image),
+  ])
+
+  return {
+    ...post,
+    image,
+    authorName: author?.name ?? author?.email ?? 'GrowMate admin',
+    createdAtLabel: formatTimestamp(post.createdAt),
+    relativeTime: getRelativeTime(post.createdAt),
   }
 }
 
@@ -747,11 +948,92 @@ async function getDeviceByExternalId(ctx: Ctx, deviceId: string) {
     .first()
 }
 
+function getDefaultDeviceName(deviceId: string) {
+  const normalized = deviceId.trim()
+  const suffix = normalized.length > 6 ? normalized.slice(-6) : normalized
+  return `GrowMate ${suffix.toUpperCase()}`
+}
+
+async function ensureDeviceExists(ctx: MutationCtx, deviceId: string, firmwareVersion?: string) {
+  const normalizedDeviceId = deviceId.trim()
+  const existing = await getDeviceByExternalId(ctx, normalizedDeviceId)
+  if (existing) {
+    return existing
+  }
+
+  const now = Date.now()
+  const deviceDocId = await ctx.db.insert('devices', {
+    deviceId: normalizedDeviceId,
+    name: getDefaultDeviceName(normalizedDeviceId),
+    autoWatering: true,
+    autoLighting: true,
+    wateringThreshold: DEFAULT_WATERING_THRESHOLD,
+    wateringDuration: DEFAULT_WATERING_DURATION,
+    wateringCooldown: DEFAULT_WATERING_COOLDOWN,
+    lightingThreshold: DEFAULT_LIGHTING_THRESHOLD,
+    lightingHysteresis: DEFAULT_LIGHTING_HYSTERESIS,
+    lightEnabled: false,
+    queuedCommands: {
+      pump: null,
+      light: null,
+    },
+    reportedLightEnabled: false,
+    reportedPumpEnabled: false,
+    lastSeen: now,
+    firmwareVersion: firmwareVersion?.trim() || undefined,
+    createdAt: now,
+    updatedAt: now,
+  })
+
+  return (await ctx.db.get(deviceDocId))!
+}
+
+function getQueuedDeviceCommands(device: DeviceDoc): DeviceQueuedCommands {
+  return (
+    device.queuedCommands ?? {
+      pump: null,
+      light: null,
+    }
+  )
+}
+
+function buildDeviceCommandList(device: DeviceDoc) {
+  return Object.values(getQueuedDeviceCommands(device)).filter(
+    (command): command is QueuedDeviceAction => command !== null,
+  )
+}
+
+function buildQueuedPumpAction(device: DeviceDoc, durationSeconds: number) {
+  const queuedCommands = getQueuedDeviceCommands(device)
+  return {
+    queuedCommands: {
+      ...queuedCommands,
+      pump: {
+        kind: 'pump' as const,
+        durationMs: durationSeconds * 1000,
+      },
+    },
+  }
+}
+
+function buildQueuedLightAction(device: DeviceDoc, enabled: boolean) {
+  const queuedCommands = getQueuedDeviceCommands(device)
+  return {
+    queuedCommands: {
+      ...queuedCommands,
+      light: {
+        kind: 'light' as const,
+        enabled,
+      },
+    },
+  }
+}
+
 async function requireOwnedDevice(ctx: Ctx, userId: Id<'users'>, deviceId: string) {
   const device = await getDeviceByExternalId(ctx, deviceId)
 
   if (!device || device.userId !== userId) {
-    throw new Error('Device not found')
+    throw new Error('Perangkat tidak ditemukan')
   }
 
   return device
@@ -766,7 +1048,13 @@ async function getSelectedDevice(ctx: Ctx, userId: Id<'users'>, deviceId?: strin
   return devices[0] ?? null
 }
 
-async function archivePlant(ctx: MutationCtx, plantId: Id<'plants'>, archivedAt: number, userId?: Id<'users'>, reason = 'Archived plant') {
+async function archivePlant(
+  ctx: MutationCtx,
+  plantId: Id<'plants'>,
+  archivedAt: number,
+  userId?: Id<'users'>,
+  reason = 'Tanaman diarsipkan',
+) {
   const plant = await ctx.db.get(plantId)
   if (!plant || plant.archived) {
     return plant
@@ -805,6 +1093,11 @@ async function buildDeviceSummary(ctx: Ctx, device: DeviceDoc) {
     .collect()
   const recentEvents = await getRecentGrowEvents(ctx, device._id, 4)
 
+  const plantImage =
+    currentPlant && !currentPlant.archived
+      ? await resolveStoredImageUrl(ctx, currentPlant.imageStorageId, currentPlant.image)
+      : null
+
   return {
     _id: device._id,
     deviceId: device.deviceId,
@@ -822,20 +1115,21 @@ async function buildDeviceSummary(ctx: Ctx, device: DeviceDoc) {
     lastSeen: device.lastSeen,
     isOnline: isDeviceOnline(device.lastSeen),
     hasPlant: Boolean(currentPlant && !currentPlant.archived),
-    plant: currentPlant && !currentPlant.archived
-      ? {
-          _id: currentPlant._id,
-          name: currentPlant.name,
-          species: currentPlant.species,
-          growthStage: currentPlant.growthStage,
-          growthStageLabel: formatPlantStage(currentPlant.growthStage),
-          wateringThreshold: currentPlant.wateringThreshold,
-          lightingThreshold: currentPlant.lightingThreshold,
-          location: currentPlant.location,
-          image: currentPlant.image,
-          plantedAt: currentPlant.plantedAt,
-        }
-      : null,
+    plant:
+      currentPlant && !currentPlant.archived
+        ? {
+            _id: currentPlant._id,
+            name: currentPlant.name,
+            species: currentPlant.species,
+            growthStage: currentPlant.growthStage,
+            growthStageLabel: formatPlantStage(currentPlant.growthStage),
+            wateringThreshold: currentPlant.wateringThreshold,
+            lightingThreshold: currentPlant.lightingThreshold,
+            location: currentPlant.location,
+            image: plantImage,
+            plantedAt: currentPlant.plantedAt,
+          }
+        : null,
     archivedPlantCount: archivedPlants.length,
     archivedPlants: archivedPlants
       .sort((a, b) => (b.archivedAt ?? b.updatedAt) - (a.archivedAt ?? a.updatedAt))
@@ -894,7 +1188,8 @@ function buildSetupStatus(user: UserDoc, devices: DeviceDoc[]) {
     configuredDevicesCount: configuredDevices.length,
     needsPlantSelection: Boolean(needsPlantDevice),
     nextStep,
-    nextDeviceId: needsPlantDevice?.deviceId ?? configuredDevices[0]?.deviceId ?? devices[0]?.deviceId ?? null,
+    nextDeviceId:
+      needsPlantDevice?.deviceId ?? configuredDevices[0]?.deviceId ?? devices[0]?.deviceId ?? null,
     role: user.role ?? 'grower',
     isAdmin: false,
   }
@@ -913,12 +1208,15 @@ export const completeProfile = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx)
-    if (!user) throw new Error('Not authenticated')
+    if (!user) throw new Error('Anda harus masuk terlebih dahulu')
 
     const handle = normalizeHandle(args.handle?.trim() || args.name)
-    const existingHandle = await ctx.db.query('users').withIndex('by_handle', (q) => q.eq('handle', handle)).first()
+    const existingHandle = await ctx.db
+      .query('users')
+      .withIndex('by_handle', (q) => q.eq('handle', handle))
+      .first()
     if (existingHandle && String(existingHandle._id) !== String(user._id)) {
-      throw new Error('That handle is already in use')
+      throw new Error('Nama pengguna tersebut sudah digunakan')
     }
 
     const now = Date.now()
@@ -927,7 +1225,13 @@ export const completeProfile = mutation({
       handle,
       role: args.role || 'grower',
       tier: 'basic',
-      avatar: args.avatar || args.name.split(' ').map(n => n[0]).join('').toUpperCase(),
+      avatar:
+        args.avatar ||
+        args.name
+          .split(' ')
+          .map((n) => n[0])
+          .join('')
+          .toUpperCase(),
       updatedAt: now,
     })
 
@@ -941,21 +1245,21 @@ export const claimDevice = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx)
-    if (!user) throw new Error('Not authenticated')
-    if (!user.name) throw new Error('Please complete your profile first')
+    if (!user) throw new Error('Anda harus masuk terlebih dahulu')
+    if (!user.name) throw new Error('Lengkapi profil Anda terlebih dahulu')
 
     const device = await ctx.db
       .query('devices')
       .withIndex('by_deviceId', (q) => q.eq('deviceId', args.deviceId))
       .first()
-    
+
     if (!device) {
-      throw new Error('Device not found. Please check the device ID and try again.')
+      throw new Error('Perangkat tidak ditemukan. Periksa kembali ID perangkat lalu coba lagi.')
     }
 
     // Check if device is already claimed
     if (device.userId) {
-      throw new Error('This device is already registered to another user')
+      throw new Error('Perangkat ini sudah terhubung ke akun lain')
     }
 
     const now = Date.now()
@@ -972,8 +1276,8 @@ export const claimDevice = mutation({
       source: 'user',
       entityType: 'device',
       eventType: 'device_claimed',
-      title: 'Device claimed',
-      detail: `${device.name} was linked to ${user.name || user.email || 'this account'}.`,
+      title: 'Perangkat diklaim',
+      detail: `${device.name} berhasil dihubungkan ke ${user.name || user.email || 'akun ini'}.`,
       data: {
         deviceId: device.deviceId,
       },
@@ -995,7 +1299,8 @@ export const checkSetupStatus = query({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx)
-    if (!user) return { authenticated: false, hasProfile: false, hasDevice: false, setupComplete: false }
+    if (!user)
+      return { authenticated: false, hasProfile: false, hasDevice: false, setupComplete: false }
 
     const devices = await getUserDevices(ctx, user._id)
     return buildSetupStatus(user, devices)
@@ -1031,7 +1336,10 @@ export const updateCurrentUserProfile = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
     const normalizedHandle = normalizeHandle(args.handle || args.name)
-    const existingHandle = await ctx.db.query('users').withIndex('by_handle', (q) => q.eq('handle', normalizedHandle)).first()
+    const existingHandle = await ctx.db
+      .query('users')
+      .withIndex('by_handle', (q) => q.eq('handle', normalizedHandle))
+      .first()
     if (existingHandle && String(existingHandle._id) !== String(user._id)) {
       throw new Error('That handle is already in use')
     }
@@ -1039,8 +1347,14 @@ export const updateCurrentUserProfile = mutation({
     await ctx.db.patch(user._id, {
       name: args.name.trim(),
       handle: normalizedHandle,
-      avatar: args.avatar?.trim() || args.name.split(' ').map((part) => part[0]).join('').toUpperCase(),
-      role: user.role === 'admin' ? 'admin' : args.role ?? user.role ?? 'grower',
+      avatar:
+        args.avatar?.trim() ||
+        args.name
+          .split(' ')
+          .map((part) => part[0])
+          .join('')
+          .toUpperCase(),
+      role: user.role === 'admin' ? 'admin' : (args.role ?? user.role ?? 'grower'),
       updatedAt: Date.now(),
     })
 
@@ -1077,10 +1391,13 @@ export const plantLibrary = query({
   args: {},
   handler: async (ctx) => {
     const presets = await ctx.db.query('plantCatalog').take(64)
-    const presetsWithImages = await Promise.all(presets.map(async (preset) => ({
-      ...preset,
-      image: (await resolveStoredImageUrl(ctx, preset.imageStorageId, preset.image)) ?? preset.image,
-    })))
+    const presetsWithImages = await Promise.all(
+      presets.map(async (preset) => ({
+        ...preset,
+        image:
+          (await resolveStoredImageUrl(ctx, preset.imageStorageId, preset.image)) ?? preset.image,
+      })),
+    )
     return presetsWithImages.sort((a, b) => a.name.localeCompare(b.name))
   },
 })
@@ -1094,7 +1411,7 @@ export const getUnclaimedDevice = query({
       .query('devices')
       .withIndex('by_deviceId', (q) => q.eq('deviceId', args.deviceId))
       .first()
-    
+
     if (!device) return null
     if (device.userId) return null // Already claimed
 
@@ -1122,24 +1439,20 @@ export const assignPlantToDevice = mutation({
     deviceId: v.string(),
     plantName: v.string(),
     plantSpecies: v.string(),
-    growthStage: v.optional(v.union(
-      v.literal('seed_dormancy'),
-      v.literal('germination'),
-      v.literal('seedling_development'),
-      v.literal('vegetative_growth'),
-      v.literal('flowering_reproduction'),
-      v.literal('maturity_senescence'),
-    )),
+    growthStage: v.optional(
+      v.union(
+        v.literal('seed_dormancy'),
+        v.literal('germination'),
+        v.literal('seedling_development'),
+        v.literal('vegetative_growth'),
+        v.literal('flowering_reproduction'),
+        v.literal('maturity_senescence'),
+      ),
+    ),
     wateringThreshold: v.optional(v.number()),
     lightingThreshold: v.optional(v.number()),
-    lifecycleProfile: v.optional(v.object({
-      seedDormancyDays: v.number(),
-      germinationDays: v.number(),
-      seedlingDevelopmentDays: v.number(),
-      vegetativeGrowthDays: v.number(),
-      floweringReproductionDays: v.number(),
-      maturitySenescenceDays: v.number(),
-    })),
+    sensorProfile: v.optional(plantSensorProfileValidator),
+    lifecycleProfile: v.optional(lifecycleProfileValidator),
     location: v.optional(v.string()),
     imageStorageId: v.optional(v.id('_storage')),
   },
@@ -1156,6 +1469,7 @@ export const assignPlantToDevice = mutation({
     const lifecycleProfile = normalizeLifecycleProfile(args.lifecycleProfile)
     const wateringThreshold = args.wateringThreshold ?? device.wateringThreshold
     const lightingThreshold = args.lightingThreshold ?? device.lightingThreshold
+    const sensorProfile = normalizePlantSensorProfile(args.sensorProfile)
     const image = await resolveStoredImageUrl(ctx, args.imageStorageId)
 
     const plantId = await ctx.db.insert('plants', {
@@ -1165,9 +1479,11 @@ export const assignPlantToDevice = mutation({
       growthStage: args.growthStage ?? 'seed_dormancy',
       wateringThreshold,
       lightingThreshold,
+      sensorProfile,
       lifecycleProfile,
       location: args.location?.trim() || device.name,
-      image: image ?? undefined,
+      ...(image ? { image } : {}),
+      ...(args.imageStorageId ? { imageStorageId: args.imageStorageId } : {}),
       archived: false,
       plantedAt: now,
       createdAt: now,
@@ -1188,7 +1504,7 @@ export const assignPlantToDevice = mutation({
       source: 'user',
       entityType: 'plant',
       eventType: 'plant_assigned',
-      title: previousPlant ? 'Plant changed' : 'Plant assigned',
+      title: previousPlant ? 'Tanaman diganti' : 'Tanaman dipasang',
       detail: `${args.plantName.trim()} is now the active plant on ${device.name}.`,
       data: {
         growthStage: formatPlantStage((args.growthStage ?? 'seed_dormancy') as PlantStageValue),
@@ -1199,11 +1515,11 @@ export const assignPlantToDevice = mutation({
       timestamp: now,
     })
 
-    if (image) {
+    if (image && args.imageStorageId) {
       await recordPlantImage(ctx, {
         plantId,
         deviceId: device._id,
-        image,
+        imageStorageId: args.imageStorageId,
         source: 'manual',
         capturedAt: now,
       })
@@ -1251,8 +1567,8 @@ export const removeDevice = mutation({
       source: 'user',
       entityType: 'device',
       eventType: 'device_unclaimed',
-      title: 'Device removed',
-      detail: `${device.name} returned to the unclaimed device pool.`,
+      title: 'Perangkat dilepas dari akun',
+      detail: `${device.name} dikembalikan ke daftar perangkat yang belum diklaim.`,
       data: {
         deviceId: device.deviceId,
       },
@@ -1285,7 +1601,10 @@ export const dashboard = query({
     if (!device) return null
 
     const plant = device.plantId ? await ctx.db.get(device.plantId) : null
-    const notifications = await ctx.db.query('notifications').withIndex('by_user', (q) => q.eq('userId', user._id)).take(8)
+    const notifications = await ctx.db
+      .query('notifications')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .take(8)
 
     if (!plant || plant.archived) {
       const recentEvents = await getRecentGrowEvents(ctx, device._id, 10)
@@ -1306,6 +1625,8 @@ export const dashboard = query({
       }
     }
 
+    const plantView = await buildPlantView(ctx, plant)
+    const sensorProfile = normalizePlantSensorProfile(plant.sensorProfile)
     const rawSensors = await ctx.db
       .query('sensors')
       .withIndex('by_plant', (q) => q.eq('plantId', plant._id))
@@ -1317,32 +1638,46 @@ export const dashboard = query({
       getPlantImageHistory(ctx, plant._id, 8),
     ])
 
-    const sensors = rawSensors.map(s => ({
-      _id: s._id,
-      kind: s.kind,
-      value: s.value,
-      unit: s.unit,
-      label: getSensorLabel(s.kind as SensorKind),
-      status: getSensorStatus(s.kind as SensorKind, s.value),
-      target: getSensorTarget(s.kind as SensorKind, s.value, getSensorStatus(s.kind as SensorKind, s.value)),
-      accent: getSensorAccent(s.kind as SensorKind),
-      sort: getSensorSort(s.kind as SensorKind),
-      history: sensorHistory[s.kind as SensorKind] ?? [],
-    })).sort((a, b) => a.sort - b.sort)
+    const sensors = rawSensors
+      .map((s) => ({
+        _id: s._id,
+        kind: s.kind,
+        value: s.value,
+        unit: s.unit,
+        label: getSensorLabel(s.kind as SensorKind),
+        status: getSensorStatus(s.kind as SensorKind, s.value, sensorProfile),
+        target: getSensorTarget(
+          s.kind as SensorKind,
+          s.value,
+          getSensorStatus(s.kind as SensorKind, s.value, sensorProfile),
+          sensorProfile,
+        ),
+        accent: getSensorAccent(s.kind as SensorKind),
+        sort: getSensorSort(s.kind as SensorKind),
+        history: sensorHistory[s.kind as SensorKind] ?? [],
+      }))
+      .sort((a, b) => a.sort - b.sort)
 
-    const plantHealth = computePlantHealth(rawSensors.map(s => ({ kind: s.kind as SensorKind, value: s.value })))
+    const plantHealth = computePlantHealth(
+      rawSensors.map((s) => ({ kind: s.kind as SensorKind, value: s.value })),
+      sensorProfile,
+    )
     const plantProgress = computePlantProgress(plant)
-    const waterSensor = rawSensors.find(s => s.kind === 'water')
+    const waterSensor = rawSensors.find((s) => s.kind === 'water')
     const waterLevel = waterSensor?.value || 0
     const dailyUsage = device.autoWatering ? 5 : 2
     const reservoirDays = computeWaterReservoirDays(waterLevel, dailyUsage)
 
     const alerts = generateAlerts(
-      rawSensors.map(s => ({ kind: s.kind as SensorKind, value: s.value })),
+      rawSensors.map((s) => ({ kind: s.kind as SensorKind, value: s.value })),
       { lastSeen: device.lastSeen, autoWatering: device.autoWatering },
+      sensorProfile,
     )
 
-    const schedules = await ctx.db.query('careSchedules').withIndex('by_plant', (q) => q.eq('plantId', plant._id)).take(6)
+    const schedules = await ctx.db
+      .query('careSchedules')
+      .withIndex('by_plant', (q) => q.eq('plantId', plant._id))
+      .take(6)
     const formattedSchedules = schedules.map((schedule) => {
       const summary = formatScheduleSummary(schedule)
       return {
@@ -1360,18 +1695,18 @@ export const dashboard = query({
     return {
       user,
       plant: {
-        ...plant,
+        ...plantView,
         health: plantHealth,
         healthReason: rawSensors.length
-          ? `${rawSensors.filter((sensor) => getSensorStatus(sensor.kind as SensorKind, sensor.value) === 'optimal').length} of ${rawSensors.length} sensors are in the optimal range.`
-          : 'No sensor readings are available, so health defaults to poor.',
+          ? `${rawSensors.filter((sensor) => getSensorStatus(sensor.kind as SensorKind, sensor.value, sensorProfile) === 'optimal').length} dari ${rawSensors.length} sensor berada pada rentang yang ideal.`
+          : 'Belum ada pembacaan sensor yang tersedia, sehingga kondisi tanaman sementara dianggap kurang stabil.',
         growthStageLabel: formatPlantStage(plant.growthStage),
         progress: plantProgress,
       },
       device: await buildDeviceSummary(ctx, device),
       sensors,
       schedules: formattedSchedules,
-      healthComputation: getHealthComputationGuide(),
+      healthComputation: getHealthComputationGuide(sensorProfile),
       notifications,
       reservoirDays,
       alerts,
@@ -1402,7 +1737,9 @@ export const deviceHistory = query({
 
     const [timeline, imageHistory] = await Promise.all([
       getRecentGrowEvents(ctx, device._id, 5),
-      currentPlant && !currentPlant.archived ? getPlantImageHistory(ctx, currentPlant._id, 16) : Promise.resolve([]),
+      currentPlant && !currentPlant.archived
+        ? getPlantImageHistory(ctx, currentPlant._id, 16)
+        : Promise.resolve([]),
     ])
 
     if (!currentPlant || currentPlant.archived) {
@@ -1435,7 +1772,7 @@ export const deviceHistory = query({
     return {
       device: await buildDeviceSummary(ctx, device),
       currentPlant: {
-        ...currentPlant,
+        ...(await buildPlantView(ctx, currentPlant)),
         plantedAtLabel: formatTimestamp(currentPlant.plantedAt),
         growthStageLabel: formatPlantStage(currentPlant.growthStage),
         progress: computePlantProgress(currentPlant),
@@ -1476,15 +1813,22 @@ export const assistant = query({
     const thread = await getAssistantThread(ctx, user._id)
 
     const [rawMessages, supportRequests, schedules, sensors] = await Promise.all([
-      thread
-        ? getAssistantMessages(ctx, thread._id, 40)
-        : Promise.resolve([]),
-      ctx.db.query('supportRequests').withIndex('by_user', (q) => q.eq('userId', user._id)).take(50),
+      thread ? getAssistantMessages(ctx, thread._id, 40) : Promise.resolve([]),
+      ctx.db
+        .query('supportRequests')
+        .withIndex('by_user', (q) => q.eq('userId', user._id))
+        .take(50),
       plant && !plant.archived
-        ? ctx.db.query('careSchedules').withIndex('by_plant', (q) => q.eq('plantId', plant._id)).take(3)
+        ? ctx.db
+            .query('careSchedules')
+            .withIndex('by_plant', (q) => q.eq('plantId', plant._id))
+            .take(3)
         : Promise.resolve([]),
       plant && !plant.archived
-        ? ctx.db.query('sensors').withIndex('by_plant', (q) => q.eq('plantId', plant._id)).collect()
+        ? ctx.db
+            .query('sensors')
+            .withIndex('by_plant', (q) => q.eq('plantId', plant._id))
+            .collect()
         : Promise.resolve([]),
     ])
     const quota = thread
@@ -1516,41 +1860,43 @@ export const assistant = query({
         })),
     )
 
-    const recommendations: Array<{ sort: number; title: string; detail: string; accent: string }> = []
+    const recommendations: Array<{ sort: number; title: string; detail: string; accent: string }> =
+      []
     let sort = 0
 
     if (!device) {
       recommendations.push({
         sort: sort++,
-        title: 'Add your first device',
-        detail: 'Claim a GrowMate pod to start getting device-specific coaching.',
+        title: 'Hubungkan perangkat pertama Anda',
+        detail: 'Hubungkan GrowMate Pods agar pendampingan dan pemantauan dapat menyesuaikan kondisi perangkat Anda.',
         accent: 'bg-[#cae6ff] text-[#006493]',
       })
     } else if (!plant || plant.archived) {
       recommendations.push({
         sort: sort++,
-        title: 'Choose a plant',
-        detail: `Assign a plant to ${device.name} so Floral Assistant can tailor care tips.`,
+        title: 'Tentukan tanaman yang sedang dibudidayakan',
+        detail: `Pilih tanaman untuk ${device.name} agar Floral Assistant dapat memberi arahan perawatan yang lebih relevan.`,
         accent: 'bg-[#ffdbcf] text-[#795548]',
       })
     } else {
+      const sensorProfile = normalizePlantSensorProfile(plant.sensorProfile)
       for (const sensor of sensors) {
-        const status = getSensorStatus(sensor.kind as SensorKind, sensor.value)
+        const status = getSensorStatus(sensor.kind as SensorKind, sensor.value, sensorProfile)
 
         if (sensor.kind === 'soil' && status === 'low') {
           recommendations.push({
             sort: sort++,
-            title: 'Watering Needed',
-            detail: `${plant.name} is thirsty. Schedule a watering cycle soon.`,
+            title: 'Tanaman perlu penyiraman',
+            detail: `${plant.name} memerlukan tambahan air. Jadwalkan penyiraman dalam waktu dekat.`,
             accent: 'bg-[#cae6ff] text-[#006493]',
           })
         }
 
-        if (sensor.kind === 'water' && sensor.value < 20) {
+        if (sensor.kind === 'water' && sensor.value < getSensorRange('water', sensorProfile).min) {
           recommendations.push({
             sort: sort++,
-            title: 'Refill Reservoir',
-            detail: `${device.name} is running low on water reserve.`,
+            title: 'Cadangan air perlu diisi ulang',
+            detail: `${device.name} mulai kehabisan cadangan air untuk penyiraman.`,
             accent: 'bg-[#ffdbcf] text-[#795548]',
           })
         }
@@ -1558,8 +1904,8 @@ export const assistant = query({
         if (sensor.kind === 'temperature' && status === 'high') {
           recommendations.push({
             sort: sort++,
-            title: 'Cool the canopy',
-            detail: `Temperature around ${plant.name} is elevated. Improve airflow or shade.`,
+            title: 'Suhu perlu diturunkan',
+            detail: `Suhu di sekitar ${plant.name} sedang meningkat. Pertimbangkan sirkulasi udara atau pengurangan paparan panas.`,
             accent: 'bg-[#ffdbcf] text-[#795548]',
           })
         }
@@ -1569,23 +1915,31 @@ export const assistant = query({
     if (user.tier === 'basic') {
       recommendations.push({
         sort: sort++,
-        title: 'Upgrade to Advanced',
-        detail: 'Get AI-powered insights and priority support.',
+        title: 'Tingkatkan paket penggunaan',
+        detail: 'Dapatkan kapasitas pendampingan AI yang lebih luas dan prioritas dukungan yang lebih baik.',
         accent: 'bg-[#94f990]/40 text-[#005313]',
       })
     }
 
     const careNotifications = [
-      ...(device ? [`Active device: ${device.name}`] : ['No active device selected yet']),
-      ...schedules.map((schedule) => `${schedule.title} is scheduled for ${formatTimestamp(schedule.nextRunAt)}`),
-      ...supportRequests.slice(0, 1).map((request) => `Support request "${request.topic}" is ${request.status.replace('_', ' ')}`),
+      ...(device
+        ? [`Perangkat aktif saat ini: ${device.name}`]
+        : ['Belum ada perangkat aktif yang dipilih']),
+      ...schedules.map(
+        (schedule) => `${schedule.title} dijadwalkan pada ${formatTimestamp(schedule.nextRunAt)}`,
+      ),
+      ...supportRequests
+        .slice(0, 1)
+        .map(
+          (request) => `Permintaan dukungan "${request.topic}" berstatus ${request.status.replace('_', ' ')}`,
+        ),
     ].slice(0, 3)
 
     return {
       user,
       device: device ? await buildDeviceSummary(ctx, device) : null,
-      plant: plant && !plant.archived ? plant : null,
-      thread: thread ?? { title: 'Floral Assistant Chat' },
+      plant: plant && !plant.archived ? await buildPlantView(ctx, plant) : null,
+      thread: thread ?? { title: 'Percakapan Floral Assistant' },
       messages,
       supportRequests: supportThreads,
       recommendations,
@@ -1621,7 +1975,9 @@ export const supportInbox = query({
 
     return {
       requests: supportThreads,
-      activeCount: supportThreads.filter((request) => request.status !== 'resolved' && request.status !== 'closed').length,
+      activeCount: supportThreads.filter(
+        (request) => request.status !== 'resolved' && request.status !== 'closed',
+      ).length,
     }
   },
 })
@@ -1630,25 +1986,58 @@ export const marketplace = query({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx)
-    const [officialProducts, communityProducts, listingDrafts, userListings, marketplaceThreads] = user
-      ? await Promise.all([
-          ctx.db.query('products').withIndex('by_type_and_status', (q) => q.eq('type', 'official').eq('status', 'active')).take(8),
-          ctx.db.query('products').withIndex('by_type_and_status', (q) => q.eq('type', 'community').eq('status', 'active')).take(24),
-          ctx.db.query('listingDrafts').withIndex('by_user', (q) => q.eq('userId', user._id)).take(6),
-          ctx.db.query('products').withIndex('by_seller_and_type', (q) => q.eq('sellerId', user._id).eq('type', 'community')).take(12),
-          getMarketplaceThreadsForUser(ctx, user._id),
-        ])
-      : [
-          await ctx.db.query('products').withIndex('by_type_and_status', (q) => q.eq('type', 'official').eq('status', 'active')).take(8),
-          await ctx.db.query('products').withIndex('by_type_and_status', (q) => q.eq('type', 'community').eq('status', 'active')).take(24),
-          [],
-          [],
-          [],
-        ]
+    const [officialProducts, communityProducts, listingDrafts, userListings, marketplaceThreads] =
+      user
+        ? await Promise.all([
+            ctx.db
+              .query('products')
+              .withIndex('by_type_and_status', (q) =>
+                q.eq('type', 'official').eq('status', 'active'),
+              )
+              .take(8),
+            ctx.db
+              .query('products')
+              .withIndex('by_type_and_status', (q) =>
+                q.eq('type', 'community').eq('status', 'active'),
+              )
+              .take(24),
+            ctx.db
+              .query('listingDrafts')
+              .withIndex('by_user', (q) => q.eq('userId', user._id))
+              .take(6),
+            ctx.db
+              .query('products')
+              .withIndex('by_seller_and_type', (q) =>
+                q.eq('sellerId', user._id).eq('type', 'community'),
+              )
+              .take(12),
+            getMarketplaceThreadsForUser(ctx, user._id),
+          ])
+        : [
+            await ctx.db
+              .query('products')
+              .withIndex('by_type_and_status', (q) =>
+                q.eq('type', 'official').eq('status', 'active'),
+              )
+              .take(8),
+            await ctx.db
+              .query('products')
+              .withIndex('by_type_and_status', (q) =>
+                q.eq('type', 'community').eq('status', 'active'),
+              )
+              .take(24),
+            [],
+            [],
+            [],
+          ]
 
     const [official, community, myListings] = await Promise.all([
-      Promise.all(officialProducts.map((product) => enrichMarketplaceProduct(ctx, product, user?._id))),
-      Promise.all(communityProducts.map((product) => enrichMarketplaceProduct(ctx, product, user?._id))),
+      Promise.all(
+        officialProducts.map((product) => enrichMarketplaceProduct(ctx, product, user?._id)),
+      ),
+      Promise.all(
+        communityProducts.map((product) => enrichMarketplaceProduct(ctx, product, user?._id)),
+      ),
       Promise.all(userListings.map((product) => enrichMarketplaceProduct(ctx, product, user?._id))),
     ])
 
@@ -1656,13 +2045,16 @@ export const marketplace = query({
       official,
       community,
       featured: official.find((product) => product.featured) ?? official[0] ?? null,
-      listingDrafts: await Promise.all(listingDrafts.map(async (draft) => ({
-        ...draft,
-        image: (await resolveStoredImageUrl(ctx, draft.imageStorageId, draft.image)) ?? draft.image,
-        quantityLabel: `${draft.quantity} ${draft.quantityUnit}`,
-        priceLabel: `${formatCurrencyIdr(draft.price)} / ${draft.priceUnit}`,
-        statusLabel: draft.status[0]!.toUpperCase() + draft.status.slice(1),
-      }))),
+      listingDrafts: await Promise.all(
+        listingDrafts.map(async (draft) => ({
+          ...draft,
+          image:
+            (await resolveStoredImageUrl(ctx, draft.imageStorageId, draft.image)) ?? draft.image,
+          quantityLabel: `${draft.quantity} ${draft.quantityUnit}`,
+          priceLabel: `${formatCurrencyIdr(draft.price)} / ${draft.priceUnit}`,
+          statusLabel: draft.status[0]!.toUpperCase() + draft.status.slice(1),
+        })),
+      ),
       myListings,
       threads: marketplaceThreads,
     }
@@ -1674,13 +2066,22 @@ export const community = query({
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx)
     const users = await ctx.db.query('users').take(10)
-    const posts = await ctx.db.query('communityPosts').withIndex('by_createdAt').order('desc').take(12)
+    const posts = await ctx.db
+      .query('communityPosts')
+      .withIndex('by_createdAt')
+      .order('desc')
+      .take(12)
 
-    const postsWithCounts = await Promise.all(posts.map((post) => getCommunityPostView(ctx, post, user?._id)))
+    const postsWithCounts = await Promise.all(
+      posts.map((post) => getCommunityPostView(ctx, post, user?._id)),
+    )
 
     const usersWithPoints = await Promise.all(
       users.map(async (user) => {
-        const activities = await ctx.db.query('userActivities').withIndex('by_user', (q) => q.eq('userId', user._id)).collect()
+        const activities = await ctx.db
+          .query('userActivities')
+          .withIndex('by_user', (q) => q.eq('userId', user._id))
+          .collect()
         const activityPoints = activities.reduce((total, activity) => total + activity.points, 0)
         const plantPoints = await computeUserPlantPoints(ctx, user._id)
         const points = activityPoints + plantPoints
@@ -1697,23 +2098,36 @@ export const community = query({
   },
 })
 
+export const publicBlog = query({
+  args: {},
+  handler: async (ctx) => {
+    const posts = await ctx.db
+      .query('blogPosts')
+      .withIndex('by_published_and_createdAt', (q) => q.eq('published', true))
+      .order('desc')
+      .take(24)
+
+    return await Promise.all(posts.map((post) => enrichBlogPost(ctx, post)))
+  },
+})
+
 export const toggleCareSchedule = mutation({
   args: { scheduleId: v.id('careSchedules'), enabled: v.boolean() },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
     const schedule = await ctx.db.get(args.scheduleId)
     if (!schedule) {
-      throw new Error('Schedule not found')
+      throw new Error('Jadwal tidak ditemukan')
     }
 
     const plant = await ctx.db.get(schedule.plantId)
     if (!plant) {
-      throw new Error('Plant not found')
+      throw new Error('Tanaman tidak ditemukan')
     }
 
     const device = await ctx.db.get(plant.deviceId)
     if (!device || device.userId !== user._id) {
-      throw new Error('Schedule not found')
+      throw new Error('Jadwal tidak ditemukan')
     }
 
     await ctx.db.patch(args.scheduleId, { enabled: args.enabled })
@@ -1725,8 +2139,8 @@ export const toggleCareSchedule = mutation({
       source: 'user',
       entityType: 'schedule',
       eventType: 'care_schedule_toggled',
-      title: args.enabled ? 'Schedule enabled' : 'Schedule paused',
-      detail: `${schedule.title} was ${args.enabled ? 'enabled' : 'paused'}.`,
+      title: args.enabled ? 'Jadwal diaktifkan' : 'Jadwal dijeda',
+      detail: `${schedule.title} ${args.enabled ? 'kembali dijalankan' : 'sementara dijeda'}.`,
       data: {
         enabled: args.enabled,
       },
@@ -1751,18 +2165,18 @@ export const saveCareSchedule = mutation({
     const user = await requireUser(ctx)
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
     if (!device || !device.plantId) {
-      throw new Error('Device with active plant not found')
+      throw new Error('Perangkat dengan tanaman aktif tidak ditemukan')
     }
 
     const plant = await ctx.db.get(device.plantId)
     if (!plant || plant.archived) {
-      throw new Error('Plant not found')
+      throw new Error('Tanaman tidak ditemukan')
     }
 
     const now = Date.now()
     const title = args.title.trim()
     if (!title) {
-      throw new Error('Schedule title is required')
+      throw new Error('Judul jadwal wajib diisi')
     }
 
     const cadence = normalizeScheduleCadence({
@@ -1777,7 +2191,7 @@ export const saveCareSchedule = mutation({
     if (scheduleId) {
       const existing = await ctx.db.get(scheduleId)
       if (!existing || String(existing.plantId) !== String(plant._id)) {
-        throw new Error('Schedule not found')
+        throw new Error('Jadwal tidak ditemukan')
       }
 
       await ctx.db.patch(scheduleId, {
@@ -1809,8 +2223,8 @@ export const saveCareSchedule = mutation({
       source: 'user',
       entityType: 'schedule',
       eventType: 'care_schedule_saved',
-      title: args.scheduleId ? 'Schedule updated' : 'Schedule created',
-      detail: `${title} now runs ${formatScheduleCadence(cadence).toLowerCase()}.`,
+      title: args.scheduleId ? 'Jadwal diperbarui' : 'Jadwal dibuat',
+      detail: `${title} akan berjalan ${formatScheduleCadence(cadence).toLowerCase()}.`,
       data: {
         cadenceValue: cadence.value,
         cadenceHours: cadence.unit === 'hours' ? cadence.value : cadence.value * 24,
@@ -1831,17 +2245,17 @@ export const deleteCareSchedule = mutation({
     const user = await requireUser(ctx)
     const schedule = await ctx.db.get(args.scheduleId)
     if (!schedule) {
-      throw new Error('Schedule not found')
+      throw new Error('Jadwal tidak ditemukan')
     }
 
     const plant = await ctx.db.get(schedule.plantId)
     if (!plant) {
-      throw new Error('Plant not found')
+      throw new Error('Tanaman tidak ditemukan')
     }
 
     const device = await ctx.db.get(plant.deviceId)
     if (!device || device.userId !== user._id) {
-      throw new Error('Schedule not found')
+      throw new Error('Jadwal tidak ditemukan')
     }
 
     await ctx.db.delete(args.scheduleId)
@@ -1853,8 +2267,8 @@ export const deleteCareSchedule = mutation({
       source: 'user',
       entityType: 'schedule',
       eventType: 'care_schedule_saved',
-      title: 'Schedule deleted',
-      detail: `${schedule.title} was removed.`,
+      title: 'Jadwal dihapus',
+      detail: `${schedule.title} telah dihapus dari daftar perawatan berulang.`,
       timestamp: Date.now(),
     })
 
@@ -1870,25 +2284,26 @@ export const triggerWatering = mutation({
     const user = await requireUser(ctx)
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
     if (!device) {
-      throw new Error('Device not found')
+      throw new Error('Perangkat tidak ditemukan')
     }
 
     const plant = device.plantId ? await ctx.db.get(device.plantId) : null
     const now = Date.now()
+    const durationSeconds = getDeviceWateringDuration(device)
 
     await ctx.db.patch(device._id, {
-      lastWatered: now,
+      ...buildQueuedPumpAction(device, durationSeconds),
       updatedAt: now,
     })
 
     if (plant && !plant.archived) {
-        await recordAutomationEvent(ctx, {
-          deviceId: device.deviceId,
-          plantId: plant._id,
-          action: 'manual_pump',
-          duration: getDeviceWateringDuration(device),
-          timestamp: now,
-        })
+      await recordAutomationEvent(ctx, {
+        deviceId: device.deviceId,
+        plantId: plant._id,
+        action: 'manual_pump',
+        duration: durationSeconds,
+        timestamp: now,
+      })
 
       await recordGrowEvent(ctx, {
         deviceId: device._id,
@@ -1897,10 +2312,10 @@ export const triggerWatering = mutation({
         source: 'user',
         entityType: 'automation',
         eventType: 'manual_watering_triggered',
-        title: 'Manual watering triggered',
-        detail: `${device.name} started a manual watering cycle.`,
+        title: 'Penyiraman manual dipicu',
+        detail: `${device.name} memulai siklus penyiraman manual.`,
         data: {
-          duration: getDeviceWateringDuration(device),
+          duration: durationSeconds,
         },
         timestamp: now,
       })
@@ -1908,8 +2323,8 @@ export const triggerWatering = mutation({
 
     await ctx.db.insert('notifications', {
       userId: user._id,
-      title: 'Manual watering triggered',
-      detail: `${device.name} started a manual watering cycle successfully.`,
+      title: 'Penyiraman manual dipicu',
+      detail: `${device.name} berhasil menjalankan siklus penyiraman manual.`,
       kind: 'system',
       read: false,
       createdAt: now,
@@ -1927,15 +2342,15 @@ export const triggerLighting = mutation({
     const user = await requireUser(ctx)
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
     if (!device) {
-      throw new Error('Device not found')
+      throw new Error('Perangkat tidak ditemukan')
     }
 
     const plant = device.plantId ? await ctx.db.get(device.plantId) : null
     const now = Date.now()
 
     await ctx.db.patch(device._id, {
+      ...buildQueuedLightAction(device, args.enabled),
       lightEnabled: args.enabled,
-      lastLightChange: now,
       updatedAt: now,
     })
 
@@ -1955,7 +2370,7 @@ export const triggerLighting = mutation({
         source: 'user',
         entityType: 'automation',
         eventType: 'manual_lighting_triggered',
-        title: args.enabled ? 'Manual lighting enabled' : 'Manual lighting disabled',
+        title: args.enabled ? 'Pencahayaan manual dinyalakan' : 'Pencahayaan manual dimatikan',
         detail: `${device.name} grow light was manually ${args.enabled ? 'turned on' : 'turned off'}.`,
         data: {
           enabled: args.enabled,
@@ -1976,19 +2391,20 @@ export const assistantTriggerWatering = internalMutation({
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId)
     if (!user) {
-      throw new Error('User not found')
+      throw new Error('Pengguna tidak ditemukan')
     }
 
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
     if (!device) {
-      throw new Error('Device not found')
+      throw new Error('Perangkat tidak ditemukan')
     }
 
     const plant = device.plantId ? await ctx.db.get(device.plantId) : null
     const now = Date.now()
+    const durationSeconds = getDeviceWateringDuration(device)
 
     await ctx.db.patch(device._id, {
-      lastWatered: now,
+      ...buildQueuedPumpAction(device, durationSeconds),
       updatedAt: now,
     })
 
@@ -1997,7 +2413,7 @@ export const assistantTriggerWatering = internalMutation({
         deviceId: device.deviceId,
         plantId: plant._id,
         action: 'manual_pump',
-        duration: getDeviceWateringDuration(device),
+        duration: durationSeconds,
         timestamp: now,
       })
 
@@ -2008,10 +2424,10 @@ export const assistantTriggerWatering = internalMutation({
         source: 'user',
         entityType: 'automation',
         eventType: 'manual_watering_triggered',
-        title: 'Manual watering triggered',
-        detail: `${device.name} started a manual watering cycle.`,
+        title: 'Penyiraman manual dipicu',
+        detail: `${device.name} memulai siklus penyiraman manual.`,
         data: {
-          duration: getDeviceWateringDuration(device),
+          duration: durationSeconds,
         },
         timestamp: now,
       })
@@ -2019,8 +2435,8 @@ export const assistantTriggerWatering = internalMutation({
 
     await ctx.db.insert('notifications', {
       userId: user._id,
-      title: 'Manual watering triggered',
-      detail: `${device.name} started a manual watering cycle successfully.`,
+      title: 'Penyiraman manual dipicu',
+      detail: `${device.name} berhasil menjalankan siklus penyiraman manual.`,
       kind: 'system',
       read: false,
       createdAt: now,
@@ -2039,20 +2455,20 @@ export const assistantTriggerLighting = internalMutation({
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId)
     if (!user) {
-      throw new Error('User not found')
+      throw new Error('Pengguna tidak ditemukan')
     }
 
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
     if (!device) {
-      throw new Error('Device not found')
+      throw new Error('Perangkat tidak ditemukan')
     }
 
     const plant = device.plantId ? await ctx.db.get(device.plantId) : null
     const now = Date.now()
 
     await ctx.db.patch(device._id, {
+      ...buildQueuedLightAction(device, args.enabled),
       lightEnabled: args.enabled,
-      lastLightChange: now,
       updatedAt: now,
     })
 
@@ -2072,8 +2488,8 @@ export const assistantTriggerLighting = internalMutation({
         source: 'user',
         entityType: 'automation',
         eventType: 'manual_lighting_triggered',
-        title: args.enabled ? 'Manual lighting enabled' : 'Manual lighting disabled',
-        detail: `${device.name} grow light was manually ${args.enabled ? 'turned on' : 'turned off'}.`,
+        title: args.enabled ? 'Pencahayaan manual dinyalakan' : 'Pencahayaan manual dimatikan',
+        detail: `${device.name} ${args.enabled ? 'menyalakan' : 'mematikan'} pencahayaan manual.`,
         data: {
           enabled: args.enabled,
         },
@@ -2093,12 +2509,12 @@ export const assistantCreateSupportRequest = internalMutation({
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId)
     if (!user) {
-      throw new Error('User not found')
+      throw new Error('Pengguna tidak ditemukan')
     }
 
     const topic = args.topic.trim()
     if (!topic) {
-      throw new Error('Support topic is required')
+      throw new Error('Topik dukungan wajib diisi')
     }
 
     const now = Date.now()
@@ -2121,8 +2537,8 @@ export const assistantCreateSupportRequest = internalMutation({
 
     await ctx.db.insert('notifications', {
       userId: user._id,
-      title: 'Support request opened',
-      detail: `We queued your request about ${topic.toLowerCase()}.`,
+      title: 'Permintaan dukungan dibuka',
+      detail: `Permintaan Anda tentang ${topic.toLowerCase()} sudah kami catat dan masuk ke antrean dukungan.`,
       kind: 'assistant',
       read: false,
       createdAt: now,
@@ -2141,22 +2557,22 @@ export const assistantToggleSchedule = internalMutation({
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId)
     if (!user) {
-      throw new Error('User not found')
+      throw new Error('Pengguna tidak ditemukan')
     }
 
     const schedule = await ctx.db.get(args.scheduleId)
     if (!schedule) {
-      throw new Error('Schedule not found')
+      throw new Error('Jadwal tidak ditemukan')
     }
 
     const plant = await ctx.db.get(schedule.plantId)
     if (!plant) {
-      throw new Error('Plant not found')
+      throw new Error('Tanaman tidak ditemukan')
     }
 
     const device = await ctx.db.get(plant.deviceId)
     if (!device || String(device.userId) !== String(user._id)) {
-      throw new Error('Schedule not found')
+      throw new Error('Jadwal tidak ditemukan')
     }
 
     await ctx.db.patch(args.scheduleId, { enabled: args.enabled })
@@ -2167,8 +2583,8 @@ export const assistantToggleSchedule = internalMutation({
       source: 'user',
       entityType: 'schedule',
       eventType: 'care_schedule_toggled',
-      title: args.enabled ? 'Schedule enabled' : 'Schedule paused',
-      detail: `${schedule.title} was ${args.enabled ? 'enabled' : 'paused'}.`,
+      title: args.enabled ? 'Jadwal diaktifkan' : 'Jadwal dijeda',
+      detail: `${schedule.title} ${args.enabled ? 'kembali dijalankan' : 'sementara dijeda'}.`,
       data: { enabled: args.enabled },
       timestamp: Date.now(),
     })
@@ -2185,20 +2601,20 @@ export const assistantDeleteSchedule = internalMutation({
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId)
     if (!user) {
-      throw new Error('User not found')
+      throw new Error('Pengguna tidak ditemukan')
     }
 
     const schedule = await ctx.db.get(args.scheduleId)
     if (!schedule) {
-      throw new Error('Schedule not found')
+      throw new Error('Jadwal tidak ditemukan')
     }
     const plant = await ctx.db.get(schedule.plantId)
     if (!plant) {
-      throw new Error('Plant not found')
+      throw new Error('Tanaman tidak ditemukan')
     }
     const device = await ctx.db.get(plant.deviceId)
     if (!device || String(device.userId) !== String(user._id)) {
-      throw new Error('Schedule not found')
+      throw new Error('Jadwal tidak ditemukan')
     }
 
     await ctx.db.delete(args.scheduleId)
@@ -2209,8 +2625,8 @@ export const assistantDeleteSchedule = internalMutation({
       source: 'user',
       entityType: 'schedule',
       eventType: 'care_schedule_saved',
-      title: 'Schedule deleted',
-      detail: `${schedule.title} was removed.`,
+      title: 'Jadwal dihapus',
+      detail: `${schedule.title} telah dihapus dari daftar perawatan berulang.`,
       timestamp: Date.now(),
     })
     return { success: true, title: schedule.title }
@@ -2230,20 +2646,20 @@ export const assistantCreateSchedule = internalMutation({
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId)
     if (!user) {
-      throw new Error('User not found')
+      throw new Error('Pengguna tidak ditemukan')
     }
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
     if (!device || !device.plantId) {
-      throw new Error('Device with active plant not found')
+      throw new Error('Perangkat dengan tanaman aktif tidak ditemukan')
     }
     const plant = await ctx.db.get(device.plantId)
     if (!plant || plant.archived) {
-      throw new Error('Plant not found')
+      throw new Error('Tanaman tidak ditemukan')
     }
     const now = Date.now()
     const title = args.title.trim()
     if (!title) {
-      throw new Error('Schedule title is required')
+      throw new Error('Judul jadwal wajib diisi')
     }
     const cadence = normalizeScheduleCadence(args)
     const nextRunAt = computeNextRunAtFromCadence(cadence, now)
@@ -2266,7 +2682,7 @@ export const assistantCreateSchedule = internalMutation({
       source: 'user',
       entityType: 'schedule',
       eventType: 'care_schedule_saved',
-      title: 'Schedule created',
+      title: 'Jadwal dibuat',
       detail: `${title} now runs ${formatScheduleCadence(cadence).toLowerCase()}.`,
       data: {
         cadenceValue: cadence.value,
@@ -2293,7 +2709,7 @@ export const sendAssistantMessage = mutation({
     if (!thread) {
       const threadId = await ctx.db.insert('assistantThreads', {
         userId: user._id,
-        title: 'Floral Assistant Chat',
+        title: 'Percakapan Floral Assistant',
         createdAt: now,
         updatedAt: now,
       })
@@ -2301,17 +2717,19 @@ export const sendAssistantMessage = mutation({
     }
 
     if (!thread) {
-      throw new Error('Unable to start assistant thread')
+      throw new Error('Percakapan asisten tidak dapat dimulai')
     }
 
     const trimmedBody = args.body.trim()
     if (!trimmedBody) {
-      throw new Error('Message cannot be empty')
+      throw new Error('Pesan tidak boleh kosong')
     }
 
     const quota = await getAssistantUsage(ctx, thread._id, user.tier)
     if (quota.remainingToday <= 0) {
-      throw new Error(`Daily assistant limit reached. ${quota.limit} messages per day on your current plan.`)
+      throw new Error(
+        `Batas penggunaan asisten harian sudah tercapai. Paket Anda saat ini memiliki ${quota.limit} pesan per hari.`,
+      )
     }
 
     await ctx.db.insert('assistantMessages', {
@@ -2426,13 +2844,13 @@ export const saveMarketplaceDraft = mutation({
     const user = await requireUser(ctx)
     const now = Date.now()
     if (!args.title.trim() || !args.description.trim() || !args.category.trim()) {
-      throw new Error('Title, description, and category are required')
+      throw new Error('Judul, deskripsi, dan kategori wajib diisi')
     }
     if (args.quantity <= 0) {
-      throw new Error('Quantity must be greater than zero')
+      throw new Error('Jumlah harus lebih besar dari nol')
     }
     if (args.price < 0) {
-      throw new Error('Price cannot be negative')
+      throw new Error('Harga tidak boleh bernilai negatif')
     }
     let image = await resolveStoredImageUrl(ctx, args.imageStorageId)
     let imageStorageId = args.imageStorageId
@@ -2440,14 +2858,14 @@ export const saveMarketplaceDraft = mutation({
     if (args.draftId) {
       const existing = await ctx.db.get(args.draftId)
       if (!existing || String(existing.userId) !== String(user._id)) {
-        throw new Error('Draft not found')
+        throw new Error('Draft tidak ditemukan')
       }
       image = image ?? existing.image
       imageStorageId = imageStorageId ?? existing.imageStorageId
     }
 
     if (!image) {
-      throw new Error('Listing image is required')
+      throw new Error('Gambar penawaran wajib diisi')
     }
 
     const payload = {
@@ -2486,10 +2904,10 @@ export const publishMarketplaceDraft = mutation({
     const user = await requireUser(ctx)
     const draft = await ctx.db.get(args.draftId)
     if (!draft || String(draft.userId) !== String(user._id)) {
-      throw new Error('Draft not found')
+      throw new Error('Draft tidak ditemukan')
     }
     if (draft.quantity <= 0) {
-      throw new Error('Draft quantity must be greater than zero before publishing')
+      throw new Error('Jumlah pada draft harus lebih besar dari nol sebelum dipublikasikan')
     }
 
     const now = Date.now()
@@ -2518,8 +2936,8 @@ export const publishMarketplaceDraft = mutation({
 
     await ctx.db.insert('notifications', {
       userId: user._id,
-      title: 'Listing published',
-      detail: `${draft.title} is now live in the marketplace.`,
+      title: 'Penawaran dipublikasikan',
+      detail: `${draft.title} kini tampil di marketplace GrowMate.`,
       kind: 'commerce',
       read: false,
       createdAt: now,
@@ -2532,13 +2950,18 @@ export const publishMarketplaceDraft = mutation({
 export const updateMarketplaceListingStatus = mutation({
   args: {
     productId: v.id('products'),
-    status: v.union(v.literal('active'), v.literal('reserved'), v.literal('sold'), v.literal('archived')),
+    status: v.union(
+      v.literal('active'),
+      v.literal('reserved'),
+      v.literal('sold'),
+      v.literal('archived'),
+    ),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
     const product = await ctx.db.get(args.productId)
     if (!product || String(product.sellerId) !== String(user._id) || product.type !== 'community') {
-      throw new Error('Listing not found')
+      throw new Error('Penawaran tidak ditemukan')
     }
 
     await ctx.db.patch(args.productId, {
@@ -2567,17 +2990,17 @@ export const updateMarketplaceListing = mutation({
     const user = await requireUser(ctx)
     const product = await ctx.db.get(args.productId)
     if (!product || String(product.sellerId) !== String(user._id) || product.type !== 'community') {
-      throw new Error('Listing not found')
+      throw new Error('Penawaran tidak ditemukan')
     }
 
     if (!args.title.trim() || !args.description.trim() || !args.category.trim()) {
-      throw new Error('Title, description, and category are required')
+      throw new Error('Judul, deskripsi, dan kategori wajib diisi')
     }
     if (args.quantity <= 0) {
-      throw new Error('Quantity must be greater than zero')
+      throw new Error('Jumlah harus lebih besar dari nol')
     }
     if (args.price < 0) {
-      throw new Error('Price cannot be negative')
+      throw new Error('Harga tidak boleh bernilai negatif')
     }
 
     const image = (await resolveStoredImageUrl(ctx, args.imageStorageId)) ?? product.image
@@ -2608,7 +3031,7 @@ export const deleteMarketplaceDraft = mutation({
     const user = await requireUser(ctx)
     const draft = await ctx.db.get(args.draftId)
     if (!draft || String(draft.userId) !== String(user._id)) {
-      throw new Error('Draft not found')
+      throw new Error('Draft tidak ditemukan')
     }
 
     await ctx.db.delete(args.draftId)
@@ -2622,12 +3045,18 @@ export const deleteMarketplaceListing = mutation({
     const user = await requireUser(ctx)
     const product = await ctx.db.get(args.productId)
     if (!product || String(product.sellerId) !== String(user._id) || product.type !== 'community') {
-      throw new Error('Listing not found')
+      throw new Error('Penawaran tidak ditemukan')
     }
 
-    const threads = await ctx.db.query('marketplaceThreads').withIndex('by_product', (q) => q.eq('productId', args.productId)).take(64)
+    const threads = await ctx.db
+      .query('marketplaceThreads')
+      .withIndex('by_product', (q) => q.eq('productId', args.productId))
+      .take(64)
     for (const thread of threads) {
-      const messages = await ctx.db.query('marketplaceMessages').withIndex('by_thread_and_createdAt', (q) => q.eq('threadId', thread._id)).take(128)
+      const messages = await ctx.db
+        .query('marketplaceMessages')
+        .withIndex('by_thread_and_createdAt', (q) => q.eq('threadId', thread._id))
+        .take(128)
       for (const message of messages) {
         await ctx.db.delete(message._id)
       }
@@ -2676,7 +3105,10 @@ export const likePost = mutation({
   args: { postId: v.id('communityPosts') },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
-    const existing = await ctx.db.query('postLikes').withIndex('by_user_and_post', (q) => q.eq('userId', user._id).eq('postId', args.postId)).first()
+    const existing = await ctx.db
+      .query('postLikes')
+      .withIndex('by_user_and_post', (q) => q.eq('userId', user._id).eq('postId', args.postId))
+      .first()
 
     if (existing) {
       await ctx.db.delete(existing._id)
@@ -2741,8 +3173,14 @@ export const deletePost = mutation({
     }
 
     const [likes, comments] = await Promise.all([
-      ctx.db.query('postLikes').withIndex('by_post', (q) => q.eq('postId', args.postId)).collect(),
-      ctx.db.query('postComments').withIndex('by_post', (q) => q.eq('postId', args.postId)).collect(),
+      ctx.db
+        .query('postLikes')
+        .withIndex('by_post', (q) => q.eq('postId', args.postId))
+        .collect(),
+      ctx.db
+        .query('postComments')
+        .withIndex('by_post', (q) => q.eq('postId', args.postId))
+        .collect(),
     ])
 
     for (const like of likes) {
@@ -2761,13 +3199,15 @@ export const deletePost = mutation({
 export const createSupportRequest = mutation({
   args: {
     topic: v.string(),
-    priority: v.optional(v.union(v.literal('low'), v.literal('normal'), v.literal('high'), v.literal('urgent'))),
+    priority: v.optional(
+      v.union(v.literal('low'), v.literal('normal'), v.literal('high'), v.literal('urgent')),
+    ),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
     const topic = args.topic.trim()
     if (!topic) {
-      throw new Error('Support topic is required')
+      throw new Error('Topik dukungan wajib diisi')
     }
 
     const now = Date.now()
@@ -2790,8 +3230,8 @@ export const createSupportRequest = mutation({
 
     await ctx.db.insert('notifications', {
       userId: user._id,
-      title: 'Support request opened',
-      detail: `We queued your request about ${topic.toLowerCase()}.`,
+      title: 'Permintaan dukungan dibuka',
+      detail: `Permintaan Anda tentang ${topic.toLowerCase()} sudah kami catat dan masuk ke antrean dukungan.`,
       kind: 'assistant',
       read: false,
       createdAt: now,
@@ -2810,18 +3250,18 @@ export const sendSupportMessage = mutation({
     const user = await requireUser(ctx)
     const request = await ctx.db.get(args.requestId)
     if (!request) {
-      throw new Error('Support request not found')
+      throw new Error('Permintaan dukungan tidak ditemukan')
     }
 
     const isAdmin = user.role === 'admin'
     const isOwner = String(request.userId) === String(user._id)
     if (!isAdmin && !isOwner) {
-      throw new Error('Support request not found')
+      throw new Error('Permintaan dukungan tidak ditemukan')
     }
 
     const body = args.body.trim()
     if (!body) {
-      throw new Error('Message cannot be empty')
+      throw new Error('Pesan tidak boleh kosong')
     }
 
     const now = Date.now()
@@ -2843,8 +3283,10 @@ export const sendSupportMessage = mutation({
     if (receiverId && String(receiverId) !== String(user._id)) {
       await ctx.db.insert('notifications', {
         userId: receiverId,
-        title: isAdmin ? 'Support team replied' : 'New support reply',
-        detail: isAdmin ? 'An admin responded to your support ticket.' : 'A new message was added to a support ticket.',
+        title: isAdmin ? 'Tim dukungan membalas' : 'Balasan dukungan baru',
+        detail: isAdmin
+          ? 'Tim dukungan telah membalas tiket Anda.'
+          : 'Ada pesan baru pada tiket dukungan Anda.',
         kind: 'assistant',
         read: false,
         createdAt: now,
@@ -2863,7 +3305,7 @@ export const closeSupportRequest = mutation({
     const user = await requireUser(ctx)
     const request = await ctx.db.get(args.requestId)
     if (!request || String(request.userId) !== String(user._id)) {
-      throw new Error('Support request not found')
+      throw new Error('Permintaan dukungan tidak ditemukan')
     }
 
     const now = Date.now()
@@ -2876,15 +3318,15 @@ export const closeSupportRequest = mutation({
       requestId: args.requestId,
       senderUserId: user._id,
       senderRole: 'system',
-      body: 'Ticket closed by user.',
+      body: 'Tiket ditutup oleh pengguna.',
       createdAt: now,
     })
 
     if (request.handledBy) {
       await ctx.db.insert('notifications', {
         userId: request.handledBy,
-        title: 'Support ticket closed',
-        detail: `${user.name ?? 'A user'} closed their support ticket.`,
+        title: 'Tiket dukungan ditutup',
+        detail: `${user.name ?? 'Seorang pengguna'} menutup tiket dukungannya.`,
         kind: 'assistant',
         read: false,
         createdAt: now,
@@ -2905,21 +3347,26 @@ export const sendMarketplaceMessage = mutation({
     const user = await requireUser(ctx)
     const product = await ctx.db.get(args.productId)
     if (!product || product.type !== 'community') {
-      throw new Error('Listing not found')
+      throw new Error('Penawaran tidak ditemukan')
     }
     if (String(product.sellerId) === String(user._id)) {
-      throw new Error('Sellers cannot start a thread with their own listing')
+      throw new Error('Penjual tidak dapat memulai percakapan pada listing miliknya sendiri')
     }
 
     const now = Date.now()
     const body = args.body.trim()
     if (!body) {
-      throw new Error('Message cannot be empty')
+      throw new Error('Pesan tidak boleh kosong')
     }
 
     let thread = args.threadId ? await ctx.db.get(args.threadId) : null
     if (!thread) {
-      thread = await ctx.db.query('marketplaceThreads').withIndex('by_product_and_buyer', (q) => q.eq('productId', args.productId).eq('buyerId', user._id)).first()
+      thread = await ctx.db
+        .query('marketplaceThreads')
+        .withIndex('by_product_and_buyer', (q) =>
+          q.eq('productId', args.productId).eq('buyerId', user._id),
+        )
+        .first()
     }
 
     let threadId = thread?._id
@@ -2953,8 +3400,8 @@ export const sendMarketplaceMessage = mutation({
 
     await ctx.db.insert('notifications', {
       userId: product.sellerId,
-      title: 'New marketplace inquiry',
-      detail: `${user.name ?? 'A buyer'} messaged you about ${product.title}.`,
+      title: 'Pertanyaan marketplace baru',
+      detail: `${user.name ?? 'Seorang pembeli'} menghubungi Anda tentang ${product.title}.`,
       kind: 'commerce',
       read: false,
       createdAt: now,
@@ -2973,16 +3420,19 @@ export const replyMarketplaceThread = mutation({
     const user = await requireUser(ctx)
     const thread = await ctx.db.get(args.threadId)
     if (!thread) {
-      throw new Error('Conversation not found')
+      throw new Error('Percakapan tidak ditemukan')
     }
-    if (String(thread.buyerId) !== String(user._id) && String(thread.sellerId) !== String(user._id)) {
-      throw new Error('Conversation not found')
+    if (
+      String(thread.buyerId) !== String(user._id) &&
+      String(thread.sellerId) !== String(user._id)
+    ) {
+      throw new Error('Percakapan tidak ditemukan')
     }
 
     const now = Date.now()
     const body = args.body.trim()
     if (!body) {
-      throw new Error('Message cannot be empty')
+      throw new Error('Pesan tidak boleh kosong')
     }
     const isSeller = String(thread.sellerId) === String(user._id)
     const receiverId = isSeller ? thread.buyerId : thread.sellerId
@@ -3004,8 +3454,8 @@ export const replyMarketplaceThread = mutation({
 
     await ctx.db.insert('notifications', {
       userId: receiverId,
-      title: 'New marketplace reply',
-      detail: `${user.name ?? 'Someone'} replied in your marketplace conversation.`,
+      title: 'Balasan marketplace baru',
+      detail: `${user.name ?? 'Seseorang'} membalas percakapan marketplace Anda.`,
       kind: 'commerce',
       read: false,
       createdAt: now,
@@ -3021,13 +3471,13 @@ export const markMarketplaceThreadRead = mutation({
     const user = await requireUser(ctx)
     const thread = await ctx.db.get(args.threadId)
     if (!thread) {
-      throw new Error('Conversation not found')
+      throw new Error('Percakapan tidak ditemukan')
     }
     const now = Date.now()
     const isSeller = String(thread.sellerId) === String(user._id)
     const isBuyer = String(thread.buyerId) === String(user._id)
     if (!isSeller && !isBuyer) {
-      throw new Error('Conversation not found')
+      throw new Error('Percakapan tidak ditemukan')
     }
 
     await ctx.db.patch(args.threadId, {
@@ -3036,7 +3486,10 @@ export const markMarketplaceThreadRead = mutation({
       updatedAt: now,
     })
 
-    const messages = await ctx.db.query('marketplaceMessages').withIndex('by_thread_and_createdAt', (q) => q.eq('threadId', args.threadId)).take(40)
+    const messages = await ctx.db
+      .query('marketplaceMessages')
+      .withIndex('by_thread_and_createdAt', (q) => q.eq('threadId', args.threadId))
+      .take(40)
     for (const message of messages) {
       if (String(message.senderId) !== String(user._id) && !message.readAt) {
         await ctx.db.patch(message._id, { readAt: now })
@@ -3080,11 +3533,12 @@ export const updateDeviceAutomation = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
-    const device = user.role === 'admin'
-      ? await getDeviceByExternalId(ctx, args.deviceId)
-      : await requireOwnedDevice(ctx, user._id, args.deviceId)
+    const device =
+      user.role === 'admin'
+        ? await getDeviceByExternalId(ctx, args.deviceId)
+        : await requireOwnedDevice(ctx, user._id, args.deviceId)
     if (!device) {
-      throw new Error('Device not found')
+      throw new Error('Perangkat tidak ditemukan')
     }
 
     const includesLowLevelAutomation =
@@ -3095,7 +3549,7 @@ export const updateDeviceAutomation = mutation({
       args.lightingHysteresis !== undefined
 
     if (includesLowLevelAutomation && user.role !== 'admin') {
-      throw new Error('Only admins can change device automation tuning')
+      throw new Error('Hanya admin yang dapat mengubah pengaturan teknis otomatisasi perangkat')
     }
 
     const updates: Partial<Pick<DeviceDoc, DeviceAutomationKey>> = {}
@@ -3107,14 +3561,17 @@ export const updateDeviceAutomation = mutation({
     if (args.lightingThreshold !== undefined) updates.lightingThreshold = args.lightingThreshold
     if (args.lightingHysteresis !== undefined) updates.lightingHysteresis = args.lightingHysteresis
 
-    const changedFields = Object.entries(updates).reduce<Record<string, string | number | boolean>>((acc, [rawKey, value]) => {
-      const key = rawKey as DeviceAutomationKey
-      if (device[key] !== value) {
-        acc[`${key}Before`] = formatEventValue(device[key])
-        acc[`${key}After`] = formatEventValue(value)
-      }
-      return acc
-    }, {})
+    const changedFields = Object.entries(updates).reduce<Record<string, string | number | boolean>>(
+      (acc, [rawKey, value]) => {
+        const key = rawKey as DeviceAutomationKey
+        if (device[key] !== value) {
+          acc[`${key}Before`] = formatEventValue(device[key])
+          acc[`${key}After`] = formatEventValue(value)
+        }
+        return acc
+      },
+      {},
+    )
 
     const now = Date.now()
 
@@ -3128,8 +3585,8 @@ export const updateDeviceAutomation = mutation({
         source: 'user',
         entityType: 'automation',
         eventType: 'automation_settings_updated',
-        title: 'Automation settings updated',
-        detail: `${device.name} automation thresholds and modes changed.`,
+        title: 'Pengaturan otomatisasi diperbarui',
+        detail: `${device.name} mengalami perubahan pada mode dan ambang otomatisasi.`,
         data: changedFields,
         timestamp: now,
       })
@@ -3143,75 +3600,104 @@ export const adminConsole = query({
   args: {},
   handler: async (ctx) => {
     const admin = await requireAdmin(ctx)
-    const [devices, supportRequests, officialProducts, users, plants, communityPosts, allProducts, recentEvents, plantCatalog] = await Promise.all([
+    const [
+      devices,
+      supportRequests,
+      officialProducts,
+      users,
+      plants,
+      communityPosts,
+      blogPosts,
+      allProducts,
+      recentEvents,
+      plantCatalog,
+    ] = await Promise.all([
       ctx.db.query('devices').order('desc').take(40),
       ctx.db.query('supportRequests').order('desc').take(30),
-      ctx.db.query('products').withIndex('by_type', (q) => q.eq('type', 'official')).order('desc').take(20),
+      ctx.db
+        .query('products')
+        .withIndex('by_type', (q) => q.eq('type', 'official'))
+        .order('desc')
+        .take(20),
       ctx.db.query('users').collect(),
       ctx.db.query('plants').collect(),
       ctx.db.query('communityPosts').collect(),
+      ctx.db.query('blogPosts').withIndex('by_createdAt').order('desc').take(24),
       ctx.db.query('products').collect(),
       ctx.db.query('growEvents').withIndex('by_timestamp').order('desc').take(10),
       ctx.db.query('plantCatalog').take(64),
     ])
 
-    const deviceRows = await Promise.all(devices.map(async (device) => {
-      const owner = device.userId ? await ctx.db.get(device.userId) : null
-      const plant = device.plantId ? await ctx.db.get(device.plantId) : null
-      return {
-        _id: device._id,
-        deviceId: device.deviceId,
-        name: device.name,
-        ownerName: owner?.name ?? null,
-        ownerEmail: owner?.email ?? null,
-        firmwareVersion: device.firmwareVersion ?? '',
-        isClaimed: Boolean(device.userId),
-        plantName: plant && !plant.archived ? plant.name : null,
-        autoWatering: device.autoWatering,
-        autoLighting: device.autoLighting,
-        wateringThreshold: device.wateringThreshold,
-        wateringDuration: getDeviceWateringDuration(device),
-        wateringCooldown: getDeviceWateringCooldown(device),
-        lightingThreshold: device.lightingThreshold,
-        lightingHysteresis: getDeviceLightingHysteresis(device),
-        lastSeen: device.lastSeen,
-        lastSeenLabel: formatTimestamp(device.lastSeen),
-        isOnline: isDeviceOnline(device.lastSeen),
-      }
-    }))
+    const deviceRows = await Promise.all(
+      devices.map(async (device) => {
+        const owner = device.userId ? await ctx.db.get(device.userId) : null
+        const plant = device.plantId ? await ctx.db.get(device.plantId) : null
+        return {
+          _id: device._id,
+          deviceId: device.deviceId,
+          name: device.name,
+          ownerName: owner?.name ?? null,
+          ownerEmail: owner?.email ?? null,
+          firmwareVersion: device.firmwareVersion ?? '',
+          isClaimed: Boolean(device.userId),
+          plantName: plant && !plant.archived ? plant.name : null,
+          autoWatering: device.autoWatering,
+          autoLighting: device.autoLighting,
+          wateringThreshold: device.wateringThreshold,
+          wateringDuration: getDeviceWateringDuration(device),
+          wateringCooldown: getDeviceWateringCooldown(device),
+          lightingThreshold: device.lightingThreshold,
+          lightingHysteresis: getDeviceLightingHysteresis(device),
+          lastSeen: device.lastSeen,
+          lastSeenLabel: formatTimestamp(device.lastSeen),
+          isOnline: isDeviceOnline(device.lastSeen),
+        }
+      }),
+    )
 
-    const supportRows = await Promise.all(supportRequests.map(async (request) => {
-      const owner = await ctx.db.get(request.userId)
-      const handledBy = request.handledBy ? await ctx.db.get(request.handledBy) : null
-      const messages = await getSupportMessages(ctx, request._id, 24)
-      return {
-        ...request,
-        userName: owner?.name ?? owner?.email ?? 'Unknown user',
-        userEmail: owner?.email ?? '',
-        handledByName: handledBy?.name ?? null,
-        createdAtLabel: formatTimestamp(request.createdAt),
-        updatedAtLabel: formatTimestamp(request.updatedAt),
-        messages: messages.map((message) => ({
-          ...message,
-          senderName: message.senderRole === 'admin'
-            ? 'Admin'
-            : message.senderRole === 'system'
-              ? 'System'
-              : owner?.name ?? owner?.email ?? 'User',
-          createdAtLabel: formatTimestamp(message.createdAt),
-        })),
-      }
-    }))
+    const supportRows = await Promise.all(
+      supportRequests.map(async (request) => {
+        const owner = await ctx.db.get(request.userId)
+        const handledBy = request.handledBy ? await ctx.db.get(request.handledBy) : null
+        const messages = await getSupportMessages(ctx, request._id, 24)
+        return {
+          ...request,
+          userName: owner?.name ?? owner?.email ?? 'Pengguna tidak diketahui',
+          userEmail: owner?.email ?? '',
+          handledByName: handledBy?.name ?? null,
+          createdAtLabel: formatTimestamp(request.createdAt),
+          updatedAtLabel: formatTimestamp(request.updatedAt),
+          messages: messages.map((message) => ({
+            ...message,
+            senderName:
+              message.senderRole === 'admin'
+                ? 'Admin'
+                : message.senderRole === 'system'
+                  ? 'Sistem'
+                  : (owner?.name ?? owner?.email ?? 'Pengguna'),
+            createdAtLabel: formatTimestamp(message.createdAt),
+          })),
+        }
+      }),
+    )
 
-    const officialRows = await Promise.all(officialProducts.map((product) => enrichMarketplaceProduct(ctx, product, admin._id)))
-    const plantCatalogRows = await Promise.all(plantCatalog.map(async (preset) => ({
-      ...preset,
-      image: (await resolveStoredImageUrl(ctx, preset.imageStorageId, preset.image)) ?? preset.image,
-    })))
+    const officialRows = await Promise.all(
+      officialProducts.map((product) => enrichMarketplaceProduct(ctx, product, admin._id)),
+    )
+    const plantCatalogRows = await Promise.all(
+      plantCatalog.map(async (preset) => ({
+        ...preset,
+        image:
+          (await resolveStoredImageUrl(ctx, preset.imageStorageId, preset.image)) ?? preset.image,
+      })),
+    )
+    const blogRows = await Promise.all(blogPosts.map((post) => enrichBlogPost(ctx, post)))
     const activePlants = plants.filter((plant) => !plant.archived)
     const claimedDevices = devices.filter((device) => Boolean(device.userId))
     const communityProducts = allProducts.filter((product) => product.type === 'community')
-    const activeOfficialProducts = allProducts.filter((product) => product.type === 'official' && product.status === 'active')
+    const activeOfficialProducts = allProducts.filter(
+      (product) => product.type === 'official' && product.status === 'active',
+    )
     const recentEventRows = recentEvents.map((event) => ({
       ...event,
       timestampLabel: formatTimestamp(event.timestamp),
@@ -3224,14 +3710,18 @@ export const adminConsole = query({
         totalDevices: devices.length,
         claimedDevices: claimedDevices.length,
         activePlants: activePlants.length,
-        openTickets: supportRows.filter((request) => request.status === 'open' || request.status === 'in_progress').length,
+        openTickets: supportRows.filter(
+          (request) => request.status === 'open' || request.status === 'in_progress',
+        ).length,
         officialProducts: activeOfficialProducts.length,
         communityListings: communityProducts.length,
         communityPosts: communityPosts.length,
+        blogPosts: blogRows.length,
       },
       devices: deviceRows,
       supportRequests: supportRows.sort((a, b) => b.updatedAt - a.updatedAt),
       officialProducts: officialRows,
+      blogPosts: blogRows,
       plantCatalog: plantCatalogRows.sort((a, b) => a.name.localeCompare(b.name)),
       recentEvents: recentEventRows,
       users: users
@@ -3239,7 +3729,7 @@ export const adminConsole = query({
         .slice(0, 24)
         .map((user) => ({
           _id: user._id,
-          name: user.name ?? user.email ?? 'Unnamed user',
+          name: user.name ?? user.email ?? 'Pengguna tanpa nama',
           email: user.email ?? '',
           handle: user.handle ?? '',
           tier: user.tier ?? 'basic',
@@ -3254,7 +3744,7 @@ export const adminSaveDevice = mutation({
   args: {
     existingDeviceId: v.optional(v.id('devices')),
     deviceId: v.string(),
-    name: v.string(),
+    name: v.optional(v.string()),
     firmwareVersion: v.optional(v.string()),
     autoWatering: v.boolean(),
     autoLighting: v.boolean(),
@@ -3270,12 +3760,12 @@ export const adminSaveDevice = mutation({
 
     const existingByDeviceId = await getDeviceByExternalId(ctx, args.deviceId.trim())
     if (existingByDeviceId && String(existingByDeviceId._id) !== String(args.existingDeviceId)) {
-      throw new Error('That device ID already exists')
+       throw new Error('ID perangkat tersebut sudah digunakan')
     }
 
     const payload = {
       deviceId: args.deviceId.trim(),
-      name: args.name.trim(),
+      name: args.name?.trim() || getDefaultDeviceName(args.deviceId),
       firmwareVersion: args.firmwareVersion?.trim() || undefined,
       autoWatering: args.autoWatering,
       autoLighting: args.autoLighting,
@@ -3290,7 +3780,7 @@ export const adminSaveDevice = mutation({
     if (args.existingDeviceId) {
       const existing = await ctx.db.get(args.existingDeviceId)
       if (!existing) {
-        throw new Error('Device not found')
+         throw new Error('Perangkat tidak ditemukan')
       }
 
       await ctx.db.patch(args.existingDeviceId, payload)
@@ -3298,11 +3788,11 @@ export const adminSaveDevice = mutation({
     }
 
     const deviceDocId = await ctx.db.insert('devices', {
-      userId: undefined,
-      plantId: undefined,
       lightEnabled: false,
-      lastWatered: undefined,
-      lastLightChange: undefined,
+      queuedCommands: {
+        pump: null,
+        light: null,
+      },
       lastSeen: now,
       createdAt: now,
       ...payload,
@@ -3318,10 +3808,10 @@ export const adminDeleteDevice = mutation({
     await requireAdmin(ctx)
     const device = await ctx.db.get(args.deviceId)
     if (!device) {
-      throw new Error('Device not found')
+       throw new Error('Perangkat tidak ditemukan')
     }
     if (device.userId || device.plantId) {
-      throw new Error('Unclaim and detach the active plant before deleting this device')
+       throw new Error('Lepaskan klaim perangkat dan arsipkan tanaman aktif sebelum menghapus perangkat ini')
     }
 
     await ctx.db.delete(args.deviceId)
@@ -3332,14 +3822,21 @@ export const adminDeleteDevice = mutation({
 export const adminUpdateSupportRequest = mutation({
   args: {
     requestId: v.id('supportRequests'),
-    status: v.union(v.literal('open'), v.literal('in_progress'), v.literal('resolved'), v.literal('closed')),
-    priority: v.optional(v.union(v.literal('low'), v.literal('normal'), v.literal('high'), v.literal('urgent'))),
+    status: v.union(
+      v.literal('open'),
+      v.literal('in_progress'),
+      v.literal('resolved'),
+      v.literal('closed'),
+    ),
+    priority: v.optional(
+      v.union(v.literal('low'), v.literal('normal'), v.literal('high'), v.literal('urgent')),
+    ),
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx)
     const request = await ctx.db.get(args.requestId)
     if (!request) {
-      throw new Error('Support request not found')
+       throw new Error('Permintaan dukungan tidak ditemukan')
     }
 
     const now = Date.now()
@@ -3374,7 +3871,12 @@ export const adminSaveOfficialProduct = mutation({
     priceUnit: v.string(),
     imageStorageId: v.optional(v.id('_storage')),
     featured: v.boolean(),
-    status: v.union(v.literal('active'), v.literal('reserved'), v.literal('sold'), v.literal('archived')),
+    status: v.union(
+      v.literal('active'),
+      v.literal('reserved'),
+      v.literal('sold'),
+      v.literal('archived'),
+    ),
     shopeeUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -3406,15 +3908,13 @@ export const adminSaveOfficialProduct = mutation({
       sellerId: admin._id,
       status: args.status,
       quantityAvailable: args.quantityAvailable,
-      quantityUnit: undefined,
       priceUnit: args.priceUnit.trim(),
       locationLabel: 'Shopee',
-      contactPreference: undefined,
       image,
-      imageStorageId,
       featured: args.featured,
-      shopeeUrl: args.shopeeUrl?.trim() || undefined,
       updatedAt: now,
+      ...(imageStorageId ? { imageStorageId } : {}),
+      ...(args.shopeeUrl?.trim() ? { shopeeUrl: args.shopeeUrl.trim() } : {}),
     }
 
     if (args.productId) {
@@ -3447,18 +3947,19 @@ export const adminSavePlantPreset = mutation({
     ),
     description: v.string(),
     location: v.string(),
-    category: v.union(v.literal('herb'), v.literal('leafy'), v.literal('fruiting'), v.literal('houseplant'), v.literal('flower'), v.literal('microgreen')),
+    category: v.union(
+      v.literal('herb'),
+      v.literal('leafy'),
+      v.literal('fruiting'),
+      v.literal('houseplant'),
+      v.literal('flower'),
+      v.literal('microgreen'),
+    ),
     difficulty: v.union(v.literal('easy'), v.literal('medium'), v.literal('advanced')),
     wateringThreshold: v.number(),
     lightingThreshold: v.number(),
-    lifecycleProfile: v.object({
-      seedDormancyDays: v.number(),
-      germinationDays: v.number(),
-      seedlingDevelopmentDays: v.number(),
-      vegetativeGrowthDays: v.number(),
-      floweringReproductionDays: v.number(),
-      maturitySenescenceDays: v.number(),
-    }),
+    sensorProfile: plantSensorProfileValidator,
+    lifecycleProfile: lifecycleProfileValidator,
     imageStorageId: v.optional(v.id('_storage')),
   },
   handler: async (ctx, args) => {
@@ -3475,7 +3976,10 @@ export const adminSavePlantPreset = mutation({
       throw new Error('Plant preset not found')
     }
 
-    const duplicate = await ctx.db.query('plantCatalog').withIndex('by_key', (q) => q.eq('key', key)).first()
+    const duplicate = await ctx.db
+      .query('plantCatalog')
+      .withIndex('by_key', (q) => q.eq('key', key))
+      .first()
     if (duplicate && String(duplicate._id) !== String(args.presetId)) {
       throw new Error('A plant preset with this key already exists')
     }
@@ -3499,6 +4003,7 @@ export const adminSavePlantPreset = mutation({
       difficulty: args.difficulty,
       wateringThreshold: args.wateringThreshold,
       lightingThreshold: args.lightingThreshold,
+      sensorProfile: normalizePlantSensorProfile(args.sensorProfile),
       lifecycleProfile: normalizeLifecycleProfile(args.lifecycleProfile),
       updatedAt: now,
     }
@@ -3530,6 +4035,72 @@ export const adminDeletePlantPreset = mutation({
   },
 })
 
+export const adminSaveBlogPost = mutation({
+  args: {
+    postId: v.optional(v.id('blogPosts')),
+    title: v.string(),
+    excerpt: v.string(),
+    body: v.string(),
+    imageStorageId: v.optional(v.id('_storage')),
+    published: v.boolean(),
+    featured: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx)
+    const now = Date.now()
+    const existing = args.postId ? await ctx.db.get(args.postId) : null
+    const image = await resolveStoredImageUrl(ctx, args.imageStorageId)
+    const finalImage = image ?? existing?.image
+    const finalImageStorageId = args.imageStorageId ?? existing?.imageStorageId
+
+    if (args.postId && !existing) {
+      throw new Error('Blog post not found')
+    }
+
+    if (!finalImage) {
+      throw new Error('Blog cover image is required')
+    }
+
+    const payload = {
+      authorId: admin._id,
+      title: args.title.trim(),
+      excerpt: args.excerpt.trim(),
+      body: args.body.trim(),
+      image: finalImage,
+      imageStorageId: finalImageStorageId,
+      published: args.published,
+      featured: args.featured,
+      updatedAt: now,
+    }
+
+    if (existing) {
+      await ctx.db.patch(existing._id, payload)
+      return { success: true, postId: existing._id }
+    }
+
+    const postId = await ctx.db.insert('blogPosts', {
+      ...payload,
+      createdAt: now,
+    })
+
+    return { success: true, postId }
+  },
+})
+
+export const adminDeleteBlogPost = mutation({
+  args: { postId: v.id('blogPosts') },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    const post = await ctx.db.get(args.postId)
+    if (!post) {
+      throw new Error('Blog post not found')
+    }
+
+    await ctx.db.delete(args.postId)
+    return { success: true }
+  },
+})
+
 export const generateImageUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
@@ -3541,7 +4112,12 @@ export const generateImageUploadUrl = mutation({
 export const adminUpdateOfficialProductStatus = mutation({
   args: {
     productId: v.id('products'),
-    status: v.union(v.literal('active'), v.literal('reserved'), v.literal('sold'), v.literal('archived')),
+    status: v.union(
+      v.literal('active'),
+      v.literal('reserved'),
+      v.literal('sold'),
+      v.literal('archived'),
+    ),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
@@ -3583,11 +4159,11 @@ export const adminUpdateUserAccess = mutation({
     const admin = await requireAdmin(ctx)
     const target = await ctx.db.get(args.userId)
     if (!target) {
-      throw new Error('User not found')
+      throw new Error('Pengguna tidak ditemukan')
     }
 
     if (String(target._id) === String(admin._id) && args.role && args.role !== 'admin') {
-      throw new Error('Admins cannot remove their own admin role here')
+      throw new Error('Admin tidak dapat menghapus peran admin miliknya sendiri dari halaman ini')
     }
 
     await ctx.db.patch(args.userId, {
@@ -3603,26 +4179,32 @@ export const adminUpdateUserAccess = mutation({
 export const updateSensorData = internalMutation({
   args: {
     deviceId: v.string(),
-    plantId: v.id('plants'),
-    sensors: v.array(v.object({
-      kind: v.union(v.literal('soil'), v.literal('light'), v.literal('temperature'), v.literal('air'), v.literal('water')),
-      raw: v.number(),
-    })),
+    firmwareVersion: v.optional(v.string()),
+    currentState: v.optional(
+      v.object({
+        pumpEnabled: v.boolean(),
+        lightEnabled: v.boolean(),
+      }),
+    ),
+    sensors: v.array(
+      v.object({
+        kind: v.union(
+          v.literal('soil'),
+          v.literal('light'),
+          v.literal('temperature'),
+          v.literal('air'),
+          v.literal('water'),
+        ),
+        value: v.number(),
+        unit: v.string(),
+        raw: v.optional(v.number()),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
-    const plant = await ctx.db.get(args.plantId)
-    if (!plant) {
-      throw new Error('Plant not found')
-    }
-
-    const device = await ctx.db.query('devices').withIndex('by_deviceId', (q) => q.eq('deviceId', args.deviceId)).first()
-    if (!device) {
-      throw new Error('Device not found')
-    }
-
-    if (String(plant.deviceId) !== String(device._id)) {
-      throw new Error('Plant does not belong to this device')
-    }
+    const device = await ensureDeviceExists(ctx, args.deviceId, args.firmwareVersion)
+    const plant = device.plantId ? await ctx.db.get(device.plantId) : null
+    const activePlant = plant && !plant.archived ? plant : null
 
     const currentSensors = await ctx.db
       .query('sensors')
@@ -3637,34 +4219,53 @@ export const updateSensorData = internalMutation({
     const now = Date.now()
     let updated = 0
     let emittedSensorEvent = false
+    const deviceUpdates: Record<string, boolean | number | string | undefined> = {
+      lastSeen: now,
+      updatedAt: now,
+      firmwareVersion: args.firmwareVersion?.trim() || device.firmwareVersion,
+    }
+
+    if (args.currentState) {
+      deviceUpdates.reportedPumpEnabled = args.currentState.pumpEnabled
+      deviceUpdates.reportedLightEnabled = args.currentState.lightEnabled
+      deviceUpdates.lastStateSyncAt = now
+    }
 
     for (const sensorUpdate of args.sensors) {
-      const unit = sensorUpdate.kind === 'temperature' ? '°C' : '%'
-      const value = sensorUpdate.kind === 'temperature'
-        ? Math.round(sensorUpdate.raw * 10) / 10
-        : Math.max(0, Math.min(100, Math.round((sensorUpdate.raw / 4095) * 100)))
+      const unit = sensorUpdate.unit.trim()
+      const value =
+        typeof sensorUpdate.raw === 'number' &&
+        (sensorUpdate.kind === 'soil' ||
+          sensorUpdate.kind === 'light' ||
+          sensorUpdate.kind === 'water')
+          ? normalizeRawSensorValue(sensorUpdate.kind as SensorKind, sensorUpdate.raw)
+          : sensorUpdate.value
 
       sensorState.set(sensorUpdate.kind, { value, unit })
 
       const existingSensor = await ctx.db
         .query('sensors')
-        .withIndex('by_device_and_kind', (q) => q.eq('deviceId', args.deviceId).eq('kind', sensorUpdate.kind))
+        .withIndex('by_device_and_kind', (q) =>
+          q.eq('deviceId', args.deviceId).eq('kind', sensorUpdate.kind),
+        )
         .first()
 
       if (existingSensor) {
         await ctx.db.patch(existingSensor._id, {
-          plantId: args.plantId,
+          plantId: activePlant?._id,
           value,
           unit,
+          raw: sensorUpdate.raw,
           measuredAt: now,
         })
       } else {
         await ctx.db.insert('sensors', {
           deviceId: args.deviceId,
-          plantId: args.plantId,
+          plantId: activePlant?._id,
           kind: sensorUpdate.kind,
           value,
           unit,
+          raw: sensorUpdate.raw,
           measuredAt: now,
           createdAt: now,
         })
@@ -3672,23 +4273,25 @@ export const updateSensorData = internalMutation({
 
       await ctx.db.insert('sensorReadings', {
         deviceId: args.deviceId,
-        plantId: args.plantId,
+        plantId: activePlant?._id,
         kind: sensorUpdate.kind,
         value,
         unit,
+        raw: sensorUpdate.raw,
         measuredAt: now,
       })
 
       const previousValue = existingSensor?.value
-      const shouldRecordSensorEvent = previousValue === undefined || Math.abs(previousValue - value) >= 5
+      const shouldRecordSensorEvent =
+        previousValue === undefined || Math.abs(previousValue - value) >= 5
       if (shouldRecordSensorEvent && !emittedSensorEvent) {
         await recordGrowEvent(ctx, {
           deviceId: device._id,
-          plantId: args.plantId,
+          plantId: activePlant?._id,
           source: 'device',
           entityType: 'sensor',
           eventType: 'sensor_recorded',
-          title: 'Telemetry recorded',
+          title: 'Telemetri dicatat',
           detail: `${sensorUpdate.kind} sensor updated to ${value}${unit}.`,
           data: {
             kind: sensorUpdate.kind,
@@ -3703,17 +4306,16 @@ export const updateSensorData = internalMutation({
       updated += 1
     }
 
-    const actions: Record<string, boolean | number> = {}
-    const deviceUpdates: Record<string, boolean | number> = { lastSeen: now, updatedAt: now }
-
     const soilValue = sensorState.get('soil')?.value
     const lightValue = sensorState.get('light')?.value
     const waterLevel = sensorState.get('water')?.value
+    const effectiveWateringThreshold = activePlant?.wateringThreshold ?? device.wateringThreshold
+    const effectiveLightingThreshold = activePlant?.lightingThreshold ?? device.lightingThreshold
 
     if (
       device.autoWatering &&
       soilValue !== undefined &&
-      soilValue < device.wateringThreshold &&
+      soilValue < effectiveWateringThreshold &&
       (waterLevel === undefined || waterLevel > 5)
     ) {
       const cooldownMs = device.wateringCooldown * 1000
@@ -3721,143 +4323,191 @@ export const updateSensorData = internalMutation({
 
       if (cooledDown) {
         deviceUpdates.lastWatered = now
-        actions.pump = true
-        actions.pumpDuration = device.wateringDuration
+        Object.assign(deviceUpdates, buildQueuedPumpAction(device, device.wateringDuration))
 
-        await recordAutomationEvent(ctx, {
-          deviceId: device.deviceId,
-          plantId: plant._id,
-          action: 'pump_enabled',
-          soilValue,
-          threshold: device.wateringThreshold,
-          duration: device.wateringDuration,
-          timestamp: now,
-        })
-
-        await recordAutomationEvent(ctx, {
-          deviceId: device.deviceId,
-          plantId: plant._id,
-          action: 'pump_disabled',
-          soilValue,
-          threshold: device.wateringThreshold,
-          duration: device.wateringDuration,
-          timestamp: now + device.wateringDuration * 1000,
-        })
-
-        await recordGrowEvent(ctx, {
-          deviceId: device._id,
-          plantId: plant._id,
-          source: 'automation',
-          entityType: 'automation',
-          eventType: 'automation_action_executed',
-          title: 'Auto-watering executed',
-          detail: `${device.name} triggered a watering pulse because soil moisture fell below threshold.`,
-          data: {
+        if (activePlant) {
+          await recordAutomationEvent(ctx, {
+            deviceId: device.deviceId,
+            plantId: activePlant._id,
+            action: 'pump_enabled',
             soilValue,
-            threshold: device.wateringThreshold,
+            threshold: effectiveWateringThreshold,
             duration: device.wateringDuration,
-          },
-          timestamp: now,
-        })
+            timestamp: now,
+          })
+
+          await recordAutomationEvent(ctx, {
+            deviceId: device.deviceId,
+            plantId: activePlant._id,
+            action: 'pump_disabled',
+            soilValue,
+            threshold: effectiveWateringThreshold,
+            duration: device.wateringDuration,
+            timestamp: now + device.wateringDuration * 1000,
+          })
+
+          await recordGrowEvent(ctx, {
+            deviceId: device._id,
+            plantId: activePlant._id,
+            source: 'automation',
+            entityType: 'automation',
+            eventType: 'automation_action_executed',
+            title: 'Auto-watering scheduled',
+            detail: `${device.name} scheduled a watering run because soil moisture fell below threshold.`,
+            data: {
+              soilValue,
+              threshold: effectiveWateringThreshold,
+              duration: device.wateringDuration,
+            },
+            timestamp: now,
+          })
+        }
       }
     }
 
     if (device.autoLighting && lightValue !== undefined) {
-      const shouldEnableLight = !device.lightEnabled && lightValue < device.lightingThreshold
+      const currentLightDesired =
+        typeof deviceUpdates.lightEnabled === 'boolean'
+          ? Boolean(deviceUpdates.lightEnabled)
+          : device.lightEnabled
+      const shouldEnableLight = !currentLightDesired && lightValue < effectiveLightingThreshold
       const shouldDisableLight =
-        device.lightEnabled && lightValue > device.lightingThreshold + device.lightingHysteresis
+        currentLightDesired && lightValue > effectiveLightingThreshold + device.lightingHysteresis
 
       if (shouldEnableLight || shouldDisableLight) {
         const nextLightEnabled = shouldEnableLight
         deviceUpdates.lightEnabled = nextLightEnabled
         deviceUpdates.lastLightChange = now
-        actions.lightEnabled = nextLightEnabled
+        Object.assign(deviceUpdates, buildQueuedLightAction(device, nextLightEnabled))
 
-        await recordAutomationEvent(ctx, {
-          deviceId: device.deviceId,
-          plantId: plant._id,
-          action: nextLightEnabled ? 'light_on' : 'light_off',
-          lightValue,
-          threshold: device.lightingThreshold,
-          timestamp: now,
-        })
-
-        await recordGrowEvent(ctx, {
-          deviceId: device._id,
-          plantId: plant._id,
-          source: 'automation',
-          entityType: 'automation',
-          eventType: 'automation_action_executed',
-          title: nextLightEnabled ? 'Grow light enabled' : 'Grow light disabled',
-          detail: nextLightEnabled
-            ? `${device.name} enabled the grow light because ambient light is too low.`
-            : `${device.name} disabled the grow light because ambient light recovered.`,
-          data: {
+        if (activePlant) {
+          await recordAutomationEvent(ctx, {
+            deviceId: device.deviceId,
+            plantId: activePlant._id,
+            action: nextLightEnabled ? 'light_on' : 'light_off',
             lightValue,
-            threshold: device.lightingThreshold,
-            hysteresis: device.lightingHysteresis,
-          },
-          timestamp: now,
-        })
+            threshold: effectiveLightingThreshold,
+            timestamp: now,
+          })
+
+          await recordGrowEvent(ctx, {
+            deviceId: device._id,
+            plantId: activePlant._id,
+            source: 'automation',
+            entityType: 'automation',
+            eventType: 'automation_action_executed',
+            title: nextLightEnabled ? 'Grow light state updated' : 'Grow light state updated',
+            detail: nextLightEnabled
+              ? `${device.name} requested the grow light to turn on because ambient light is too low.`
+              : `${device.name} requested the grow light to turn off because ambient light recovered.`,
+            data: {
+              lightValue,
+              threshold: effectiveLightingThreshold,
+              hysteresis: device.lightingHysteresis,
+            },
+            timestamp: now,
+          })
+        }
       }
     }
 
     await ctx.db.patch(device._id, deviceUpdates)
 
+    const nextQueuedCommands = Object.prototype.hasOwnProperty.call(deviceUpdates, 'queuedCommands')
+      ? (deviceUpdates.queuedCommands as unknown as DeviceDoc['queuedCommands'])
+      : getQueuedDeviceCommands(device)
+
+    const commands = buildDeviceCommandList({
+      ...device,
+      queuedCommands: nextQueuedCommands,
+    })
+
     return {
       success: true,
       updated,
-      device: {
-        name: device.name,
-        plantName: plant.name,
-      },
-      actions,
-      state: {
-        pumpEnabled: Boolean(actions.pump),
-        lightEnabled: typeof deviceUpdates.lightEnabled === 'boolean' ? deviceUpdates.lightEnabled : device.lightEnabled,
-        lastWatered: typeof deviceUpdates.lastWatered === 'number' ? deviceUpdates.lastWatered : device.lastWatered,
-      },
+      commands,
     }
+  },
+})
+
+export const clearDeliveredDeviceCommands = internalMutation({
+  args: {
+    deviceId: v.string(),
+    commands: v.array(v.union(v.literal('pump'), v.literal('light'))),
+  },
+  handler: async (ctx, args) => {
+    const device = await getDeviceByExternalId(ctx, args.deviceId)
+    if (!device) {
+      return { success: false, cleared: false }
+    }
+
+    const queuedCommands = getQueuedDeviceCommands(device)
+    let cleared = false
+
+    for (const command of args.commands) {
+      if (command === 'pump' && queuedCommands.pump) {
+        queuedCommands.pump = null
+        cleared = true
+      }
+
+      if (command === 'light' && queuedCommands.light) {
+        queuedCommands.light = null
+        cleared = true
+      }
+    }
+
+    if (!cleared) {
+      return { success: true, cleared: false }
+    }
+
+    await ctx.db.patch(device._id, {
+      queuedCommands,
+      updatedAt: Date.now(),
+    })
+
+    return { success: true, cleared: true }
   },
 })
 
 export const updatePlantImage = internalMutation({
   args: {
-    plantId: v.id('plants'),
-    image: v.string(),
+    deviceId: v.string(),
+    imageStorageId: v.id('_storage'),
+    capturedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const plant = await ctx.db.get(args.plantId)
-    if (!plant) {
-      throw new Error('Plant not found')
-    }
-
-    const now = Date.now()
-
-    await ctx.db.patch(args.plantId, {
-      image: args.image,
-      updatedAt: now,
-    })
+    const device = await ensureDeviceExists(ctx, args.deviceId)
+    const plant = device.plantId ? await ctx.db.get(device.plantId) : null
+    const activePlant = plant && !plant.archived ? plant : null
+    const capturedAt = args.capturedAt ?? Date.now()
 
     await recordPlantImage(ctx, {
-      plantId: plant._id,
-      deviceId: plant.deviceId,
-      image: args.image,
+      plantId: activePlant?._id,
+      deviceId: device._id,
+      imageStorageId: args.imageStorageId,
       source: 'camera',
-      capturedAt: now,
+      capturedAt,
     })
 
-    await recordGrowEvent(ctx, {
-      deviceId: plant.deviceId,
-      plantId: plant._id,
-      source: 'device',
-      entityType: 'plant',
-      eventType: 'plant_image_updated',
-      title: 'Plant image captured',
-      detail: `${plant.name} received a new camera snapshot.`,
-      timestamp: now,
-    })
+    if (activePlant) {
+      await ctx.db.patch(activePlant._id, {
+        imageStorageId: args.imageStorageId,
+        image: undefined,
+        updatedAt: capturedAt,
+      })
 
-    return { success: true }
+      await recordGrowEvent(ctx, {
+        deviceId: device._id,
+        plantId: activePlant._id,
+        source: 'device',
+        entityType: 'plant',
+        eventType: 'plant_image_updated',
+        title: 'Gambar tanaman diambil',
+        detail: `${activePlant.name} received a new camera snapshot.`,
+        timestamp: capturedAt,
+      })
+    }
+
+    return { success: true, imageStorageId: args.imageStorageId }
   },
 })

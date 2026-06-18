@@ -1,167 +1,179 @@
-import { httpRouter } from "convex/server";
-import { httpAction } from "./_generated/server";
-import { internal } from "./_generated/api";
-import { auth } from "./auth";
+import { httpRouter } from 'convex/server'
+import { httpAction } from './_generated/server'
+import { internal } from './_generated/api'
+import { auth } from './auth'
 
-const http = httpRouter();
-const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+const http = httpRouter()
+const env =
+  (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {}
 
-auth.addHttpRoutes(http);
+auth.addHttpRoutes(http)
 
-// API endpoint for posting raw sensor data (0-4095 ADC values) with automation
+// Device telemetry endpoint: firmware reports sensor values and current actuator state.
 http.route({
-  path: "/api/sensors",
-  method: "POST",
+  path: '/api/sensors',
+  method: 'POST',
   handler: httpAction(async (ctx, request) => {
     try {
       // Parse request body
-      const body = await request.json();
-      
+      const body = await request.json()
+
       // Validate API key (optional - check environment variable)
-      const apiKey = request.headers.get("x-api-key");
-      const expectedApiKey = env.SENSOR_API_KEY;
-      
+      const apiKey = request.headers.get('x-api-key')
+      const expectedApiKey = env.SENSOR_API_KEY
+
       if (expectedApiKey && apiKey !== expectedApiKey) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
           status: 401,
-          headers: { "Content-Type": "application/json" },
-        });
+          headers: { 'Content-Type': 'application/json' },
+        })
       }
-      
+
       // Validate required fields
       if (!body.deviceId) {
-        return new Response(JSON.stringify({ error: "deviceId is required" }), {
+        return new Response(JSON.stringify({ error: 'deviceId is required' }), {
           status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
+          headers: { 'Content-Type': 'application/json' },
+        })
       }
-      
-      if (!body.plantId) {
-        return new Response(JSON.stringify({ error: "plantId is required" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-      
+
       // Support both single sensor update and batch updates
-      const sensors = body.sensors || [{ kind: body.kind, raw: body.raw }];
-      
+      const sensors = body.sensors || [
+        { kind: body.kind, value: body.value, unit: body.unit, raw: body.raw },
+      ]
+
       // Validate sensors array
       for (const sensor of sensors) {
-        if (!sensor.kind || sensor.raw === undefined) {
-          return new Response(JSON.stringify({ error: "Each sensor must have 'kind' and 'raw' value" }), {
-            status: 400,
-            headers: { "Content-Type": "application/json" },
-          });
-        }
-        
-        // Validate raw value range for ADC sensors
-        if (['soil', 'light', 'water'].includes(sensor.kind)) {
-          if (sensor.raw < 0 || sensor.raw > 4095) {
-            return new Response(JSON.stringify({ 
-              error: `Raw value for ${sensor.kind} must be between 0-4095 (got ${sensor.raw})` 
-            }), {
+        if (!sensor.kind || sensor.value === undefined || !sensor.unit) {
+          return new Response(
+            JSON.stringify({ error: "Each sensor must have 'kind', 'value', and 'unit'" }),
+            {
               status: 400,
-              headers: { "Content-Type": "application/json" },
-            });
+              headers: { 'Content-Type': 'application/json' },
+            },
+          )
+        }
+
+        if (sensor.raw !== undefined && ['soil', 'light', 'water'].includes(sensor.kind)) {
+          if (sensor.raw < 0 || sensor.raw > 4095) {
+            return new Response(
+              JSON.stringify({
+                error: `Raw value for ${sensor.kind} must be between 0-4095 (got ${sensor.raw})`,
+              }),
+              {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+              },
+            )
           }
         }
       }
-      
+
       // Update sensors and get automation actions
       const result = await ctx.runMutation(internal.growmate.updateSensorData, {
         deviceId: body.deviceId,
-        plantId: body.plantId,
+        firmwareVersion: body.firmwareVersion,
+        currentState: body.currentState,
         sensors: sensors,
-      });
-      
-      return new Response(JSON.stringify({ 
-        success: true, 
-        updated: result.updated,
-        device: result.device,
-        actions: result.actions || {},
-        state: result.state,
-        message: `Successfully updated ${result.updated} sensor(s)`
-      }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-      
+      })
+
+      if (result.commands.length > 0) {
+        await ctx.runMutation(internal.growmate.clearDeliveredDeviceCommands, {
+          deviceId: body.deviceId,
+          commands: result.commands.map((command) => command.kind),
+        })
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          updated: result.updated,
+          commands: result.commands,
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      )
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Internal server error"
+      const message = error instanceof Error ? error.message : 'Internal server error'
       return new Response(JSON.stringify({ error: message }), {
         status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
-});
+})
 
-// API endpoint for uploading camera images (live feed)
+// Device camera snapshot endpoint.
 http.route({
-  path: "/api/camera",
-  method: "POST",
+  path: '/api/camera',
+  method: 'POST',
   handler: httpAction(async (ctx, request) => {
     try {
-      // Parse request body
-      const body = await request.json();
-      
       // Validate API key
-      const apiKey = request.headers.get("x-api-key");
-      const expectedApiKey = env.SENSOR_API_KEY;
-      
+      const apiKey = request.headers.get('x-api-key')
+      const expectedApiKey = env.SENSOR_API_KEY
+
       if (expectedApiKey && apiKey !== expectedApiKey) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
           status: 401,
-          headers: { "Content-Type": "application/json" },
-        });
+          headers: { 'Content-Type': 'application/json' },
+        })
       }
-      
-      // Validate required fields
-      if (!body.plantId) {
-        return new Response(JSON.stringify({ error: "plantId is required" }), {
+
+      const deviceId = request.headers.get('x-device-id')?.trim()
+      if (!deviceId) {
+        return new Response(JSON.stringify({ error: 'deviceId is required' }), {
           status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
+          headers: { 'Content-Type': 'application/json' },
+        })
       }
-      
-      if (!body.image) {
-        return new Response(JSON.stringify({ error: "image is required (base64 encoded)" }), {
+
+      const contentType = request.headers.get('content-type')?.trim() || 'image/jpeg'
+      if (!contentType.startsWith('image/')) {
+        return new Response(JSON.stringify({ error: 'content-type must be an image type' }), {
           status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
+          headers: { 'Content-Type': 'application/json' },
+        })
       }
-      
-      // Validate base64 format
-      let imageData = body.image;
-      if (!imageData.startsWith('data:image/')) {
-        // Add data URL prefix if not present
-        imageData = `data:image/jpeg;base64,${imageData}`;
+
+      const imageBuffer = await request.arrayBuffer()
+      if (imageBuffer.byteLength === 0) {
+        return new Response(JSON.stringify({ error: 'image body is required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        })
       }
-      
+
+      const imageStorageId = await ctx.storage.store(
+        new Blob([imageBuffer], { type: contentType }),
+      )
+
       // Update plant image
       await ctx.runMutation(internal.growmate.updatePlantImage, {
-        plantId: body.plantId,
-        image: imageData,
-      });
-      
-      return new Response(JSON.stringify({ 
-        success: true,
-        message: "Camera image updated successfully",
-        imageUrl: imageData.substring(0, 50) + "..." // Return truncated for confirmation
-      }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-      
+        deviceId,
+        imageStorageId,
+      })
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Camera image stored successfully',
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      )
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Internal server error"
+      const message = error instanceof Error ? error.message : 'Internal server error'
       return new Response(JSON.stringify({ error: message }), {
         status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
   }),
-});
+})
 
-export default http;
+export default http

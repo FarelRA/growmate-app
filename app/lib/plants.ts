@@ -15,6 +15,19 @@ export type LifecycleProfile = {
   maturitySenescenceDays: number
 }
 
+export type SensorRange = {
+  min: number
+  max: number
+}
+
+export type PlantSensorProfile = {
+  soil: SensorRange
+  light: SensorRange
+  temperature: SensorRange
+  air: SensorRange
+  water: SensorRange
+}
+
 export type PlantPreset = {
   key: string
   name: string
@@ -27,6 +40,7 @@ export type PlantPreset = {
   difficulty: 'easy' | 'medium' | 'advanced'
   wateringThreshold: number
   lightingThreshold: number
+  sensorProfile: PlantSensorProfile
   lifecycleProfile: LifecycleProfile
 }
 
@@ -39,18 +53,30 @@ export const defaultLifecycleProfile: LifecycleProfile = {
   maturitySenescenceDays: 20,
 }
 
-export const defaultCustomPlantPreset: Pick<PlantPreset, 'growthStage' | 'wateringThreshold' | 'lightingThreshold' | 'lifecycleProfile'> = {
+export const defaultPlantSensorProfile: PlantSensorProfile = {
+  soil: { min: 30, max: 80 },
+  light: { min: 30, max: 80 },
+  temperature: { min: 18, max: 28 },
+  air: { min: 40, max: 70 },
+  water: { min: 20, max: 90 },
+}
+
+export const defaultCustomPlantPreset: Pick<
+  PlantPreset,
+  'growthStage' | 'wateringThreshold' | 'lightingThreshold' | 'sensorProfile' | 'lifecycleProfile'
+> = {
   growthStage: 'seed_dormancy',
   wateringThreshold: 34,
   lightingThreshold: 30,
+  sensorProfile: defaultPlantSensorProfile,
   lifecycleProfile: defaultLifecycleProfile,
 }
 
 export const lifecycleStageOptions: Array<{ value: PlantLifecycleStage; label: string }> = [
-  { value: 'seed_dormancy', label: 'Seed dormancy' },
-  { value: 'germination', label: 'Germination' },
-  { value: 'seedling_development', label: 'Seedling development' },
-  { value: 'vegetative_growth', label: 'Vegetative growth' },
-  { value: 'flowering_reproduction', label: 'Flowering / reproduction' },
-  { value: 'maturity_senescence', label: 'Maturity / senescence' },
+  { value: 'seed_dormancy', label: 'Dormansi benih' },
+  { value: 'germination', label: 'Perkecambahan' },
+  { value: 'seedling_development', label: 'Perkembangan bibit' },
+  { value: 'vegetative_growth', label: 'Pertumbuhan vegetatif' },
+  { value: 'flowering_reproduction', label: 'Pembungaan / reproduksi' },
+  { value: 'maturity_senescence', label: 'Kematangan / senesens' },
 ]

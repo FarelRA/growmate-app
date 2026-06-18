@@ -16,6 +16,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
     if (!authState.isLoading.value && authState.isAuthenticated.value) {
       if (to.meta.redirectIfAuthenticated) {
         const status = await fetchSetupStatus()
+        if (!status) {
+          return
+        }
         return navigateTo(getSetupRoute(status), { replace: true })
       }
     }
@@ -36,6 +39,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   const status = await fetchSetupStatus()
 
+  if (!status) {
+    return
+  }
+
   if (!status.authenticated) {
     return navigateTo('/login', { replace: true })
   }
@@ -48,11 +55,16 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   if (to.meta.onboarding) {
+    const isManualDeviceLinking =
+      to.path === '/claim-device' && typeof to.query.manual === 'string' && to.query.manual === '1'
     const target = getSetupRoute(status)
-    if (status.setupComplete) {
+    if (status.setupComplete && !isManualDeviceLinking) {
       return navigateTo('/dashboard', { replace: true })
     }
     if (routePath(target) !== to.path) {
+      if (isManualDeviceLinking) {
+        return
+      }
       return navigateTo(target, { replace: true })
     }
     return

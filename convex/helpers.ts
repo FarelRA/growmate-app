@@ -32,58 +32,112 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
 
 export type SensorKind = 'soil' | 'light' | 'temperature' | 'air' | 'water'
 export type SensorStatus = 'low' | 'optimal' | 'high'
+export type SensorRange = { min: number; max: number }
+export type PlantSensorProfile = Record<SensorKind, SensorRange>
+
+export const defaultPlantSensorProfile: PlantSensorProfile = {
+  soil: { min: 30, max: 80 },
+  light: { min: 30, max: 80 },
+  temperature: { min: 18, max: 28 },
+  air: { min: 40, max: 70 },
+  water: { min: 20, max: 90 },
+}
+
+export function normalizePlantSensorProfile(
+  profile?: Partial<Record<SensorKind, Partial<SensorRange>>> | null,
+): PlantSensorProfile {
+  function normalizeRange(kind: SensorKind): SensorRange {
+    const base = defaultPlantSensorProfile[kind]
+    const rawMin = profile?.[kind]?.min ?? base.min
+    const rawMax = profile?.[kind]?.max ?? base.max
+    return {
+      min: Math.min(rawMin, rawMax),
+      max: Math.max(rawMin, rawMax),
+    }
+  }
+
+  return {
+    soil: normalizeRange('soil'),
+    light: normalizeRange('light'),
+    temperature: normalizeRange('temperature'),
+    air: normalizeRange('air'),
+    water: normalizeRange('water'),
+  }
+}
+
+export function getSensorRange(
+  kind: SensorKind,
+  profile?: Partial<Record<SensorKind, Partial<SensorRange>>> | null,
+): SensorRange {
+  return normalizePlantSensorProfile(profile)[kind]
+}
 
 /**
  * Get sensor status from raw value
  */
-export function getSensorStatus(kind: SensorKind, value: number): SensorStatus {
-  switch (kind) {
-    case 'soil':
-      return value < 30 ? 'low' : value > 80 ? 'high' : 'optimal'
-    case 'light':
-      return value < 30 ? 'low' : value > 80 ? 'high' : 'optimal'
-    case 'temperature':
-      return value < 18 ? 'low' : value > 28 ? 'high' : 'optimal'
-    case 'air':
-      return value < 40 ? 'low' : value > 70 ? 'high' : 'optimal'
-    case 'water':
-      return value < 20 ? 'low' : value > 90 ? 'high' : 'optimal'
-    default:
-      return 'optimal'
-  }
+export function getSensorStatus(
+  kind: SensorKind,
+  value: number,
+  profile?: Partial<Record<SensorKind, Partial<SensorRange>>> | null,
+): SensorStatus {
+  const range = getSensorRange(kind, profile)
+  if (value < range.min) return 'low'
+  if (value > range.max) return 'high'
+  return 'optimal'
 }
 
 /**
  * Get sensor target message from status
  */
-export function getSensorTarget(kind: SensorKind, value: number, status: SensorStatus): string {
+export function getSensorTarget(
+  kind: SensorKind,
+  value: number,
+  status: SensorStatus,
+  profile?: Partial<Record<SensorKind, Partial<SensorRange>>> | null,
+): string {
+  const range = getSensorRange(kind, profile)
   if (status === 'optimal') {
     switch (kind) {
-      case 'soil': return '✓ Perfect moisture'
-      case 'light': return '✓ Good lighting'
-      case 'temperature': return '✓ Perfect temp'
-      case 'air': return '✓ Good humidity'
-      case 'water': return '✓ Sufficient'
+      case 'soil':
+        return `✓ Ideal ${range.min}-${range.max}%`
+      case 'light':
+        return `✓ Ideal ${range.min}-${range.max}%`
+      case 'temperature':
+        return `✓ Ideal ${range.min}-${range.max}C`
+      case 'air':
+        return `✓ Ideal ${range.min}-${range.max}%`
+      case 'water':
+        return `✓ Ideal ${range.min}-${range.max}%`
     }
   }
-  
+
   if (status === 'low') {
     switch (kind) {
-      case 'soil': return '↑ Water needed'
-      case 'light': return '↑ More light'
-      case 'temperature': return '↑ Too cold'
-      case 'air': return '↑ Too dry'
-      case 'water': return '↑ Refill needed'
+      case 'soil':
+        return `↑ Target min ${range.min}%`
+      case 'light':
+        return `↑ Target min ${range.min}%`
+      case 'temperature':
+        return `↑ Target min ${range.min}C`
+      case 'air':
+        return `↑ Target min ${range.min}%`
+      case 'water':
+        return `↑ Isi ulang ke atas ${range.min}%`
     }
   }
-  
+
   // status === 'high'
   switch (kind) {
-    case 'soil': return '↓ Too wet'
-    case 'light': return '↓ Too bright'
-    case 'temperature': return '↓ Too hot'
-    case 'air': return '↓ Too humid'
-    case 'water': return '✓ Full'
+    case 'soil':
+      return `↓ Target max ${range.max}%`
+    case 'light':
+      return `↓ Target max ${range.max}%`
+    case 'temperature':
+      return `↓ Target max ${range.max}C`
+    case 'air':
+      return `↓ Target max ${range.max}%`
+    case 'water':
+      return `↓ Target max ${range.max}%`
   }
 }
 
@@ -92,11 +146,16 @@ export function getSensorTarget(kind: SensorKind, value: number, status: SensorS
  */
 export function getSensorLabel(kind: SensorKind): string {
   switch (kind) {
-    case 'soil': return 'Soil Moisture'
-    case 'light': return 'Light Intensity'
-    case 'temperature': return 'Temperature'
-    case 'air': return 'Humidity'
-    case 'water': return 'Water Level'
+    case 'soil':
+      return 'Kelembapan Tanah'
+    case 'light':
+      return 'Intensitas Cahaya'
+    case 'temperature':
+      return 'Suhu'
+    case 'air':
+      return 'Kelembapan Udara'
+    case 'water':
+      return 'Level Air'
   }
 }
 
@@ -105,11 +164,16 @@ export function getSensorLabel(kind: SensorKind): string {
  */
 export function getSensorAccent(kind: SensorKind): string {
   switch (kind) {
-    case 'soil': return 'earth'
-    case 'light': return 'sun'
-    case 'temperature': return 'warm'
-    case 'air': return 'air'
-    case 'water': return 'water'
+    case 'soil':
+      return 'earth'
+    case 'light':
+      return 'sun'
+    case 'temperature':
+      return 'warm'
+    case 'air':
+      return 'air'
+    case 'water':
+      return 'water'
   }
 }
 
@@ -118,12 +182,18 @@ export function getSensorAccent(kind: SensorKind): string {
  */
 export function getSensorSort(kind: SensorKind): number {
   switch (kind) {
-    case 'soil': return 1
-    case 'light': return 2
-    case 'temperature': return 3
-    case 'air': return 4
-    case 'water': return 5
-    default: return 99
+    case 'soil':
+      return 1
+    case 'light':
+      return 2
+    case 'temperature':
+      return 3
+    case 'air':
+      return 4
+    case 'water':
+      return 5
+    default:
+      return 99
   }
 }
 
@@ -141,8 +211,11 @@ interface SensorData {
 /**
  * Compute plant health from sensor data
  */
-export function computePlantHealth(sensors: SensorData[]): PlantHealth {
-  const score = computePlantHealthScore(sensors)
+export function computePlantHealth(
+  sensors: SensorData[],
+  profile?: Partial<Record<SensorKind, Partial<SensorRange>>> | null,
+): PlantHealth {
+  const score = computePlantHealthScore(sensors, profile)
   if (score >= 80) return 'excellent'
   if (score >= 60) return 'good'
   if (score >= 40) return 'fair'
@@ -152,14 +225,17 @@ export function computePlantHealth(sensors: SensorData[]): PlantHealth {
 /**
  * Compute plant health score (0-100)
  */
-export function computePlantHealthScore(sensors: SensorData[]): number {
+export function computePlantHealthScore(
+  sensors: SensorData[],
+  profile?: Partial<Record<SensorKind, Partial<SensorRange>>> | null,
+): number {
   if (sensors.length === 0) return 0
-  
-  const sensorScores = sensors.map(s => {
-    const status = getSensorStatus(s.kind, s.value)
+
+  const sensorScores = sensors.map((s) => {
+    const status = getSensorStatus(s.kind, s.value, profile)
     return status === 'optimal' ? 100 : 50
   })
-  
+
   return Math.round(sensorScores.reduce((a, b) => a + b, 0) / sensorScores.length)
 }
 
@@ -172,7 +248,7 @@ export function computePlantHealthScore(sensors: SensorData[]): number {
  */
 export function isDeviceOnline(lastSeen: number): boolean {
   const fiveMinutes = 5 * 60 * 1000
-  return (Date.now() - lastSeen) < fiveMinutes
+  return Date.now() - lastSeen < fiveMinutes
 }
 
 /**
@@ -180,7 +256,7 @@ export function isDeviceOnline(lastSeen: number): boolean {
  */
 export function computeWaterReservoirDays(
   waterLevel: number, // 0-100%
-  dailyUsage: number = 5 // liters per day
+  dailyUsage: number = 5, // liters per day
 ): number {
   const reservoirCapacity = 60 // liters
   const currentLiters = (waterLevel / 100) * reservoirCapacity
@@ -195,7 +271,7 @@ export function computeWaterReservoirDays(
  * Format timestamp as "10:24 AM"
  */
 export function formatTimestamp(timestamp: number): string {
-  return new Date(timestamp).toLocaleTimeString('en-US', {
+  return new Date(timestamp).toLocaleTimeString('id-ID', {
     hour: '2-digit',
     minute: '2-digit',
   })
@@ -207,19 +283,19 @@ export function formatTimestamp(timestamp: number): string {
 export function getRelativeTime(timestamp: number): string {
   const now = Date.now()
   const diff = now - timestamp
-  
+
   const seconds = Math.floor(diff / 1000)
   const minutes = Math.floor(seconds / 60)
   const hours = Math.floor(minutes / 60)
   const days = Math.floor(hours / 24)
-  
-  if (seconds < 60) return 'Just now'
-  if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
-  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
-  if (days === 1) return 'Yesterday'
-  if (days < 7) return `${days} days ago`
-  
-  return new Date(timestamp).toLocaleDateString('en-US', {
+
+  if (seconds < 60) return 'Baru saja'
+  if (minutes < 60) return `${minutes} menit yang lalu`
+  if (hours < 24) return `${hours} jam yang lalu`
+  if (days === 1) return 'Kemarin'
+  if (days < 7) return `${days} hari yang lalu`
+
+  return new Date(timestamp).toLocaleDateString('id-ID', {
     month: 'short',
     day: 'numeric',
   })
@@ -240,55 +316,56 @@ export interface Alert {
  */
 export function generateAlerts(
   sensors: SensorData[],
-  device: { lastSeen: number; autoWatering: boolean } | null
+  device: { lastSeen: number; autoWatering: boolean } | null,
+  profile?: Partial<Record<SensorKind, Partial<SensorRange>>> | null,
 ): Alert[] {
   const alerts: Alert[] = []
-  
+
   // Check device online status
   if (device && !isDeviceOnline(device.lastSeen)) {
     alerts.push({
       type: 'critical',
-      message: 'Device offline - check connection',
+      message: 'Perangkat offline - periksa koneksi',
     })
   }
-  
+
   // Check sensor values
   for (const sensor of sensors) {
-    const status = getSensorStatus(sensor.kind, sensor.value)
-    
+    const status = getSensorStatus(sensor.kind, sensor.value, profile)
+
     if (sensor.kind === 'soil' && status === 'low') {
       alerts.push({
         type: 'warning',
-        message: 'Soil moisture low - watering needed',
+        message: 'Kelembapan tanah rendah - perlu penyiraman',
         sensorKind: 'soil',
       })
     }
-    
-    if (sensor.kind === 'water' && sensor.value < 20) {
+
+    if (sensor.kind === 'water' && sensor.value < getSensorRange('water', profile).min) {
       alerts.push({
         type: 'critical',
-        message: 'Water reservoir low - refill soon',
+        message: 'Reservoir air rendah - segera isi ulang',
         sensorKind: 'water',
       })
     }
-    
+
     if (sensor.kind === 'temperature' && status === 'high') {
       alerts.push({
         type: 'warning',
-        message: 'Temperature high - improve ventilation',
+        message: 'Suhu tinggi - tingkatkan ventilasi',
         sensorKind: 'temperature',
       })
     }
-    
+
     if (sensor.kind === 'temperature' && status === 'low') {
       alerts.push({
         type: 'warning',
-        message: 'Temperature low - add heating',
+        message: 'Suhu rendah - tambahkan pemanas',
         sensorKind: 'temperature',
       })
     }
   }
-  
+
   return alerts
 }
 

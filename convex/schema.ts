@@ -9,9 +9,17 @@ const careScheduleCadence = {
   timezoneOffsetMinutes: v.optional(v.number()),
 }
 
+const plantSensorProfile = v.object({
+  soil: v.object({ min: v.number(), max: v.number() }),
+  light: v.object({ min: v.number(), max: v.number() }),
+  temperature: v.object({ min: v.number(), max: v.number() }),
+  air: v.object({ min: v.number(), max: v.number() }),
+  water: v.object({ min: v.number(), max: v.number() }),
+})
+
 export default defineSchema({
   ...authTables,
-  
+
   // ============================================
   // USERS - Profile fields optional until onboarding complete
   // ============================================
@@ -49,7 +57,7 @@ export default defineSchema({
       v.literal('seedling_development'),
       v.literal('vegetative_growth'),
       v.literal('flowering_reproduction'),
-      v.literal('maturity_senescence')
+      v.literal('maturity_senescence'),
     ),
     image: v.string(),
     imageStorageId: v.optional(v.id('_storage')),
@@ -61,11 +69,12 @@ export default defineSchema({
       v.literal('fruiting'),
       v.literal('houseplant'),
       v.literal('flower'),
-      v.literal('microgreen')
+      v.literal('microgreen'),
     ),
     difficulty: v.union(v.literal('easy'), v.literal('medium'), v.literal('advanced')),
     wateringThreshold: v.number(),
     lightingThreshold: v.number(),
+    sensorProfile: v.optional(plantSensorProfile),
     lifecycleProfile: v.object({
       seedDormancyDays: v.number(),
       germinationDays: v.number(),
@@ -96,10 +105,11 @@ export default defineSchema({
       v.literal('seedling_development'),
       v.literal('vegetative_growth'),
       v.literal('flowering_reproduction'),
-      v.literal('maturity_senescence')
+      v.literal('maturity_senescence'),
     ),
     wateringThreshold: v.number(),
     lightingThreshold: v.number(),
+    sensorProfile: v.optional(plantSensorProfile),
     lifecycleProfile: v.object({
       seedDormancyDays: v.number(),
       germinationDays: v.number(),
@@ -110,6 +120,7 @@ export default defineSchema({
     }),
     location: v.string(),
     image: v.optional(v.string()),
+    imageStorageId: v.optional(v.id('_storage')),
     archived: v.boolean(),
     archivedAt: v.optional(v.number()),
     plantedAt: v.number(),
@@ -140,6 +151,27 @@ export default defineSchema({
     lightingHysteresis: v.number(),
     // Current State
     lightEnabled: v.boolean(),
+    queuedCommands: v.optional(
+      v.object({
+        pump: v.union(
+          v.null(),
+          v.object({
+            kind: v.literal('pump'),
+            durationMs: v.number(),
+          }),
+        ),
+        light: v.union(
+          v.null(),
+          v.object({
+            kind: v.literal('light'),
+            enabled: v.boolean(),
+          }),
+        ),
+      }),
+    ),
+    reportedLightEnabled: v.optional(v.boolean()),
+    reportedPumpEnabled: v.optional(v.boolean()),
+    lastStateSyncAt: v.optional(v.number()),
     lastWatered: v.optional(v.number()),
     lastLightChange: v.optional(v.number()),
     // Metadata
@@ -157,16 +189,17 @@ export default defineSchema({
   // ============================================
   sensors: defineTable({
     deviceId: v.string(),
-    plantId: v.id('plants'),
+    plantId: v.optional(v.id('plants')),
     kind: v.union(
       v.literal('soil'),
       v.literal('light'),
       v.literal('temperature'),
       v.literal('air'),
-      v.literal('water')
+      v.literal('water'),
     ),
     value: v.number(),
     unit: v.string(),
+    raw: v.optional(v.number()),
     measuredAt: v.number(),
     createdAt: v.number(),
   })
@@ -181,16 +214,17 @@ export default defineSchema({
   // ============================================
   sensorReadings: defineTable({
     deviceId: v.string(),
-    plantId: v.id('plants'),
+    plantId: v.optional(v.id('plants')),
     kind: v.union(
       v.literal('soil'),
       v.literal('light'),
       v.literal('temperature'),
       v.literal('air'),
-      v.literal('water')
+      v.literal('water'),
     ),
     value: v.number(),
     unit: v.string(),
+    raw: v.optional(v.number()),
     measuredAt: v.number(),
   })
     .index('by_plant_kind', ['plantId', 'kind'])
@@ -202,9 +236,9 @@ export default defineSchema({
   // PLANT IMAGES - Historical camera/manual snapshots
   // ============================================
   plantImages: defineTable({
-    plantId: v.id('plants'),
+    plantId: v.optional(v.id('plants')),
     deviceId: v.id('devices'),
-    image: v.string(),
+    imageStorageId: v.id('_storage'),
     source: v.union(v.literal('camera'), v.literal('manual')),
     capturedAt: v.number(),
   })
@@ -217,7 +251,7 @@ export default defineSchema({
   // ============================================
   automationLogs: defineTable({
     deviceId: v.string(),
-    plantId: v.id('plants'),
+    plantId: v.optional(v.id('plants')),
     timestamp: v.number(),
     action: v.union(
       v.literal('pump_enabled'),
@@ -226,7 +260,7 @@ export default defineSchema({
       v.literal('light_off'),
       v.literal('manual_pump'),
       v.literal('manual_light'),
-      v.literal('schedule_completed')
+      v.literal('schedule_completed'),
     ),
     soilValue: v.optional(v.number()),
     lightValue: v.optional(v.number()),
@@ -248,14 +282,14 @@ export default defineSchema({
       v.literal('user'),
       v.literal('device'),
       v.literal('system'),
-      v.literal('automation')
+      v.literal('automation'),
     ),
     entityType: v.union(
       v.literal('device'),
       v.literal('plant'),
       v.literal('schedule'),
       v.literal('automation'),
-      v.literal('sensor')
+      v.literal('sensor'),
     ),
     eventType: v.union(
       v.literal('device_claimed'),
@@ -270,7 +304,7 @@ export default defineSchema({
       v.literal('automation_action_executed'),
       v.literal('care_schedule_saved'),
       v.literal('care_schedule_completed'),
-      v.literal('manual_lighting_triggered')
+      v.literal('manual_lighting_triggered'),
     ),
     title: v.string(),
     detail: v.optional(v.string()),
@@ -330,13 +364,13 @@ export default defineSchema({
       v.literal('open'),
       v.literal('in_progress'),
       v.literal('resolved'),
-      v.literal('closed')
+      v.literal('closed'),
     ),
     priority: v.union(
       v.literal('low'),
       v.literal('normal'),
       v.literal('high'),
-      v.literal('urgent')
+      v.literal('urgent'),
     ),
     topic: v.string(),
     handledBy: v.optional(v.id('users')),
@@ -366,12 +400,19 @@ export default defineSchema({
     category: v.string(),
     type: v.union(v.literal('official'), v.literal('community')),
     sellerId: v.id('users'),
-    status: v.union(v.literal('active'), v.literal('reserved'), v.literal('sold'), v.literal('archived')),
+    status: v.union(
+      v.literal('active'),
+      v.literal('reserved'),
+      v.literal('sold'),
+      v.literal('archived'),
+    ),
     quantityAvailable: v.number(),
     quantityUnit: v.optional(v.string()),
     priceUnit: v.string(),
     locationLabel: v.optional(v.string()),
-    contactPreference: v.optional(v.union(v.literal('chat'), v.literal('pickup'), v.literal('delivery'))),
+    contactPreference: v.optional(
+      v.union(v.literal('chat'), v.literal('pickup'), v.literal('delivery')),
+    ),
     image: v.string(),
     imageStorageId: v.optional(v.id('_storage')),
     featured: v.boolean(),
@@ -399,6 +440,22 @@ export default defineSchema({
   })
     .index('by_user', ['userId'])
     .index('by_createdAt', ['createdAt']),
+
+  blogPosts: defineTable({
+    authorId: v.id('users'),
+    title: v.string(),
+    excerpt: v.string(),
+    body: v.string(),
+    image: v.string(),
+    imageStorageId: v.optional(v.id('_storage')),
+    published: v.boolean(),
+    featured: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_createdAt', ['createdAt'])
+    .index('by_published_and_createdAt', ['published', 'createdAt'])
+    .index('by_featured', ['featured']),
 
   // ============================================
   // POST COMMENTS - Changed: timestamp → createdAt
@@ -461,7 +518,7 @@ export default defineSchema({
       v.literal('assistant'),
       v.literal('system'),
       v.literal('commerce'),
-      v.literal('social')
+      v.literal('social'),
     ),
     read: v.boolean(),
     readAt: v.optional(v.number()),
@@ -487,11 +544,7 @@ export default defineSchema({
     imageStorageId: v.optional(v.id('_storage')),
     locationLabel: v.string(),
     contactPreference: v.union(v.literal('chat'), v.literal('pickup'), v.literal('delivery')),
-    status: v.union(
-      v.literal('draft'),
-      v.literal('published'),
-      v.literal('archived')
-    ),
+    status: v.union(v.literal('draft'), v.literal('published'), v.literal('archived')),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index('by_user', ['userId']),
@@ -506,7 +559,7 @@ export default defineSchema({
       v.literal('comment_created'),
       v.literal('post_liked'),
       v.literal('plant_added'),
-      v.literal('watering_completed')
+      v.literal('watering_completed'),
     ),
     points: v.number(),
     relatedId: v.optional(v.string()),
@@ -514,5 +567,4 @@ export default defineSchema({
   })
     .index('by_user', ['userId'])
     .index('by_createdAt', ['createdAt']),
-
 })

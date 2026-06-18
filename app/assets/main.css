@@ -51,6 +51,217 @@ input {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
+.gm-visual-icon {
+  display: block;
+  font-size: clamp(5.5rem, 12vw, 8.5rem);
+  line-height: 1;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+}
+
+.gm-feature-icon {
+  display: block;
+  font-size: clamp(6rem, 12vw, 7.5rem);
+  line-height: 1;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+}
+
+.gm-proof-icon {
+  display: block;
+  font-size: 4rem;
+  line-height: 1;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+}
+
 #app {
   min-height: 100vh;
+}
+
+.gm-reveal {
+  opacity: 0;
+  transition:
+    opacity 700ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 700ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.gm-reveal-up {
+  transform: translate3d(0, 32px, 0);
+  filter: blur(8px);
+}
+
+.gm-reveal-down {
+  transform: translate3d(0, -32px, 0);
+  filter: blur(8px);
+}
+
+.gm-reveal-left {
+  transform: translate3d(32px, 0, 0);
+  filter: blur(8px);
+}
+
+.gm-reveal-right {
+  transform: translate3d(-32px, 0, 0);
+  filter: blur(8px);
+}
+
+.gm-reveal-scale {
+  transform: scale(0.94);
+  filter: blur(8px);
+}
+
+.gm-reveal.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  filter: blur(0);
+}
+
+.gm-card-lift {
+  transition:
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 320ms ease;
+}
+
+.gm-card-lift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.1);
+}
+
+.gm-soft-button {
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    background-color 220ms ease,
+    color 220ms ease,
+    border-color 220ms ease;
+}
+
+.gm-soft-button:hover {
+  transform: translateY(-2px);
+}
+
+.gm-interactive-icon {
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.group:hover .gm-interactive-icon,
+.gm-interactive-icon:hover {
+  transform: translateX(4px);
+}
+
+.gm-article {
+  font-size: 1rem;
+  line-height: 1.9;
+}
+
+.gm-article > :first-child {
+  margin-top: 0;
+}
+
+.gm-article > :last-child {
+  margin-bottom: 0;
+}
+
+.gm-article h1,
+.gm-article h2,
+.gm-article h3,
+.gm-article h4 {
+  margin: 1.75em 0 0.6em;
+  color: var(--color-gm-text);
+  font-family: var(--font-headline);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.gm-article h1 {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+}
+
+.gm-article h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+}
+
+.gm-article h3 {
+  font-size: 1.25rem;
+}
+
+.gm-article p,
+.gm-article ul,
+.gm-article ol,
+.gm-article blockquote,
+.gm-article pre {
+  margin: 1em 0;
+}
+
+.gm-article ul,
+.gm-article ol {
+  padding-left: 1.4rem;
+}
+
+.gm-article li + li {
+  margin-top: 0.35rem;
+}
+
+.gm-article a {
+  color: var(--color-gm-primary);
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+.gm-article strong {
+  color: var(--color-gm-text);
+  font-weight: 700;
+}
+
+.gm-article blockquote {
+  border-left: 4px solid rgba(0, 110, 28, 0.2);
+  padding: 0.1rem 0 0.1rem 1rem;
+  color: var(--color-gm-muted);
+  font-style: italic;
+}
+
+.gm-article code {
+  border-radius: 0.5rem;
+  background: rgba(26, 28, 28, 0.06);
+  padding: 0.12rem 0.4rem;
+  font-size: 0.92em;
+}
+
+.gm-article pre {
+  overflow-x: auto;
+  border-radius: 1rem;
+  background: #17351a;
+  padding: 1rem 1.1rem;
+  color: #f4f7f2;
+}
+
+.gm-article pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.gm-article hr {
+  margin: 2rem 0;
+  border: 0;
+  border-top: 1px solid rgba(26, 28, 28, 0.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .gm-reveal,
+  .gm-card-lift,
+  .gm-soft-button,
+  .gm-interactive-icon {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+  }
 }

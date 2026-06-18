@@ -118,5 +118,3 @@ export async function getMarketplaceThreadsForUser(ctx: Ctx, userId: Id<'users'>
     }),
   )
 }
-
-export { formatCurrencyIdr } from './generic'

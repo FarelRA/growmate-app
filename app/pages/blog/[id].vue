@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { api } from '@/lib/api'
-import { toOptimizedImageUrl } from '@/lib/images'
+import { getImageUrl } from '@/lib/images'
 import { renderMarkdown } from '@/lib/markdown'
 import { createBreadcrumbSchema, toAbsoluteUrl, toMetaDescription } from '@/lib/seo'
 
@@ -13,7 +13,7 @@ const { data } = await usePublicConvexQuery('public-blog-detail', api.blog.publi
 
 const post = computed(() => (data.value ?? []).find((item) => item._id === postId.value) ?? null)
 const renderedBody = computed(() => renderMarkdown(post.value?.body ?? ''))
-const heroImage = computed(() => toOptimizedImageUrl(post.value?.image, { width: 1440, height: 960, quality: 74 }))
+const heroImage = computed(() => getImageUrl(post.value?.imageUrl, 1440))
 
 usePublicSeo({
   title: computed(() => (post.value ? `${post.value.title} | Blog GrowMate` : 'Blog GrowMate')),
@@ -26,7 +26,7 @@ usePublicSeo({
       ),
   ),
   path: computed(() => `/blog/${postId.value}`),
-  image: computed(() => post.value?.image),
+  image: computed(() => post.value?.imageUrl ? getImageUrl(post.value.imageUrl, 1200) : null),
   type: 'article',
   schema: computed(() => {
     if (!post.value) {
@@ -47,7 +47,7 @@ usePublicSeo({
         '@type': 'Article',
         headline: post.value.title,
         description: post.value.excerpt || post.value.body,
-        image: post.value.image ? [toAbsoluteUrl(post.value.image)] : undefined,
+        image: post.value.imageUrl ? [getImageUrl(post.value.imageUrl, 1200)] : undefined,
         author: {
           '@type': 'Person',
           name: post.value.authorName,
@@ -81,7 +81,7 @@ usePublicSeo({
           </RevealBlock>
 
           <RevealBlock as="div" origin="scale" :delay="100" class="gm-card-lift mt-8 overflow-hidden rounded-[2rem] bg-[#eef4e8]">
-            <img v-if="post.image" :src="heroImage || undefined" :alt="post.title" class="h-full max-h-[32rem] w-full object-cover" fetchpriority="high" decoding="async" width="1440" height="960" />
+            <img v-if="post.imageUrl" :src="heroImage || undefined" :alt="post.title" class="h-full max-h-[32rem] w-full object-cover" fetchpriority="high" decoding="async" width="1440" height="960" />
             <div v-else class="flex h-80 items-center justify-center text-gm-primary">
               <span class="material-symbols-outlined gm-visual-icon">edit_square</span>
             </div>

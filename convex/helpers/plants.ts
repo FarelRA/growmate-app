@@ -1,6 +1,5 @@
 import type { Ctx, LifecycleProfile, PlantStageValue, PlantDoc } from '../types'
 import { lifecycleStages, defaultLifecycleProfile } from '../types'
-import { resolveStoredImageUrl } from './generic'
 import { defaultPlantSensorProfile, normalizePlantSensorProfile } from './sensors'
 
 export function normalizeLifecycleProfile(profile?: Partial<LifecycleProfile> | null): LifecycleProfile {
@@ -81,7 +80,7 @@ export async function buildPlantView(ctx: Ctx, plant: PlantDoc) {
   return {
     ...plant,
     sensorProfile: normalizePlantSensorProfile(plant.sensorProfile),
-    image: await resolveStoredImageUrl(ctx, plant.imageStorageId, plant.image),
+    imageUrl: plant.imageUrl ?? null,
   }
 }
 

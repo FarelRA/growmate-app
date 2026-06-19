@@ -73,7 +73,6 @@ export {
   normalizeRawSensorValue,
   formatEventValue,
   getAutomationModeLabel,
-  resolveStoredImageUrl,
   isDeviceOnline,
   ACTIVITY_POINTS,
   getActivityPoints,

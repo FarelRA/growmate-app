@@ -51,7 +51,7 @@ public/       # Static assets (icons, favicon, robots.txt)
 |---|---|---|
 | `NUXT_PUBLIC_CONVEX_URL` | Yes | Convex deployment URL |
 | `OPENAI_API_KEY` | For AI | Gemini/OpenAI API key |
-| `SENSOR_API_KEY` | For IoT | Device telemetry auth |
+| `DEVICE_API_KEY` | For IoT | Device telemetry auth |
 
 ## Stack
 

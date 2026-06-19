@@ -1,13 +1,6 @@
-export function toOptimizedImageUrl(
-  src?: string | null,
-  options?: { width?: number; height?: number; quality?: number },
-) {
-  if (!src) return null
-
-  const params = new URLSearchParams({ src })
-  if (options?.width) params.set('w', String(options.width))
-  if (options?.height) params.set('h', String(options.height))
-  if (options?.quality) params.set('q', String(options.quality))
-
-  return `/img?${params.toString()}`
+export function getImageUrl(path?: string | null, size = 400) {
+  if (!path) return null
+  const baseUrl = useRuntimeConfig().public.imageBaseUrl
+  const label = size === 0 ? 'original' : `${size}w`
+  return `${baseUrl}/${path}/${label}.webp`
 }

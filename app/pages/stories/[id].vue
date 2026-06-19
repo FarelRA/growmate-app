@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { api } from '@/lib/api'
-import { toOptimizedImageUrl } from '@/lib/images'
+import { getImageUrl } from '@/lib/images'
 import { createBreadcrumbSchema, toAbsoluteUrl, toMetaDescription } from '@/lib/seo'
 
 definePageMeta({ public: true })
@@ -9,7 +9,7 @@ definePageMeta({ public: true })
 const route = useRoute()
 const storyId = String(route.params.id || '')
 const { data: story, pending, error } = await usePublicConvexQuery(`public-story-detail-${storyId}`, api.community.getPostById, { postId: storyId })
-const storyImage = computed(() => toOptimizedImageUrl(story.value?.image, { width: 1440, height: 960, quality: 74 }))
+const storyImage = computed(() => getImageUrl(story.value?.imageUrl, 1440))
 
 usePublicSeo({
   title: computed(() => (story.value ? `${story.value.title} | Cerita Pengguna GrowMate` : 'Cerita GrowMate')),
@@ -21,7 +21,7 @@ usePublicSeo({
       ),
   ),
   path: computed(() => `/stories/${storyId.value}`),
-  image: computed(() => story.value?.image),
+  image: computed(() => story.value?.imageUrl ? getImageUrl(story.value.imageUrl, 1200) : null),
   type: 'article',
   schema: computed(() => {
     if (!story.value) {
@@ -42,7 +42,7 @@ usePublicSeo({
         '@type': 'Article',
         headline: story.value.title,
         description: story.value.body,
-        image: story.value.image ? [toAbsoluteUrl(story.value.image)] : undefined,
+        image: story.value.imageUrl ? [getImageUrl(story.value.imageUrl, 1200)] : undefined,
         author: {
           '@type': 'Person',
           name: story.value.user?.name || 'Pengguna GrowMate',
@@ -83,7 +83,7 @@ usePublicSeo({
           </RevealBlock>
 
           <RevealBlock as="div" origin="scale" :delay="100" class="gm-card-lift mt-8 overflow-hidden rounded-[2rem] bg-[#f5f6f2]">
-            <img v-if="story.image" :src="storyImage || undefined" :alt="story.title" class="h-full max-h-[32rem] w-full object-cover" fetchpriority="high" decoding="async" width="1440" height="960" />
+            <img v-if="story.imageUrl" :src="storyImage || undefined" :alt="story.title" class="h-full max-h-[32rem] w-full object-cover" fetchpriority="high" decoding="async" width="1440" height="960" />
             <div v-else class="flex h-80 items-center justify-center text-gm-primary">
               <span class="material-symbols-outlined gm-visual-icon">article</span>
             </div>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { api } from '@/lib/api'
-import { toOptimizedImageUrl } from '@/lib/images'
+import { getImageUrl } from '@/lib/images'
 import { createBreadcrumbSchema, toAbsoluteUrl, toMetaDescription } from '@/lib/seo'
 
 definePageMeta({ public: true })
@@ -9,7 +9,7 @@ definePageMeta({ public: true })
 const route = useRoute()
 const productId = String(route.params.id || '')
 const { data: product, pending, error } = await usePublicConvexQuery(`public-marketplace-product-detail-${productId}`, api.marketplace.getProductById, { productId })
-const productImage = computed(() => toOptimizedImageUrl(product.value?.image, { width: 1200, height: 1200, quality: 74 }))
+const productImage = computed(() => getImageUrl(product.value?.imageUrl, 1200))
 
 usePublicSeo({
   title: computed(() => (product.value ? `${product.value.title} | Produk GrowMate` : 'Produk GrowMate')),
@@ -21,7 +21,7 @@ usePublicSeo({
       ),
   ),
   path: computed(() => `/products/${productId.value}`),
-  image: computed(() => product.value?.image),
+  image: computed(() => product.value?.imageUrl ? getImageUrl(product.value.imageUrl, 1200) : null),
   type: 'website',
   schema: computed(() => {
     if (!product.value) return createBreadcrumbSchema([{ name: 'Beranda', path: '/' }, { name: 'Produk', path: '/products' }])
@@ -37,7 +37,7 @@ usePublicSeo({
         '@type': 'Product',
         name: product.value.title,
         description: product.value.description,
-        image: product.value.image ? [toAbsoluteUrl(product.value.image)] : undefined,
+        image: product.value.imageUrl ? [getImageUrl(product.value.imageUrl, 1200)] : undefined,
         category: product.value.category,
         brand: { '@type': 'Brand', name: 'GrowMate' },
         offers: {
@@ -71,7 +71,7 @@ usePublicSeo({
         <div v-else-if="product" class="grid gap-10 lg:grid-cols-[1fr_0.92fr] lg:items-start">
           <RevealBlock as="div" origin="right" class="gm-card-lift overflow-hidden rounded-[2rem] bg-[#f5f6f2] p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
             <div class="aspect-square overflow-hidden rounded-[1.5rem] bg-white">
-              <img v-if="product.image" :src="productImage || undefined" :alt="product.title" class="h-full w-full object-cover" fetchpriority="high" decoding="async" width="1200" height="1200" />
+              <img v-if="product.imageUrl" :src="productImage || undefined" :alt="product.title" class="h-full w-full object-cover" fetchpriority="high" decoding="async" width="1200" height="1200" />
               <div v-else class="flex h-full items-center justify-center text-gm-primary">
                 <span class="material-symbols-outlined gm-visual-icon">shopping_bag</span>
               </div>

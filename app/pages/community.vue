@@ -4,6 +4,7 @@ import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
+import { getImageUrl } from '@/lib/images'
 import { readSelectedImage, uploadImageFile } from '@/lib/uploads'
 import type { Id } from '@/lib/convex-types'
 
@@ -18,7 +19,7 @@ const { mutate: createPost } = useConvexMutation(api.community.createPost)
 const { mutate: likePost } = useConvexMutation(api.community.likePost)
 const { mutate: createComment } = useConvexMutation(api.community.createComment)
 const { mutate: deletePost } = useConvexMutation(api.community.deletePost)
-const { mutate: generateImageUploadUrl } = useConvexMutation(api.images.generateImageUploadUrl)
+
 
 const showCreatePostModal = ref(false)
 const expandedComments = ref<string | null>(null)
@@ -40,14 +41,14 @@ const postImageBlobUrl = ref<string | null>(null)
 async function handleCreatePost() {
   creatingPost.value = true
   try {
-    const imageStorageId = newPostImageFile.value
-      ? await uploadImageFile(newPostImageFile.value, () => generateImageUploadUrl({}))
+    const imageUrl = newPostImageFile.value
+      ? await uploadImageFile(newPostImageFile.value)
       : undefined
 
     await createPost({
       title: newPostTitle.value,
       body: newPostBody.value,
-      imageStorageId: imageStorageId as Id<'_storage'>,
+      imageUrl: imageUrl ?? undefined,
     })
     toast.success('Postingan dipublikasikan')
     newPostTitle.value = ''
@@ -184,8 +185,8 @@ async function handleDeletePost(postId: string) {
             <p class="mt-3 text-sm leading-relaxed text-gm-muted">{{ post.body }}</p>
           </div>
           <img
-            v-if="post.image"
-            :src="post.image"
+            v-if="post.imageUrl"
+            :src="getImageUrl(post.imageUrl, 960) || undefined"
             :alt="post.title"
             class="h-64 w-full rounded-[1.5rem] object-cover sm:h-[360px]"
           />

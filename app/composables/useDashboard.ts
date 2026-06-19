@@ -121,12 +121,12 @@ export function useDashboard() {
   const displayPlantImage = computed(() => {
     const plant = data.value?.plant
     if (!plant) return null
-    if (plant.image) return plant.image
+    if (plant.imageUrl) return plant.imageUrl
     return (
       plantLibrary.value?.find(
         (preset: { name: string; species: string }) =>
           preset.name === plant.name || preset.species === plant.species,
-      )?.image ?? null
+      )?.imageUrl ?? null
     )
   })
 

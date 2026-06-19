@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { toOptimizedImageUrl } from '@/lib/images'
+import { getImageUrl } from '@/lib/images'
 
 const props = defineProps<{
   images: (string | null | undefined)[]
 }>()
 
 const primaryImageSrc = computed(() =>
-  props.images[0] ? toOptimizedImageUrl(props.images[0], { width: 900, height: 700, quality: 74 }) : null,
+  props.images[0] ? getImageUrl(props.images[0], 900) : null,
 )
 const secondaryImageSrc = computed(() =>
-  props.images[1] ? toOptimizedImageUrl(props.images[1], { width: 700, height: 700, quality: 72 }) : null,
+  props.images[1] ? getImageUrl(props.images[1], 700) : null,
 )
 const communityImageSrc = computed(() =>
-  props.images[2] ? toOptimizedImageUrl(props.images[2], { width: 700, height: 700, quality: 72 }) : null,
+  props.images[2] ? getImageUrl(props.images[2], 700) : null,
 )
 const libraryImageSrc = computed(() =>
-  props.images[3] ? toOptimizedImageUrl(props.images[3], { width: 900, height: 700, quality: 72 }) : null,
+  props.images[3] ? getImageUrl(props.images[3], 900) : null,
 )
 </script>
 

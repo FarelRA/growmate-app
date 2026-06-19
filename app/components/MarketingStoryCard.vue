@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { toOptimizedImageUrl } from '@/lib/images'
+import { getImageUrl } from '@/lib/images'
 
 const props = defineProps<{
   story: {
     _id: string
     title: string
     body: string
-    image?: string | null
+    imageUrl?: string | null
     timestamp?: string
     user?: { name?: string | null } | null
   }
 }>()
 
-const storyImage = computed(() => toOptimizedImageUrl(props.story.image, { width: 960, height: 720, quality: 72 }))
+const storyImage = computed(() => getImageUrl(props.story.imageUrl, 960))
 
 function excerpt(value: string) {
   return value.length > 148 ? `${value.slice(0, 145).trimEnd()}...` : value
@@ -25,7 +25,7 @@ function excerpt(value: string) {
     <NuxtLink :to="`/stories/${story._id}`" class="block">
       <div class="mb-4 aspect-[4/3] overflow-hidden rounded-xl bg-[#f5f6f2]">
         <img
-          v-if="story.image"
+          v-if="story.imageUrl"
           :src="storyImage || undefined"
           :alt="story.title"
           class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"

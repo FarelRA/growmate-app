@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { api } from '@/lib/api'
-import { toOptimizedImageUrl } from '@/lib/images'
+import { getImageUrl } from '@/lib/images'
 import { createBreadcrumbSchema } from '@/lib/seo'
 
 definePageMeta({ public: true })
@@ -78,7 +78,7 @@ function formatCategoryLabel(category: string) {
             class="gm-card-lift group w-[calc(50%-0.5rem)] text-center lg:w-[calc(25%-1.125rem)]"
           >
             <div class="mb-3 aspect-square overflow-hidden rounded-xl bg-[#f5f6f2]">
-              <img v-if="preset.image" :src="toOptimizedImageUrl(preset.image, { width: 720, height: 720, quality: 72 }) || undefined" :alt="preset.name" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" decoding="async" width="720" height="720" />
+              <img v-if="preset.imageUrl" :src="getImageUrl(preset.imageUrl, 720) || undefined" :alt="preset.name" class="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" decoding="async" width="720" height="720" />
               <div v-else class="flex h-full items-center justify-center text-gm-primary">
                 <span class="material-symbols-outlined gm-visual-icon">yard</span>
               </div>

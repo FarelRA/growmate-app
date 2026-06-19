@@ -1,6 +1,6 @@
 import type { Ctx, ProductDoc } from '../types'
 import type { Id } from '../_generated/dataModel'
-import { resolveStoredImageUrl, formatTimestamp, formatCurrencyIdr } from './generic'
+import { formatTimestamp, formatCurrencyIdr } from './generic'
 
 function formatMarketplaceStatus(status: 'active' | 'reserved' | 'sold' | 'archived') {
   switch (status) {
@@ -17,7 +17,7 @@ function formatMarketplaceStatus(status: 'active' | 'reserved' | 'sold' | 'archi
 
 export async function enrichMarketplaceProduct(ctx: Ctx, product: ProductDoc, viewerId?: Id<'users'>) {
   const seller = await ctx.db.get(product.sellerId)
-  const image = await resolveStoredImageUrl(ctx, product.imageStorageId, product.image)
+  const imageUrl = product.imageUrl ?? null
   const thread =
     viewerId && product.type === 'community'
       ? await ctx.db
@@ -33,7 +33,7 @@ export async function enrichMarketplaceProduct(ctx: Ctx, product: ProductDoc, vi
     sellerName: seller?.name ?? 'Penjual tidak diketahui',
     sellerAvatar: seller?.avatar ?? 'GM',
     sellerId: seller?._id,
-    image,
+    imageUrl,
     priceLabel: `${formatCurrencyIdr(product.price)} / ${product.priceUnit}`,
     quantityLabel: `${product.quantityAvailable} ${product.quantityUnit ?? 'item'}`,
     statusLabel: formatMarketplaceStatus(product.status),
@@ -85,7 +85,7 @@ export async function getMarketplaceThreadsForUser(ctx: Ctx, userId: Id<'users'>
   return await Promise.all(
     uniqueThreads.map(async (thread) => {
       const productTitle = thread.productTitle ?? productMap.get(String(thread.productId))?.title ?? 'Listing tidak diketahui'
-      const productImage = thread.productImage ?? productMap.get(String(thread.productId))?.image
+      const productImage = thread.productImage ?? productMap.get(String(thread.productId))?.imageUrl
       const productStatus = thread.productStatus ?? productMap.get(String(thread.productId))?.status ?? 'archived'
 
       const buyerName = thread.buyerName ?? buyerMap.get(String(thread.buyerId))?.name ?? 'Pembeli'

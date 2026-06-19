@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { toOptimizedImageUrl } from '@/lib/images'
+import { getImageUrl } from '@/lib/images'
 
 const props = defineProps<{
   product: {
     _id: string
     title: string
-    image?: string | null
+    imageUrl?: string | null
     priceLabel?: string
     statusLabel?: string
     category?: string
@@ -31,7 +31,7 @@ const isExternal = computed(() =>
 )
 
 const isCommunity = computed(() => props.product.type === 'community')
-const cardImage = computed(() => toOptimizedImageUrl(props.product.image, { width: 720, height: 720, quality: 72 }))
+const cardImage = computed(() => getImageUrl(props.product.imageUrl, 720))
 
 const cardComponent = computed(() => {
   if (isExternal.value) return 'a'
@@ -65,7 +65,7 @@ function openCommunityListing() {
         {{ product.statusLabel }}
       </span>
       <img
-        v-if="product.image"
+        v-if="product.imageUrl"
         :src="cardImage || undefined"
         :alt="product.title"
         class="h-full w-full object-cover transition duration-300 group-hover:scale-105"

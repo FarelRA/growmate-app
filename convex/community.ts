@@ -3,7 +3,7 @@ import { mutation, query } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
 import type { Ctx, CommunityPostDoc } from './types'
 import {
-  getCurrentUser, requireUser, resolveStoredImageUrl, getRelativeTime,
+  getCurrentUser, requireUser, getRelativeTime,
   addUserActivity,
 } from './helpers'
 
@@ -19,8 +19,6 @@ async function getCommunityPostView(ctx: Ctx, post: CommunityPostDoc, viewerId?:
       .collect(),
     ctx.db.get(post.userId),
   ])
-  const image = await resolveStoredImageUrl(ctx, post.imageStorageId, post.image)
-
   const uniqueIds = [...new Set(comments.map((c) => c.userId))] as Id<'users'>[]
   const commentUsers = new Map<string, Doc<'users'> | null>()
   await Promise.all(
@@ -31,7 +29,7 @@ async function getCommunityPostView(ctx: Ctx, post: CommunityPostDoc, viewerId?:
 
   return {
     ...post,
-    image,
+    imageUrl: post.imageUrl ?? null,
     user: postUser,
     likeCount: likes.length,
     commentCount: comments.length,
@@ -89,7 +87,7 @@ export const getPostById = query({
 })
 
 export const createPost = mutation({
-  args: { title: v.string(), body: v.string(), imageStorageId: v.optional(v.id('_storage')) },
+  args: { title: v.string(), body: v.string(), imageUrl: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
     const now = Date.now()
@@ -98,13 +96,11 @@ export const createPost = mutation({
     if (!title || !body) {
       throw new Error('Judul dan isi postingan wajib diisi')
     }
-    const image = await resolveStoredImageUrl(ctx, args.imageStorageId)
     const postId = await ctx.db.insert('communityPosts', {
       userId: user._id,
       title,
       body,
-      image: image ?? undefined,
-      imageStorageId: args.imageStorageId,
+      imageUrl: args.imageUrl ?? undefined,
       createdAt: now,
       updatedAt: now,
     })

@@ -1,0 +1,14 @@
+.git
+.gitattributes
+.gitignore
+.agents
+.env*
+.nuxt
+.output
+.vscode
+node_modules
+design
+test-results
+tests
+*.md
+.DS_Store

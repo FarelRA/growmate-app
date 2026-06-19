@@ -1,27 +1,22 @@
-export async function uploadImageFile(file: File, getUploadUrl: () => Promise<string>) {
-  const uploadUrl = await getUploadUrl()
-  const response = await fetch(uploadUrl, {
+import { getAuthToken } from '@/lib/auth'
+
+export async function uploadImageFile(file: File) {
+  const token = await getAuthToken()
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch('/api/v1/upload', {
     method: 'POST',
     headers: {
-      'Content-Type': file.type || 'application/octet-stream',
+      Authorization: token ? `Bearer ${token}` : '',
     },
-    body: file,
+    body: formData,
   })
-
-  if (!response.ok) {
-    throw new Error('Image upload failed')
-  }
-
-  const { storageId } = await response.json() as { storageId?: string }
-  if (!storageId) {
-    throw new Error('Upload did not return a storage id')
-  }
-
-  return storageId
+  if (!res.ok) throw new Error('Upload failed')
+  const { path } = await res.json()
+  return path as string
 }
 
 export function readSelectedImage(file?: File | null) {
   if (!file) return null
-
   return URL.createObjectURL(file)
 }

@@ -1,7 +1,7 @@
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import {
-  requireAdmin, enrichBlogPost, resolveStoredImageUrl,
+  requireAdmin, enrichBlogPost,
 } from './helpers'
 
 export const publicBlog = query({
@@ -23,7 +23,7 @@ export const adminSaveBlogPost = mutation({
     title: v.string(),
     excerpt: v.string(),
     body: v.string(),
-    imageStorageId: v.optional(v.id('_storage')),
+    imageUrl: v.optional(v.string()),
     published: v.boolean(),
     featured: v.boolean(),
   },
@@ -31,15 +31,13 @@ export const adminSaveBlogPost = mutation({
     const admin = await requireAdmin(ctx)
     const now = Date.now()
     const existing = args.postId ? await ctx.db.get(args.postId) : null
-    const image = await resolveStoredImageUrl(ctx, args.imageStorageId)
-    const finalImage = image ?? existing?.image
-    const finalImageStorageId = args.imageStorageId ?? existing?.imageStorageId
+    const finalImageUrl = args.imageUrl ?? existing?.imageUrl
 
     if (args.postId && !existing) {
       throw new Error('Postingan blog tidak ditemukan')
     }
 
-    if (!finalImage) {
+    if (!finalImageUrl) {
       throw new Error('Gambar sampul blog wajib diisi')
     }
 
@@ -48,8 +46,7 @@ export const adminSaveBlogPost = mutation({
       title: args.title.trim(),
       excerpt: args.excerpt.trim(),
       body: args.body.trim(),
-      image: finalImage,
-      imageStorageId: finalImageStorageId,
+      imageUrl: finalImageUrl,
       published: args.published,
       featured: args.featured,
       updatedAt: now,

@@ -25,7 +25,7 @@ export async function recordPlantImage(
   args: {
     plantId?: Id<'plants'>
     deviceId: Id<'devices'>
-    imageStorageId: Id<'_storage'>
+    imageUrl: string
     source: 'camera' | 'manual'
     capturedAt: number
   },

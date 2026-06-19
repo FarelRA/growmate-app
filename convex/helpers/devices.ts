@@ -4,7 +4,7 @@ import {
   DEFAULT_WATERING_THRESHOLD, DEFAULT_LIGHTING_THRESHOLD,
   DEFAULT_WATERING_DURATION, DEFAULT_WATERING_COOLDOWN, DEFAULT_LIGHTING_HYSTERESIS,
 } from '../types'
-import { resolveStoredImageUrl, formatTimestamp, isDeviceOnline } from './generic'
+import { formatTimestamp, isDeviceOnline } from './generic'
 import { formatPlantStage } from './plants'
 import { recordGrowEvent, recordAutomationEvent, getRecentGrowEvents } from './events'
 
@@ -175,9 +175,9 @@ export async function buildDeviceSummary(ctx: Ctx, device: DeviceDoc) {
     .collect()
   const recentEvents = await getRecentGrowEvents(ctx, device._id, 4)
 
-  const plantImage =
+  const plantImageUrl =
     currentPlant && !currentPlant.archived
-      ? await resolveStoredImageUrl(ctx, currentPlant.imageStorageId, currentPlant.image)
+      ? currentPlant.imageUrl ?? null
       : null
 
   return {
@@ -208,7 +208,7 @@ export async function buildDeviceSummary(ctx: Ctx, device: DeviceDoc) {
             wateringThreshold: currentPlant.wateringThreshold,
             lightingThreshold: currentPlant.lightingThreshold,
             location: currentPlant.location,
-            image: plantImage,
+            imageUrl: plantImageUrl,
             plantedAt: currentPlant.plantedAt,
           }
         : null,

@@ -1,0 +1,70 @@
+services:
+  traefik:
+    image: traefik:latest
+    command:
+      # HTTP listener — redirect to HTTPS
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      # HTTPS listener
+      - --entrypoints.websecure.address=:443
+      # Docker provider — auto-detect services
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      # Let's Encrypt via ACME
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.email=admin@growmate.bond
+      - --certificatesresolvers.letsencrypt.acme.storage=/data/acme.json
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-data:/data
+
+  app:
+    build: .
+    expose:
+      - "3000"
+    environment:
+      NUXT_PUBLIC_CONVEX_URL: ${NUXT_PUBLIC_CONVEX_URL}
+      NUXT_PUBLIC_IMAGE_BASE_URL: https://images.growmate.bond
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      DEVICE_API_KEY: ${DEVICE_API_KEY}
+    depends_on:
+      - minio
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.app.rule=Host(`growmate.bond`)
+      - traefik.http.routers.app.entrypoints=websecure
+      - traefik.http.routers.app.tls.certresolver=letsencrypt
+
+  minio:
+    image: minio/minio:latest
+    command: server /data
+    expose:
+      - "9000"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - minio-data:/data
+    labels:
+      # Public image serving — images.growmate.bond/uploads/*
+      - traefik.enable=true
+      - traefik.http.routers.minio-images.rule=Host(`images.growmate.bond`) && PathPrefix(`/uploads/`)
+      - traefik.http.routers.minio-images.entrypoints=websecure
+      - traefik.http.routers.minio-images.tls.certresolver=letsencrypt
+      - traefik.http.services.minio-images.loadbalancer.server.port=9000
+      - traefik.http.routers.minio-images.middlewares=minio-path
+      # Strip /growmate/ prefix so MinIO serves the correct bucket path:
+      # Request: images.growmate.bond/uploads/hash/400w.webp
+      # Backend: minio:9000/growmate/uploads/hash/400w.webp
+      - traefik.http.middlewares.minio-path.addprefix.prefix=/growmate
+
+volumes:
+  minio-data:
+  traefik-data:

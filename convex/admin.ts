@@ -2,7 +2,7 @@ import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
-import { requireAdmin, resolveStoredImageUrl,
+import { requireAdmin,
   getDeviceWateringDuration, getDeviceWateringCooldown, getDeviceLightingHysteresis,
   formatTimestamp, isDeviceOnline, getSupportMessages,
   enrichMarketplaceProduct, enrichBlogPost,
@@ -156,8 +156,7 @@ async function fetchAdminPlantCatalog(ctx: QueryCtx) {
   return Promise.all(
     plantCatalog.map(async (preset) => ({
       ...preset,
-      image:
-        (await resolveStoredImageUrl(ctx, preset.imageStorageId, preset.image)) ?? preset.image,
+      imageUrl: preset.imageUrl ?? null,
     })),
   )
 }
@@ -370,7 +369,7 @@ export const adminSaveOfficialProduct = mutation({
     category: v.string(),
     quantityAvailable: v.number(),
     priceUnit: v.string(),
-    imageStorageId: v.optional(v.id('_storage')),
+    imageUrl: v.optional(v.string()),
     featured: v.boolean(),
     status: v.union(
       v.literal('active'),
@@ -383,8 +382,7 @@ export const adminSaveOfficialProduct = mutation({
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx)
     const now = Date.now()
-    let image = await resolveStoredImageUrl(ctx, args.imageStorageId)
-    let imageStorageId = args.imageStorageId
+    let imageUrl = args.imageUrl
 
     if (args.productId) {
       const existing = await ctx.db.get(args.productId)
@@ -392,11 +390,10 @@ export const adminSaveOfficialProduct = mutation({
         throw new Error('Produk resmi tidak ditemukan')
       }
 
-      image = image ?? existing.image
-      imageStorageId = imageStorageId ?? existing.imageStorageId
+      imageUrl = imageUrl ?? existing.imageUrl
     }
 
-    if (!image) {
+    if (!imageUrl) {
       throw new Error('Gambar produk wajib diisi')
     }
 
@@ -411,10 +408,9 @@ export const adminSaveOfficialProduct = mutation({
       quantityAvailable: args.quantityAvailable,
       priceUnit: args.priceUnit.trim(),
       locationLabel: 'Shopee',
-      image,
+      imageUrl,
       featured: args.featured,
       updatedAt: now,
-      ...(imageStorageId ? { imageStorageId } : {}),
       ...(args.shopeeUrl?.trim() ? { shopeeUrl: args.shopeeUrl.trim() } : {}),
     }
 
@@ -461,7 +457,7 @@ export const adminSavePlantPreset = mutation({
     lightingThreshold: v.number(),
     sensorProfile: plantSensorProfile,
     lifecycleProfile: lifecycleProfileValidator,
-    imageStorageId: v.optional(v.id('_storage')),
+    imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
@@ -471,7 +467,6 @@ export const adminSavePlantPreset = mutation({
       throw new Error('Kunci preset tanaman wajib diisi')
     }
 
-    const image = await resolveStoredImageUrl(ctx, args.imageStorageId)
     const existing = args.presetId ? await ctx.db.get(args.presetId) : null
     if (args.presetId && (!existing || existing._id !== args.presetId)) {
       throw new Error('Preset tanaman tidak ditemukan')
@@ -485,9 +480,8 @@ export const adminSavePlantPreset = mutation({
       throw new Error('Preset tanaman dengan kunci ini sudah ada')
     }
 
-    const finalImage = image ?? existing?.image
-    const finalImageStorageId = args.imageStorageId ?? existing?.imageStorageId
-    if (!finalImage) {
+    const finalImageUrl = args.imageUrl ?? existing?.imageUrl
+    if (!finalImageUrl) {
       throw new Error('Gambar preset tanaman wajib diisi')
     }
 
@@ -496,8 +490,7 @@ export const adminSavePlantPreset = mutation({
       name: args.name.trim(),
       species: args.species.trim(),
       growthStage: args.growthStage,
-      image: finalImage,
-      imageStorageId: finalImageStorageId,
+      imageUrl: finalImageUrl,
       description: args.description.trim(),
       location: args.location.trim(),
       category: args.category,

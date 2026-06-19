@@ -21,6 +21,7 @@
     "check": "run-s typecheck lint test build"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1072.0",
     "@convex-dev/auth": "^0.0.94",
     "@convex-vue/core": "^0.0.4",
     "convex": "^1.41.0",

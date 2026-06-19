@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { api } from '@/lib/api'
-import { toOptimizedImageUrl } from '@/lib/images'
+import { getImageUrl } from '@/lib/images'
 import { createBreadcrumbSchema, createOrganizationSchema, createWebSiteSchema } from '@/lib/seo'
 
 definePageMeta({
@@ -50,12 +50,12 @@ const carouselStories = computed(() => stories.value.slice(0, 5))
 
 const heroImages = computed(() => {
   const pool = [
-    featuredProduct.value?.image,
-    officialProducts.value[1]?.image,
-    communityProducts.value[0]?.image,
-    stories.value[0]?.image,
-    presets.value[0]?.image,
-    presets.value[1]?.image,
+    featuredProduct.value?.imageUrl,
+    officialProducts.value[1]?.imageUrl,
+    communityProducts.value[0]?.imageUrl,
+    stories.value[0]?.imageUrl,
+    presets.value[0]?.imageUrl,
+    presets.value[1]?.imageUrl,
   ].filter(Boolean)
 
   return Array.from({ length: 4 }, (_, index) => pool[index] ?? null)
@@ -163,8 +163,8 @@ function blogExcerpt(excerpt: string, body: string) {
           >
             <div class="relative mb-3 aspect-square overflow-hidden rounded-xl bg-[#f5f6f2]">
               <img
-                v-if="preset.image"
-                :src="preset.image"
+                v-if="preset.imageUrl"
+                :src="getImageUrl(preset.imageUrl, 360) || undefined"
                 :alt="preset.name"
                 class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
               />
@@ -201,7 +201,7 @@ function blogExcerpt(excerpt: string, body: string) {
           <RevealBlock v-for="(post, index) in blogCards.slice(0, 4)" :key="post._id" as="article" :delay="index * 70" origin="up" class="gm-card-lift group">
             <NuxtLink :to="`/blog/${post._id}`" class="block">
               <div class="mb-4 aspect-[4/3] overflow-hidden rounded-xl bg-[#eef4e8]">
-                <img v-if="post.image" :src="toOptimizedImageUrl(post.image, { width: 960, height: 720, quality: 72 }) || undefined" :alt="post.title" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" decoding="async" width="960" height="720" />
+                <img v-if="post.imageUrl" :src="getImageUrl(post.imageUrl, 960) || undefined" :alt="post.title" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" decoding="async" width="960" height="720" />
                 <div v-else class="flex h-full w-full items-center justify-center text-gm-primary">
                   <span class="material-symbols-outlined gm-visual-icon">edit_square</span>
                 </div>
@@ -246,7 +246,7 @@ function blogExcerpt(excerpt: string, body: string) {
               class="w-[calc(50%-0.5rem)]"
             >
               <div class="gm-card-lift mb-3 aspect-square overflow-hidden rounded-xl bg-[#f5f6f2]">
-                <img v-if="story.image" :src="toOptimizedImageUrl(story.image, { width: 720, height: 720, quality: 72 }) || undefined" :alt="story.title" class="h-full w-full object-cover transition duration-300 hover:scale-105" loading="lazy" decoding="async" width="720" height="720" />
+                <img v-if="story.imageUrl" :src="getImageUrl(story.imageUrl, 720) || undefined" :alt="story.title" class="h-full w-full object-cover transition duration-300 hover:scale-105" loading="lazy" decoding="async" width="720" height="720" />
                 <div v-else class="flex h-full items-center justify-center text-gm-primary">
                   <span class="material-symbols-outlined gm-visual-icon">forum</span>
                 </div>
@@ -271,7 +271,7 @@ function blogExcerpt(excerpt: string, body: string) {
                 :class="carouselStories.length <= 3 ? 'max-w-80' : ''"
               >
                 <div class="gm-card-lift mb-3 aspect-square overflow-hidden rounded-xl bg-[#f5f6f2]">
-                  <img v-if="story.image" :src="toOptimizedImageUrl(story.image, { width: 720, height: 720, quality: 72 }) || undefined" :alt="story.title" class="h-full w-full object-cover transition duration-300 hover:scale-105" loading="lazy" decoding="async" width="720" height="720" />
+                  <img v-if="story.imageUrl" :src="getImageUrl(story.imageUrl, 720) || undefined" :alt="story.title" class="h-full w-full object-cover transition duration-300 hover:scale-105" loading="lazy" decoding="async" width="720" height="720" />
                   <div v-else class="flex h-full items-center justify-center text-gm-primary">
                     <span class="material-symbols-outlined gm-visual-icon">forum</span>
                   </div>

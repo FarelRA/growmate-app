@@ -1,4 +1,4 @@
-import type { Ctx, QueryCtx, MutationCtx, SensorKind } from '../types'
+import type { QueryCtx, MutationCtx, SensorKind } from '../types'
 import type { Id } from '../_generated/dataModel'
 import { ADC_RAW_MAX, ADC_RAW_MIN, plantStagePoints } from '../types'
 import type { PlantStageValue } from '../types'
@@ -61,18 +61,6 @@ export function getAutomationModeLabel(device: { autoWatering: boolean; autoLigh
   if (device.autoWatering && device.autoLighting) return 'Otomasi penuh'
   if (device.autoWatering || device.autoLighting) return 'Otomasi sebagian'
   return 'Kontrol manual'
-}
-
-export async function resolveStoredImageUrl(
-  ctx: Ctx,
-  imageStorageId?: Id<'_storage'> | null,
-  fallbackImage?: string | null,
-) {
-  if (imageStorageId) {
-    const storageUrl = await ctx.storage.getUrl(imageStorageId)
-    if (storageUrl) return storageUrl
-  }
-  return fallbackImage ?? null
 }
 
 export function isDeviceOnline(lastSeen: number): boolean {

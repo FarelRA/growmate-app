@@ -2,7 +2,7 @@ import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import type { DeviceDoc, PlantStageValue, DeviceAutomationKey, SensorKind } from './types'
 import {
-  getCurrentUser, requireUser, resolveStoredImageUrl, recordGrowEvent, recordPlantImage,
+  getCurrentUser, requireUser, recordGrowEvent, recordPlantImage,
   addUserActivity,
   getRecentGrowEvents, getRecentAutomationLogs, getPlantImageHistory,
   getSensorHistory, getUserDevices, requireOwnedDevice, getSelectedDevice, archivePlant,
@@ -67,7 +67,7 @@ export const assignPlantToDevice = mutation({
     sensorProfile: v.optional(plantSensorProfile),
     lifecycleProfile: v.optional(lifecycleProfileValidator),
     location: v.optional(v.string()),
-    imageStorageId: v.optional(v.id('_storage')),
+    imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
@@ -83,7 +83,6 @@ export const assignPlantToDevice = mutation({
     const wateringThreshold = args.wateringThreshold ?? device.wateringThreshold
     const lightingThreshold = args.lightingThreshold ?? device.lightingThreshold
     const sensorProfile = normalizePlantSensorProfile(args.sensorProfile)
-    const image = await resolveStoredImageUrl(ctx, args.imageStorageId)
 
     const plantId = await ctx.db.insert('plants', {
       deviceId: device._id,
@@ -95,8 +94,7 @@ export const assignPlantToDevice = mutation({
       sensorProfile,
       lifecycleProfile,
       location: args.location?.trim() || device.name,
-      ...(image ? { image } : {}),
-      ...(args.imageStorageId ? { imageStorageId: args.imageStorageId } : {}),
+      imageUrl: args.imageUrl || undefined,
       archived: false,
       plantedAt: now,
       createdAt: now,
@@ -128,11 +126,11 @@ export const assignPlantToDevice = mutation({
       timestamp: now,
     })
 
-    if (image && args.imageStorageId) {
+    if (args.imageUrl) {
       await recordPlantImage(ctx, {
         plantId,
         deviceId: device._id,
-        imageStorageId: args.imageStorageId,
+        imageUrl: args.imageUrl,
         source: 'manual',
         capturedAt: now,
       })

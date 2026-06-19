@@ -44,7 +44,7 @@ export function useMarketplace() {
   const { mutate: sendMarketplaceMessage } = useConvexMutation(api.marketplace.sendMarketplaceMessage)
   const { mutate: replyMarketplaceThread } = useConvexMutation(api.marketplace.replyMarketplaceThread)
   const { mutate: markMarketplaceThreadRead } = useConvexMutation(api.marketplace.markMarketplaceThreadRead)
-  const { mutate: generateImageUploadUrl } = useConvexMutation(api.images.generateImageUploadUrl)
+
 
   const savingDraft = ref(false)
   const publishingDraftId = ref<string | null>(null)
@@ -163,7 +163,7 @@ export function useMarketplace() {
       contactPreference: draft.contactPreference,
     }
     draftImageFile.value = null
-    draftImagePreview.value = draft.image
+    draftImagePreview.value = draft.imageUrl
   }
 
   function editListing(listing: MarketplaceListing) {
@@ -181,7 +181,7 @@ export function useMarketplace() {
       contactPreference: listing.contactPreference ?? 'chat',
     }
     draftImageFile.value = null
-    draftImagePreview.value = listing.image
+    draftImagePreview.value = listing.imageUrl
   }
 
   function handleDraftImageChange(event: Event) {
@@ -205,8 +205,8 @@ export function useMarketplace() {
   async function handleSaveDraft() {
     savingDraft.value = true
     try {
-      const imageStorageId = draftImageFile.value
-        ? await uploadImageFile(draftImageFile.value, () => generateImageUploadUrl({}) as Promise<string>)
+      const imageUrl = draftImageFile.value
+        ? await uploadImageFile(draftImageFile.value)
         : undefined
       if (editingListingId.value) {
         await updateMarketplaceListing({
@@ -218,7 +218,7 @@ export function useMarketplace() {
           quantityUnit: draftForm.value.quantityUnit,
           price: draftForm.value.price,
           priceUnit: draftForm.value.priceUnit,
-          imageStorageId: imageStorageId as Id<'_storage'>,
+          imageUrl: imageUrl ?? undefined,
           locationLabel: draftForm.value.locationLabel,
           contactPreference: draftForm.value.contactPreference,
         })
@@ -227,7 +227,7 @@ export function useMarketplace() {
         await saveMarketplaceDraft({
           ...draftForm.value,
           draftId: draftForm.value.draftId ? (draftForm.value.draftId as Id<'listingDrafts'>) : undefined,
-          imageStorageId: imageStorageId as Id<'_storage'>,
+          imageUrl: imageUrl ?? undefined,
         })
         toast.success(draftForm.value.draftId ? 'Draft diperbarui' : 'Draft disimpan')
       }

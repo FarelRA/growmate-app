@@ -1,5 +1,5 @@
 import { v } from 'convex/values'
-import { internalMutation, type MutationCtx } from './_generated/server'
+import { mutation, type MutationCtx } from './_generated/server'
 import type { DeviceDoc, PlantDoc, SensorDoc, SensorKind } from './types'
 import {
   ensureDeviceExists, getQueuedDeviceCommands, buildDeviceCommandList, buildQueuedPumpAction,
@@ -190,7 +190,7 @@ function evaluateLightingRule(
   return { shouldActivate, nextLightEnabled, effectiveThreshold, lightValue }
 }
 
-export const updateSensorData = internalMutation({
+export const ingestSensorData = mutation({
   args: {
     deviceId: v.string(),
     firmwareVersion: v.optional(v.string()),
@@ -323,7 +323,7 @@ export const updateSensorData = internalMutation({
   },
 })
 
-export const clearDeliveredDeviceCommands = internalMutation({
+export const clearDeviceCommands = mutation({
   args: {
     deviceId: v.string(),
     commands: v.array(v.union(v.literal('pump'), v.literal('light'))),
@@ -359,10 +359,10 @@ export const clearDeliveredDeviceCommands = internalMutation({
   },
 })
 
-export const updatePlantImage = internalMutation({
+export const ingestCameraImage = mutation({
   args: {
     deviceId: v.string(),
-    imageStorageId: v.id('_storage'),
+    imageUrl: v.string(),
     capturedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -374,15 +374,14 @@ export const updatePlantImage = internalMutation({
     await recordPlantImage(ctx, {
       plantId: activePlant?._id,
       deviceId: device._id,
-      imageStorageId: args.imageStorageId,
+      imageUrl: args.imageUrl,
       source: 'camera',
       capturedAt,
     })
 
     if (activePlant) {
       await ctx.db.patch(activePlant._id, {
-        imageStorageId: args.imageStorageId,
-        image: undefined,
+        imageUrl: args.imageUrl,
         updatedAt: capturedAt,
       })
 
@@ -398,6 +397,6 @@ export const updatePlantImage = internalMutation({
       })
     }
 
-    return { success: true, imageStorageId: args.imageStorageId }
+    return { success: true, imageUrl: args.imageUrl }
   },
 })

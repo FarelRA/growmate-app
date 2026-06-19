@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { api } from '@/lib/api'
-import { toOptimizedImageUrl } from '@/lib/images'
+import { getImageUrl } from '@/lib/images'
 import { createBreadcrumbSchema } from '@/lib/seo'
 
 definePageMeta({ public: true })
@@ -33,7 +33,7 @@ const { data } = await usePublicConvexQuery('public-marketplace-products', api.m
 
 const officialProducts = computed(() => data.value?.official ?? [])
 const featured = computed(() => data.value?.featured ?? officialProducts.value[0] ?? null)
-const featuredImage = computed(() => toOptimizedImageUrl(featured.value?.image, { width: 1200, height: 900, quality: 74 }))
+const featuredImage = computed(() => getImageUrl(featured.value?.imageUrl, 1200))
 const filteredProducts = computed(() => {
   const search = query.value.trim().toLowerCase()
   if (!search) return officialProducts.value
@@ -60,7 +60,7 @@ const filteredProducts = computed(() => {
 
         <RevealBlock as="div" origin="left" :delay="120" class="gm-card-lift overflow-hidden rounded-[2rem] bg-white p-5 shadow-[0_18px_60px_rgba(15,23,42,0.06)] sm:p-6">
           <div class="aspect-[4/3] overflow-hidden rounded-[1.5rem] bg-[#eef5ea]">
-            <img v-if="featured?.image" :src="featuredImage || undefined" :alt="featured.title" class="h-full w-full object-cover" fetchpriority="high" decoding="async" width="1200" height="900" />
+            <img v-if="featured?.imageUrl" :src="featuredImage || undefined" :alt="featured.title" class="h-full w-full object-cover" fetchpriority="high" decoding="async" width="1200" height="900" />
             <div v-else class="flex h-full items-center justify-center text-gm-primary">
               <span class="material-symbols-outlined gm-visual-icon">devices</span>
             </div>

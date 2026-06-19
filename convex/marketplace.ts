@@ -1,6 +1,6 @@
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
-import { getCurrentUser, requireUser, resolveStoredImageUrl, enrichMarketplaceProduct, getMarketplaceThreadsForUser, formatCurrencyIdr } from './helpers'
+import { getCurrentUser, requireUser, enrichMarketplaceProduct, getMarketplaceThreadsForUser, formatCurrencyIdr } from './helpers'
 
 export const marketplace = query({
   args: {},
@@ -65,16 +65,13 @@ export const marketplace = query({
       official,
       community,
       featured: official.find((product) => product.featured) ?? official[0] ?? null,
-      listingDrafts: await Promise.all(
-        listingDrafts.map(async (draft) => ({
-          ...draft,
-          image:
-            (await resolveStoredImageUrl(ctx, draft.imageStorageId, draft.image)) ?? draft.image,
-          quantityLabel: `${draft.quantity} ${draft.quantityUnit}`,
-          priceLabel: `${formatCurrencyIdr(draft.price)} / ${draft.priceUnit}`,
-          statusLabel: draft.status[0]!.toUpperCase() + draft.status.slice(1),
-        })),
-      ),
+      listingDrafts: listingDrafts.map((draft) => ({
+        ...draft,
+        imageUrl: draft.imageUrl ?? null,
+        quantityLabel: `${draft.quantity} ${draft.quantityUnit}`,
+        priceLabel: `${formatCurrencyIdr(draft.price)} / ${draft.priceUnit}`,
+        statusLabel: draft.status[0]!.toUpperCase() + draft.status.slice(1),
+      })),
       myListings,
       threads: marketplaceThreads,
     }
@@ -101,7 +98,7 @@ export const saveMarketplaceDraft = mutation({
     quantityUnit: v.string(),
     price: v.number(),
     priceUnit: v.string(),
-    imageStorageId: v.optional(v.id('_storage')),
+    imageUrl: v.optional(v.string()),
     locationLabel: v.string(),
     contactPreference: v.union(v.literal('chat'), v.literal('pickup'), v.literal('delivery')),
   },
@@ -117,19 +114,17 @@ export const saveMarketplaceDraft = mutation({
     if (args.price < 0) {
       throw new Error('Harga tidak boleh bernilai negatif')
     }
-    let image = await resolveStoredImageUrl(ctx, args.imageStorageId)
-    let imageStorageId = args.imageStorageId
+    let imageUrl = args.imageUrl
 
     if (args.draftId) {
       const existing = await ctx.db.get(args.draftId)
       if (!existing || String(existing.userId) !== String(user._id)) {
         throw new Error('Draft tidak ditemukan')
       }
-      image = image ?? existing.image
-      imageStorageId = imageStorageId ?? existing.imageStorageId
+      imageUrl = imageUrl ?? existing.imageUrl
     }
 
-    if (!image) {
+    if (!imageUrl) {
       throw new Error('Gambar penawaran wajib diisi')
     }
 
@@ -142,8 +137,7 @@ export const saveMarketplaceDraft = mutation({
       quantityUnit: args.quantityUnit.trim(),
       price: args.price,
       priceUnit: args.priceUnit.trim(),
-      image,
-      imageStorageId,
+      imageUrl,
       locationLabel: args.locationLabel.trim(),
       contactPreference: args.contactPreference,
       updatedAt: now,
@@ -189,8 +183,7 @@ export const publishMarketplaceDraft = mutation({
       priceUnit: draft.priceUnit,
       locationLabel: draft.locationLabel,
       contactPreference: draft.contactPreference,
-      image: draft.image,
-      imageStorageId: draft.imageStorageId,
+      imageUrl: draft.imageUrl,
       featured: false,
       shopeeUrl: undefined,
       createdAt: now,
@@ -247,7 +240,7 @@ export const updateMarketplaceListing = mutation({
     quantityUnit: v.string(),
     price: v.number(),
     priceUnit: v.string(),
-    imageStorageId: v.optional(v.id('_storage')),
+    imageUrl: v.optional(v.string()),
     locationLabel: v.string(),
     contactPreference: v.union(v.literal('chat'), v.literal('pickup'), v.literal('delivery')),
   },
@@ -268,8 +261,7 @@ export const updateMarketplaceListing = mutation({
       throw new Error('Harga tidak boleh bernilai negatif')
     }
 
-    const image = (await resolveStoredImageUrl(ctx, args.imageStorageId)) ?? product.image
-    const imageStorageId = args.imageStorageId ?? product.imageStorageId
+    const imageUrl = args.imageUrl ?? product.imageUrl
 
     await ctx.db.patch(args.productId, {
       title: args.title.trim(),
@@ -279,8 +271,7 @@ export const updateMarketplaceListing = mutation({
       quantityUnit: args.quantityUnit.trim(),
       price: args.price,
       priceUnit: args.priceUnit.trim(),
-      image,
-      imageStorageId,
+      imageUrl,
       locationLabel: args.locationLabel.trim(),
       contactPreference: args.contactPreference,
       updatedAt: Date.now(),
@@ -378,7 +369,7 @@ export const sendMarketplaceMessage = mutation({
         buyerName: buyer?.name,
         sellerName: seller?.name,
         productTitle: product.title,
-        productImage: product.image,
+        productImage: product.imageUrl,
         productStatus: product.status,
         lastMessagePreview: body.slice(0, 160),
         lastMessageAt: now,

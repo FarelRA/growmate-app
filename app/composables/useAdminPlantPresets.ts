@@ -19,7 +19,6 @@ import type { AdminTab } from './useAdminDevices'
 export function useAdminPlantPresets(activeTab: Ref<AdminTab>) {
   const { mutate: savePlantPreset } = useConvexMutation(api.admin.adminSavePlantPreset)
   const { mutate: deletePlantPreset } = useConvexMutation(api.admin.adminDeletePlantPreset)
-  const { mutate: generateImageUploadUrl } = useConvexMutation(api.images.generateImageUploadUrl)
 
   const img = useImageUpload()
 
@@ -85,7 +84,7 @@ export function useAdminPlantPresets(activeTab: Ref<AdminTab>) {
     lightingThreshold: number
     sensorProfile: PlantSensorProfile
     lifecycleProfile: LifecycleProfile
-    image: string | null
+    imageUrl: string | null
   }) {
     plantPresetForm.value = {
       presetId: preset._id,
@@ -103,14 +102,14 @@ export function useAdminPlantPresets(activeTab: Ref<AdminTab>) {
       lifecycleProfile: { ...preset.lifecycleProfile },
     }
     img.clearImage()
-    img.setPreview(preset.image)
+    img.setPreview(preset.imageUrl)
     activeTab.value = 'plants'
   }
 
   async function handleSavePlantPreset() {
     savingPlantPreset.value = true
     try {
-      const imageStorageId = img.file.value ? await uploadImageFile(img.file.value, () => generateImageUploadUrl({}) as Promise<string>) : undefined
+      const imageUrl = img.file.value ? await uploadImageFile(img.file.value) : undefined
       await savePlantPreset({
         key: plantPresetForm.value.key || undefined,
         name: plantPresetForm.value.name,
@@ -138,7 +137,7 @@ export function useAdminPlantPresets(activeTab: Ref<AdminTab>) {
           maturitySenescenceDays: Number(plantPresetForm.value.lifecycleProfile.maturitySenescenceDays),
         },
         ...(plantPresetForm.value.presetId ? { presetId: plantPresetForm.value.presetId as Id<'plantCatalog'> } : {}),
-        ...(imageStorageId ? { imageStorageId: imageStorageId as Id<'_storage'> } : {}),
+        ...(imageUrl ? { imageUrl: imageUrl } : {}),
       })
       toast.success(plantPresetForm.value.presetId ? 'Preset tanaman diperbarui' : 'Preset tanaman dibuat')
       resetPlantPresetForm()

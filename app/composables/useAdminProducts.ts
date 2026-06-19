@@ -13,7 +13,6 @@ export function useAdminProducts(activeTab: Ref<AdminTab>) {
   const { mutate: saveOfficialProduct } = useConvexMutation(api.admin.adminSaveOfficialProduct)
   const { mutate: updateOfficialProductStatus } = useConvexMutation(api.admin.adminUpdateOfficialProductStatus)
   const { mutate: deleteOfficialProduct } = useConvexMutation(api.admin.adminDeleteOfficialProduct)
-  const { mutate: generateImageUploadUrl } = useConvexMutation(api.images.generateImageUploadUrl)
 
   const img = useImageUpload()
 
@@ -61,7 +60,7 @@ export function useAdminProducts(activeTab: Ref<AdminTab>) {
     featured: boolean
     status: 'active' | 'reserved' | 'sold' | 'archived'
     shopeeUrl: string | null
-    image: string | null
+    imageUrl: string | null
   }) {
     productForm.value = {
       productId: product._id,
@@ -76,14 +75,14 @@ export function useAdminProducts(activeTab: Ref<AdminTab>) {
       shopeeUrl: product.shopeeUrl ?? '',
     }
     img.clearImage()
-    img.setPreview(product.image)
+    img.setPreview(product.imageUrl)
     activeTab.value = 'products'
   }
 
   async function handleSaveProduct() {
     savingProduct.value = true
     try {
-      const imageStorageId = img.file.value ? await uploadImageFile(img.file.value, () => generateImageUploadUrl({}) as Promise<string>) : undefined
+      const imageUrl = img.file.value ? await uploadImageFile(img.file.value) : undefined
       await saveOfficialProduct({
         title: productForm.value.title,
         description: productForm.value.description,
@@ -95,7 +94,7 @@ export function useAdminProducts(activeTab: Ref<AdminTab>) {
         status: productForm.value.status,
         shopeeUrl: productForm.value.shopeeUrl || undefined,
         ...(productForm.value.productId ? { productId: productForm.value.productId as Id<'products'> } : {}),
-        ...(imageStorageId ? { imageStorageId: imageStorageId as Id<'_storage'> } : {}),
+        ...(imageUrl ? { imageUrl: imageUrl } : {}),
       })
       toast.success(productForm.value.productId ? 'Produk resmi diperbarui' : 'Produk resmi dibuat')
       resetProductForm()

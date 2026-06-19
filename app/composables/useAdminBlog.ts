@@ -13,7 +13,6 @@ import type { AdminTab } from './useAdminDevices'
 export function useAdminBlog(activeTab: Ref<AdminTab>) {
   const { mutate: saveBlogPost } = useConvexMutation(api.blog.adminSaveBlogPost)
   const { mutate: deleteBlogPost } = useConvexMutation(api.blog.adminDeleteBlogPost)
-  const { mutate: generateImageUploadUrl } = useConvexMutation(api.images.generateImageUploadUrl)
 
   const img = useImageUpload()
 
@@ -50,7 +49,7 @@ export function useAdminBlog(activeTab: Ref<AdminTab>) {
     body: string
     published: boolean
     featured: boolean
-    image: string | null
+    imageUrl: string | null
   }) {
     blogPostForm.value = {
       postId: post._id,
@@ -61,14 +60,14 @@ export function useAdminBlog(activeTab: Ref<AdminTab>) {
       featured: post.featured,
     }
     img.clearImage()
-    img.setPreview(post.image)
+    img.setPreview(post.imageUrl)
     activeTab.value = 'blog'
   }
 
   async function handleSaveBlogPost() {
     savingBlogPost.value = true
     try {
-      const imageStorageId = img.file.value ? await uploadImageFile(img.file.value, () => generateImageUploadUrl({}) as Promise<string>) : undefined
+      const imageUrl = img.file.value ? await uploadImageFile(img.file.value) : undefined
       await saveBlogPost({
         title: blogPostForm.value.title,
         excerpt: blogPostForm.value.excerpt,
@@ -76,7 +75,7 @@ export function useAdminBlog(activeTab: Ref<AdminTab>) {
         published: blogPostForm.value.published,
         featured: blogPostForm.value.featured,
         ...(blogPostForm.value.postId ? { postId: blogPostForm.value.postId as Id<'blogPosts'> } : {}),
-        ...(imageStorageId ? { imageStorageId: imageStorageId as Id<'_storage'> } : {}),
+        ...(imageUrl ? { imageUrl: imageUrl } : {}),
       })
       toast.success(blogPostForm.value.postId ? 'Artikel blog diperbarui' : 'Artikel blog dibuat')
       resetBlogPostForm()

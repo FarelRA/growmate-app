@@ -14,7 +14,6 @@ import {
   type PlantLifecycleStage,
 } from '@/lib/plants'
 import { readSelectedImage, uploadImageFile } from '@/lib/uploads'
-import type { Id } from '@/lib/convex-types'
 import { usePlantSearch } from '@/composables/usePlantSearch'
 
 definePageMeta({
@@ -45,7 +44,7 @@ const { data: setupStatus } = useConvexQuery(api.users.checkSetupStatus, {})
 const { data: devices } = useConvexQuery(api.devices.userDevices, {})
 const { data: plantLibrary } = useConvexQuery(api.plants.plantLibrary, {})
 const { mutate: assignPlantToDevice } = useConvexMutation(api.devices.assignPlantToDevice)
-const { mutate: generateImageUploadUrl } = useConvexMutation(api.images.generateImageUploadUrl)
+
 
 const presets = computed(() => plantLibrary.value ?? [])
 
@@ -98,7 +97,7 @@ watch(
     plantSpecies.value = preset.species
     growthStage.value = preset.growthStage
     location.value = preset.location
-    imagePreview.value = preset.image
+    imagePreview.value = preset.imageUrl
     imageFile.value = null
     wateringThreshold.value = preset.wateringThreshold
     lightingThreshold.value = preset.lightingThreshold
@@ -131,8 +130,8 @@ async function handleAssignPlant() {
 
   saving.value = true
   try {
-    const imageStorageId = imageFile.value
-      ? await uploadImageFile(imageFile.value, () => generateImageUploadUrl({}))
+    const imageUrl = imageFile.value
+      ? await uploadImageFile(imageFile.value)
       : undefined
 
     await assignPlantToDevice({
@@ -173,7 +172,7 @@ async function handleAssignPlant() {
         maturitySenescenceDays: Number(lifecycleProfile.value.maturitySenescenceDays),
       },
       location: location.value.trim() || undefined,
-      imageStorageId: imageStorageId as Id<'_storage'>,
+      imageUrl: imageUrl ?? undefined,
     })
 
     setActiveDeviceId(deviceId)

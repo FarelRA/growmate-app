@@ -1,7 +1,7 @@
 import type { Ctx, SensorKind, SensorStatus, SensorRange, PlantSensorProfile, PlantHealth, MetricPoint } from '../types'
 import { sensorKinds } from '../types'
 import type { Id } from '../_generated/dataModel'
-import { formatTimestamp, resolveStoredImageUrl, isDeviceOnline } from './generic'
+import { formatTimestamp, isDeviceOnline } from './generic'
 
 interface SensorData {
   kind: SensorKind
@@ -262,7 +262,7 @@ export async function getPlantImageHistory(ctx: Ctx, plantId: Id<'plants'>, limi
   return await Promise.all(
     images.map(async (image) => ({
       _id: image._id,
-      image: await resolveStoredImageUrl(ctx, image.imageStorageId),
+      imageUrl: image.imageUrl ?? null,
       source: image.source,
       capturedAt: image.capturedAt,
       capturedAtLabel: formatTimestamp(image.capturedAt),

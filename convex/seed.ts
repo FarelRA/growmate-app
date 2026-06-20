@@ -37,7 +37,13 @@ async function uploadSeedImages(
   return `${endpoint}/${bucket}/${hash}/original.webp`;
 }
 
-function getSensorProfile(v: any) {
+function getSensorProfile(v: {
+  soil: { min: number; max: number };
+  light: { min: number; max: number };
+  temperature: { min: number; max: number };
+  air: { min: number; max: number };
+  water: { min: number; max: number };
+}) {
   return {
     soil: { min: v.soil.min, max: v.soil.max },
     light: { min: v.light.min, max: v.light.max },
@@ -47,7 +53,14 @@ function getSensorProfile(v: any) {
   };
 }
 
-function getLifecycleProfile(v: any) {
+function getLifecycleProfile(v: {
+  seedDormancyDays: number;
+  germinationDays: number;
+  seedlingDevelopmentDays: number;
+  vegetativeGrowthDays: number;
+  floweringReproductionDays: number;
+  maturitySenescenceDays: number;
+}) {
   return {
     seedDormancyDays: v.seedDormancyDays,
     germinationDays: v.germinationDays,

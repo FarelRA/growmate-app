@@ -10,6 +10,7 @@ import {
   defaultPlantSensorProfile,
   lifecycleStageOptions,
   type LifecycleProfile,
+  type PlantPreset,
   type PlantSensorProfile,
   type PlantLifecycleStage,
 } from '@/lib/plants'
@@ -46,7 +47,7 @@ const { data: plantLibrary } = useConvexQuery(api.plants.plantLibrary, {})
 const { mutate: assignPlantToDevice } = useConvexMutation(api.devices.assignPlantToDevice)
 
 
-const presets = computed(() => plantLibrary.value ?? [])
+const presets = computed<PlantPreset[]>(() => plantLibrary.value ?? [])
 
 const {
   selectedPresetKey,

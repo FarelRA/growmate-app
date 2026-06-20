@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue'
+import { type ComputedRef, computed, ref, watch } from 'vue'
 import { lifecycleStageOptions, type PlantPreset } from '@/lib/plants'
 
 const categories = [
@@ -13,7 +13,7 @@ const categories = [
 
 export type PlantCategory = (typeof categories)[number]
 
-export function usePlantSearch(presetsRef: ReturnType<typeof computed<PlantPreset[]>>) {
+export function usePlantSearch(presetsRef: ComputedRef<PlantPreset[]>) {
   const selectedPresetKey = ref('basil')
   const librarySearch = ref('')
   const categoryFilter = ref<PlantCategory>('all')

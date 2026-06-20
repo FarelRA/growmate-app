@@ -71,6 +71,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Start Convex backend
+        run: |
+          docker run --rm -d --name convex-backend \
+            -e INSTANCE_NAME=growmate \
+            -e INSTANCE_SECRET=9019abf8cbe24bbdacf9cf2840a55bc4144e895d387856a6ca55423b30c506fa \
+            -p 3210:3210 \
+            ghcr.io/get-convex/convex-backend:latest
+          for i in $(seq 1 30); do
+            if curl -s http://127.0.0.1:3210 > /dev/null 2>&1; then
+              echo "Convex backend ready"
+              break
+            fi
+            echo "Waiting for Convex backend... (attempt $i)"
+            sleep 2
+          done
+
+      - name: Generate Convex types
+        run: |
+          ADMIN_KEY=$(docker exec convex-backend /convex/generate_admin_key.sh | tail -1)
+          CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3210 \
+          CONVEX_SELF_HOSTED_ADMIN_KEY="$ADMIN_KEY" \
+          npx convex deploy --yes
+
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/login-action@v3
@@ -98,3 +128,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f convex-backend 2>/dev/null || true

@@ -10,6 +10,7 @@
 
 import type * as CustomPassword from "../CustomPassword.js";
 import type * as admin from "../admin.js";
+import type * as adminSeed from "../adminSeed.js";
 import type * as assistant from "../assistant.js";
 import type * as auth from "../auth.js";
 import type * as blog from "../blog.js";
@@ -45,6 +46,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   CustomPassword: typeof CustomPassword;
   admin: typeof admin;
+  adminSeed: typeof adminSeed;
   assistant: typeof assistant;
   auth: typeof auth;
   blog: typeof blog;

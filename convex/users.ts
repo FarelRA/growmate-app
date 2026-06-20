@@ -1,5 +1,5 @@
 import { v, ConvexError } from 'convex/values'
-import { mutation, query } from './_generated/server'
+import { mutation, query, internalMutation, internalQuery } from './_generated/server'
 import type { DeviceDoc } from './types'
 import {
   getCurrentUser, requireUser,
@@ -220,5 +220,25 @@ export const updateCurrentUserProfile = mutation({
     })
 
     return { success: true }
+  },
+})
+
+export const adminLookupByEmail = internalQuery({
+  args: { email: v.string() },
+  handler: async (ctx, { email }) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .first()
+  },
+})
+
+export const internalSetAdminRole = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    await ctx.db.patch(userId, {
+      role: "admin",
+      updatedAt: Date.now(),
+    })
   },
 })

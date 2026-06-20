@@ -198,6 +198,8 @@ describe('POST /api/v1/camera', () => {
         { size: 50, buffer: Buffer.from('s50') },
         { size: 200, buffer: Buffer.from('s200') },
         { size: 400, buffer: Buffer.from('s400') },
+        { size: 800, buffer: Buffer.from('s800') },
+        { size: 1200, buffer: Buffer.from('s1200') },
         { size: 'original', buffer: Buffer.from('orig') },
       ])
       mockUploadFile.mockResolvedValue(undefined)
@@ -217,13 +219,37 @@ describe('POST /api/v1/camera', () => {
       const result = await cameraHandler(event)
 
       expect(mockGenerateHash).toHaveBeenCalledWith(Buffer.from(rawBody))
-      expect(mockProcessImage).toHaveBeenCalledWith(Buffer.from(rawBody), [50, 200, 400])
+      expect(mockProcessImage).toHaveBeenCalledWith(Buffer.from(rawBody), [50, 200, 400, 800, 1200])
 
-      expect(mockUploadFile).toHaveBeenCalledTimes(4)
+      expect(mockUploadFile).toHaveBeenCalledTimes(6)
       expect(mockUploadFile).toHaveBeenCalledWith(
         'images',
         'camera-hash-1234/50w.webp',
         Buffer.from('s50'),
+        'image/webp',
+      )
+      expect(mockUploadFile).toHaveBeenCalledWith(
+        'images',
+        'camera-hash-1234/200w.webp',
+        Buffer.from('s200'),
+        'image/webp',
+      )
+      expect(mockUploadFile).toHaveBeenCalledWith(
+        'images',
+        'camera-hash-1234/400w.webp',
+        Buffer.from('s400'),
+        'image/webp',
+      )
+      expect(mockUploadFile).toHaveBeenCalledWith(
+        'images',
+        'camera-hash-1234/800w.webp',
+        Buffer.from('s800'),
+        'image/webp',
+      )
+      expect(mockUploadFile).toHaveBeenCalledWith(
+        'images',
+        'camera-hash-1234/1200w.webp',
+        Buffer.from('s1200'),
         'image/webp',
       )
       expect(mockUploadFile).toHaveBeenCalledWith(

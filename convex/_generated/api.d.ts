@@ -10,7 +10,6 @@
 
 import type * as CustomPassword from "../CustomPassword.js";
 import type * as admin from "../admin.js";
-import type * as adminSeed from "../adminSeed.js";
 import type * as assistant from "../assistant.js";
 import type * as auth from "../auth.js";
 import type * as blog from "../blog.js";
@@ -32,6 +31,7 @@ import type * as marketplace from "../marketplace.js";
 import type * as notifications from "../notifications.js";
 import type * as openai from "../openai.js";
 import type * as plants from "../plants.js";
+import type * as seedAdmin from "../seedAdmin.js";
 import type * as sensors from "../sensors.js";
 import type * as support from "../support.js";
 import type * as types from "../types.js";
@@ -46,7 +46,6 @@ import type {
 declare const fullApi: ApiFromModules<{
   CustomPassword: typeof CustomPassword;
   admin: typeof admin;
-  adminSeed: typeof adminSeed;
   assistant: typeof assistant;
   auth: typeof auth;
   blog: typeof blog;
@@ -68,6 +67,7 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   openai: typeof openai;
   plants: typeof plants;
+  seedAdmin: typeof seedAdmin;
   sensors: typeof sensors;
   support: typeof support;
   types: typeof types;

@@ -31,7 +31,6 @@ jobs:
 
       - name: Typecheck
         run: bun run typecheck
-        continue-on-error: true
 
   docker:
     needs: test

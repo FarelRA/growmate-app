@@ -20,7 +20,7 @@ services:
       - traefik-data:/data
 
   growmate:
-    build: .
+    image: ghcr.io/FarelRA/growmate-app:latest
     environment:
       NUXT_PUBLIC_MINIO_BASE_URL: ${NUXT_PUBLIC_MINIO_BASE_URL}
       NUXT_PUBLIC_MINIO_BUCKET_IMAGE: ${NUXT_PUBLIC_MINIO_BUCKET_IMAGE}

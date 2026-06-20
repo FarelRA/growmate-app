@@ -4,7 +4,6 @@ import {
   getHeader,
   readMultipartFormData,
   readRawBody,
-  H3Error,
 } from 'h3'
 
 globalThis.defineEventHandler = defineEventHandler

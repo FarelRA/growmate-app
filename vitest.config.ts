@@ -8,11 +8,13 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname, 'app'),
       '~': resolve(__dirname, 'app'),
+      '~~': __dirname,
     },
   },
   test: {
     globals: true,
     include: ['tests/**/*.test.ts'],
     environment: 'node',
+    setupFiles: ['./tests/setup/h3-globals.ts'],
   },
 })

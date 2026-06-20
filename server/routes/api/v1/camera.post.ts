@@ -1,10 +1,10 @@
 import { api } from '~~/convex/_generated/api'
 import { useConvex } from '~~/server/utils/convex'
 import { processImage, generateHash } from '~~/server/utils/images'
-import { uploadImage } from '~~/server/utils/storage'
+import { uploadFile } from '~~/server/utils/storage'
 
 const DEVICE_API_KEY = process.env.DEVICE_API_KEY
-const MINIO_BUCKET = process.env.MINIO_BUCKET ?? 'growmate'
+const IMAGE_BUCKET = process.env.MINIO_BUCKET_IMAGE ?? 'images'
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024
 
 export default defineEventHandler(async (event) => {
@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
 
     const input = Buffer.from(rawBody)
     const hash = generateHash(input)
-    const pathPrefix = `uploads/${hash}`
+    const pathPrefix = hash
 
     const sizes = [50, 200, 400]
     const images = await processImage(input, sizes)
@@ -56,7 +56,7 @@ export default defineEventHandler(async (event) => {
         image.size === 'original'
           ? `${pathPrefix}/original.webp`
           : `${pathPrefix}/${image.size}w.webp`
-      await uploadImage(MINIO_BUCKET, key, image.buffer, 'image/webp')
+      await uploadFile(IMAGE_BUCKET, key, image.buffer, 'image/webp')
     }
 
     const convex = useConvex()

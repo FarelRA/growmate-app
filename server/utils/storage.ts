@@ -7,8 +7,7 @@ import {
 } from '@aws-sdk/client-s3'
 
 let _client: S3Client | null = null
-let _bucketPromise: Promise<void> | null = null
-let _bucketKnown = false
+const _bucketPromises = new Map<string, Promise<void>>()
 
 function getClient(): S3Client {
   if (!_client) {
@@ -25,25 +24,21 @@ function getClient(): S3Client {
   return _client
 }
 
-async function ensureBucket(bucket: string): Promise<void> {
-  if (_bucketKnown) return
+export async function ensureBucket(bucket: string): Promise<void> {
+  if (_bucketPromises.has(bucket)) return _bucketPromises.get(bucket)!
 
-  if (_bucketPromise) return _bucketPromise
-
-  _bucketPromise = (async () => {
+  const promise = (async () => {
     const client = getClient()
     try {
       await client.send(new HeadBucketCommand({ Bucket: bucket }))
-      _bucketKnown = true
       return
     } catch (error) {
       const is404 =
-        error instanceof Error &&
-        'name' in error
-        ? (error as { name: string }).name === 'NotFound'
-        : false
+        error instanceof Error && 'name' in error
+          ? (error as { name: string }).name === 'NotFound'
+          : false
       if (!is404) {
-        _bucketPromise = null
+        _bucketPromises.delete(bucket)
         throw error
       }
     }
@@ -60,20 +55,19 @@ async function ensureBucket(bucket: string): Promise<void> {
               Effect: 'Allow',
               Principal: { AWS: ['*'] },
               Action: ['s3:GetObject'],
-              Resource: [`arn:aws:s3:::${bucket}/uploads/*`],
+              Resource: [`arn:aws:s3:::${bucket}/*`],
             },
           ],
         }),
       }),
     )
-
-    _bucketKnown = true
   })()
 
-  return _bucketPromise
+  _bucketPromises.set(bucket, promise)
+  return promise
 }
 
-export async function uploadImage(
+export async function uploadFile(
   bucket: string,
   key: string,
   buffer: Buffer,
@@ -89,10 +83,4 @@ export async function uploadImage(
       ContentType: contentType,
     }),
   )
-}
-
-export function getPublicUrl(key: string): string {
-  const baseUrl =
-    process.env.NUXT_PUBLIC_IMAGE_BASE_URL ?? 'https://images.growmate.bond'
-  return `${baseUrl}/${key}`
 }

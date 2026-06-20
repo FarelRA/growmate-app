@@ -2,15 +2,12 @@ services:
   traefik:
     image: traefik:latest
     command:
-      # HTTP listener — redirect to HTTPS
+      # HTTPS listener
+      - --entrypoints.websecure.address=:443
+      # HTTP listener - redirect to HTTPS
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
-      # HTTPS listener
-      - --entrypoints.websecure.address=:443
-      # Docker provider — auto-detect services
-      - --providers.docker=true
-      - --providers.docker.exposedbydefault=false
       # Let's Encrypt via ACME
       - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
       - --certificatesresolvers.letsencrypt.acme.email=admin@growmate.bond
@@ -22,55 +19,62 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik-data:/data
 
-  app:
+  growmate:
     build: .
-    expose:
-      - "3000"
     environment:
+      NUXT_PUBLIC_MINIO_BASE_URL: ${NUXT_PUBLIC_MINIO_BASE_URL}
+      NUXT_PUBLIC_MINIO_BUCKET_IMAGE: ${NUXT_PUBLIC_MINIO_BUCKET_IMAGE}
       NUXT_PUBLIC_CONVEX_URL: ${NUXT_PUBLIC_CONVEX_URL}
-      NUXT_PUBLIC_IMAGE_BASE_URL: https://images.growmate.bond
+      CONVEX_SITE_URL: ${CONVEX_SITE_URL}
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_BUCKET: ${MINIO_BUCKET}
+      MINIO_BUCKET_IMAGE: ${MINIO_BUCKET_IMAGE}
       DEVICE_API_KEY: ${DEVICE_API_KEY}
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
     depends_on:
-      - minio
+      convex:
+        condition: service_started
+      minio:
+        condition: service_started
     labels:
       - traefik.enable=true
-      - traefik.http.routers.app.rule=Host(`growmate.bond`)
-      - traefik.http.routers.app.entrypoints=websecure
-      - traefik.http.routers.app.tls.certresolver=letsencrypt
+      - traefik.http.routers.growmate.rule=Host(`growmate.bond`)
+      - traefik.http.routers.growmate.entrypoints=websecure
+      - traefik.http.routers.growmate.tls.certresolver=letsencrypt
+      - traefik.http.services.growmate.loadbalancer.server.port=3000
 
   minio:
     image: minio/minio:latest
     command: server /data
-    expose:
-      - "9000"
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
     volumes:
       - minio-data:/data
     labels:
-      # Public image serving — images.growmate.bond/uploads/*
       - traefik.enable=true
-      - traefik.http.routers.minio-images.rule=Host(`images.growmate.bond`) && PathPrefix(`/uploads/`)
-      - traefik.http.routers.minio-images.entrypoints=websecure
-      - traefik.http.routers.minio-images.tls.certresolver=letsencrypt
-      - traefik.http.services.minio-images.loadbalancer.server.port=9000
-      - traefik.http.routers.minio-images.middlewares=minio-path
-      # Strip /growmate/ prefix so MinIO serves the correct bucket path:
-      # Request: images.growmate.bond/uploads/hash/400w.webp
-      # Backend: minio:9000/growmate/uploads/hash/400w.webp
-      - traefik.http.middlewares.minio-path.addprefix.prefix=/growmate
+      - traefik.http.routers.minio.rule=Host(`storage.growmate.bond`)
+      - traefik.http.routers.minio.entrypoints=websecure
+      - traefik.http.routers.minio.tls.certresolver=letsencrypt
+      - traefik.http.services.minio.loadbalancer.server.port=9000
+
+  convex:
+    image: ghcr.io/get-convex/convex-backend:latest
+    environment:
+      CONVEX_CLOUD_ORIGIN: ${CONVEX_CLOUD_ORIGIN}
+      CONVEX_SITE_ORIGIN: ${CONVEX_SITE_ORIGIN}
+      INSTANCE_NAME: ${CONVEX_INSTANCE_NAME}
+      INSTANCE_SECRET: ${CONVEX_INSTANCE_SECRET}
+    volumes:
+      - convex-data:/convex/data
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.convex.rule=Host(`convex.growmate.bond`)
+      - traefik.http.routers.convex.entrypoints=websecure
+      - traefik.http.routers.convex.tls.certresolver=letsencrypt
+      - traefik.http.services.convex.loadbalancer.server.port=3210
 
 volumes:
   minio-data:
   traefik-data:
+  convex-data:

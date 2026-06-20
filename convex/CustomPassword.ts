@@ -8,14 +8,14 @@ export function CustomPassword<DataModel extends GenericDataModel = GenericDataM
 ) {
   const base = Password(config) as ConvexCredentialsConfig & {
     options: {
-      authorize: (params: Record<string, unknown>, ctx: unknown) => Promise<unknown>
+      authorize?: (params: Record<string, unknown>, ctx: unknown) => Promise<unknown>
     }
   }
   // The real authorize function is stored in `options` by ConvexCredentials.
   // The library's `providerDefaults` calls `merge(provider, options)`, which
   // would overwrite our wrapped authorize with the original — so we strip it.
   const options = { ...base.options }
-  const realAuthorize = options.authorize
+  const realAuthorize = options.authorize!
   delete options.authorize
   return {
     ...base,

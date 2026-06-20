@@ -24,7 +24,6 @@ const IMAGE_SIZES_FOR_SEED = ["original", "50w", "200w", "400w", "800w", "1200w"
 
 async function uploadSeedImages(
   bucket: string,
-  endpoint: string,
   hash: string,
   sizes: Record<string, string>,
 ): Promise<string> {
@@ -34,7 +33,7 @@ async function uploadSeedImages(
     const buffer = parseDataUri(uri);
     await uploadFile(bucket, `${hash}/${size}.webp`, buffer, "image/webp");
   }
-  return `${endpoint}/${bucket}/${hash}/original.webp`;
+  return hash;
 }
 
 function getSensorProfile(v: {
@@ -112,7 +111,6 @@ export const plants = internalAction({
   handler: async (ctx) => {
     const env = getEnv();
     const bucket = env.MINIO_BUCKET_IMAGE ?? "growmate-images";
-    const endpoint = env.MINIO_ENDPOINT ?? "http://localhost:9000";
 
     await ensureBucket(bucket);
 
@@ -127,7 +125,6 @@ export const plants = internalAction({
 
       const imageUrl = await uploadSeedImages(
         bucket,
-        endpoint,
         plant.image.hash,
         plant.image.sizes,
       );
@@ -158,7 +155,6 @@ export const products = internalAction({
   handler: async (ctx) => {
     const env = getEnv();
     const bucket = env.MINIO_BUCKET_IMAGE ?? "growmate-images";
-    const endpoint = env.MINIO_ENDPOINT ?? "http://localhost:9000";
     const adminEmail = env.ADMIN_EMAIL;
 
     if (!adminEmail) {
@@ -188,7 +184,6 @@ export const products = internalAction({
 
       const imageUrl = await uploadSeedImages(
         bucket,
-        endpoint,
         product.image.hash,
         product.image.sizes,
       );
@@ -217,7 +212,6 @@ export const blog = internalAction({
   handler: async (ctx) => {
     const env = getEnv();
     const bucket = env.MINIO_BUCKET_IMAGE ?? "growmate-images";
-    const endpoint = env.MINIO_ENDPOINT ?? "http://localhost:9000";
     const adminEmail = env.ADMIN_EMAIL;
 
     if (!adminEmail) {
@@ -246,7 +240,6 @@ export const blog = internalAction({
 
       const imageUrl = await uploadSeedImages(
         bucket,
-        endpoint,
         post.image.hash,
         post.image.sizes,
       );

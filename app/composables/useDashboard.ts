@@ -2,6 +2,7 @@ import { computed, ref, watch } from 'vue'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
 import { api } from '@/lib/api'
+import { getImageUrl } from '@/lib/images'
 import { activeDeviceId, setActiveDeviceId, syncActiveDevice } from '@/lib/devices'
 import { getErrorMessage } from '@/lib/errors'
 import type { Id } from '@/lib/convex-types'
@@ -121,13 +122,12 @@ export function useDashboard() {
   const displayPlantImage = computed(() => {
     const plant = data.value?.plant
     if (!plant) return null
-    if (plant.imageUrl) return plant.imageUrl
-    return (
-      plantLibrary.value?.find(
-        (preset: { name: string; species: string }) =>
-          preset.name === plant.name || preset.species === plant.species,
-      )?.imageUrl ?? null
+    if (plant.imageUrl) return getImageUrl(plant.imageUrl)
+    const preset = plantLibrary.value?.find(
+      (preset: { name: string; species: string }) =>
+        preset.name === plant.name || preset.species === plant.species,
     )
+    return preset?.imageUrl ? getImageUrl(preset.imageUrl) : null
   })
 
   const displaySensors = computed(() => {

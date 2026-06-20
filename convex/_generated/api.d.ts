@@ -31,7 +31,7 @@ import type * as marketplace from "../marketplace.js";
 import type * as notifications from "../notifications.js";
 import type * as openai from "../openai.js";
 import type * as plants from "../plants.js";
-import type * as seedAdmin from "../seedAdmin.js";
+import type * as seed from "../seed.js";
 import type * as sensors from "../sensors.js";
 import type * as support from "../support.js";
 import type * as types from "../types.js";
@@ -67,7 +67,7 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   openai: typeof openai;
   plants: typeof plants;
-  seedAdmin: typeof seedAdmin;
+  seed: typeof seed;
   sensors: typeof sensors;
   support: typeof support;
   types: typeof types;

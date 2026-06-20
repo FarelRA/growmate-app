@@ -3,7 +3,7 @@
 import { internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 
-export const ensureAdmin = internalAction({
+export const admin = internalAction({
   handler: async (ctx) => {
     const env = (
       globalThis as { process?: { env?: Record<string, string | undefined> } }

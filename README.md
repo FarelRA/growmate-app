@@ -5,7 +5,7 @@
 
 Smart urban farming platform — monitor IoT devices, get AI gardening advice, connect with the community, and manage your grow operations from a mobile-friendly PWA.
 
-Built with **Nuxt 4**, **Vue 3**, **Convex** (self-hosted), and **Tailwind CSS v4**. Managed with **Bun**.
+Built with **Nuxt 4**, **Vue 3**, **Convex** (self-hosted), **MinIO**, and **Tailwind CSS v4**. Managed with **Bun**.
 
 ## Features
 

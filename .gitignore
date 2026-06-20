@@ -45,8 +45,6 @@ __screenshots__/
 test-results/
 playwright-report/
 
-
-
 # Env files
 .env
 .env.*.local

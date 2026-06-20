@@ -1,9 +1,9 @@
-FROM node:22-alpine AS builder
+FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
 COPY package.json bun.lock ./
-RUN npm install -g bun && bun install --frozen-lockfile
+RUN bun install --frozen-lockfile
 
 COPY . .
 RUN bun run build

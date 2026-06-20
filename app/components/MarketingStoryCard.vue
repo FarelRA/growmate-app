@@ -13,7 +13,7 @@ const props = defineProps<{
   }
 }>()
 
-const storyImage = computed(() => getImageUrl(props.story.imageUrl, 960))
+const storyImage = computed(() => getImageUrl(props.story.imageUrl, 800))
 
 function excerpt(value: string) {
   return value.length > 148 ? `${value.slice(0, 145).trimEnd()}...` : value
@@ -31,8 +31,8 @@ function excerpt(value: string) {
           class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
           decoding="async"
-          width="960"
-          height="720"
+          width="800"
+          height="600"
         />
         <div
           v-else

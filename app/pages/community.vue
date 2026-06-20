@@ -187,7 +187,7 @@ async function handleDeletePost(postId: string) {
           </div>
           <img
             v-if="post.imageUrl"
-            :src="getImageUrl(post.imageUrl, 960) || undefined"
+            :src="getImageUrl(post.imageUrl, 800) || undefined"
             :alt="post.title"
             class="h-64 w-full rounded-[1.5rem] object-cover sm:h-[360px]"
           />

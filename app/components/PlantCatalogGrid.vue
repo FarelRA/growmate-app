@@ -81,7 +81,7 @@ function stageLabel(value: string) {
         "
         @click="emit('update:selectedPresetKey', preset.key)"
       >
-        <img v-if="preset.imageUrl" :src="getImageUrl(preset.imageUrl, 360) || undefined" :alt="preset.name" class="h-36 w-full object-cover" />
+        <img v-if="preset.imageUrl" :src="getImageUrl(preset.imageUrl, 400) || undefined" :alt="preset.name" class="h-36 w-full object-cover" />
         <div class="space-y-3 p-4">
           <div class="flex items-start justify-between gap-3">
             <div>

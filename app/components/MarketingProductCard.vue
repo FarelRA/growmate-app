@@ -31,7 +31,7 @@ const isExternal = computed(() =>
 )
 
 const isCommunity = computed(() => props.product.type === 'community')
-const cardImage = computed(() => getImageUrl(props.product.imageUrl, 720))
+const cardImage = computed(() => getImageUrl(props.product.imageUrl, 800))
 
 const cardComponent = computed(() => {
   if (isExternal.value) return 'a'
@@ -71,8 +71,8 @@ function openCommunityListing() {
         class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
         loading="lazy"
         decoding="async"
-        width="720"
-        height="720"
+        width="800"
+        height="800"
       />
       <div
         v-else

@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
     const hash = generateHash(input)
     const pathPrefix = hash
 
-    const sizes = [50, 200, 400]
+    const sizes = [50, 200, 400, 800, 1200]
     const images = await processImage(input, sizes)
 
     for (const image of images) {

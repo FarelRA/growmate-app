@@ -65,7 +65,7 @@ function excerpt(post: { excerpt: string; body: string }) {
           <RevealBlock v-for="(post, index) in posts" :key="post._id" as="article" :delay="Math.min(index * 80, 240)" origin="up" class="gm-card-lift group rounded-[2rem] bg-[#f7f8f5] p-4 sm:p-5">
             <NuxtLink :to="`/blog/${post._id}`" class="block">
               <div class="mb-5 aspect-[4/3] overflow-hidden rounded-[1.5rem] bg-[#eef4e8]">
-                <img v-if="post.imageUrl" :src="getImageUrl(post.imageUrl, 960) || undefined" :alt="post.title" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" decoding="async" width="960" height="720" />
+                <img v-if="post.imageUrl" :src="getImageUrl(post.imageUrl, 800) || undefined" :alt="post.title" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" decoding="async" width="800" height="600" />
                 <div v-else class="flex h-full items-center justify-center text-gm-primary">
                   <span class="material-symbols-outlined gm-visual-icon">edit_square</span>
                 </div>

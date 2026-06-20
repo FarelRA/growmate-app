@@ -22,7 +22,7 @@ interface StoryDetail {
 const route = useRoute()
 const storyId = String(route.params.id || '')
 const { data: story, pending, error } = await usePublicConvexQuery<{ postId: string }, StoryDetail | null>(`public-story-detail-${storyId}`, api.community.getPostById, { postId: storyId })
-const storyImage = computed(() => getImageUrl(story.value?.imageUrl, 1440))
+const storyImage = computed(() => getImageUrl(story.value?.imageUrl, 1200))
 
 usePublicSeo({
   title: computed(() => (story.value ? `${story.value.title} | Cerita Pengguna GrowMate` : 'Cerita GrowMate')),

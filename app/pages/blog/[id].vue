@@ -25,7 +25,7 @@ const { data } = await usePublicConvexQuery<Record<string, unknown>, BlogPost[]>
 
 const post = computed(() => (data.value ?? []).find((item) => item._id === postId.value) ?? null)
 const renderedBody = computed(() => renderMarkdown(post.value?.body ?? ''))
-const heroImage = computed(() => getImageUrl(post.value?.imageUrl, 1440))
+const heroImage = computed(() => getImageUrl(post.value?.imageUrl, 1200))
 
 usePublicSeo({
   title: computed(() => (post.value ? `${post.value.title} | Blog GrowMate` : 'Blog GrowMate')),

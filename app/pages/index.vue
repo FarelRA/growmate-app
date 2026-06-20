@@ -202,7 +202,7 @@ function blogExcerpt(excerpt: string, body: string) {
             <div class="relative mb-3 aspect-square overflow-hidden rounded-xl bg-[#f5f6f2]">
               <img
                 v-if="preset.imageUrl"
-                :src="getImageUrl(preset.imageUrl, 360) || undefined"
+                :src="getImageUrl(preset.imageUrl, 400) || undefined"
                 :alt="preset.name"
                 class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
               />
@@ -239,7 +239,7 @@ function blogExcerpt(excerpt: string, body: string) {
           <RevealBlock v-for="(post, index) in blogCards.slice(0, 4)" :key="post._id" as="article" :delay="index * 70" origin="up" class="gm-card-lift group">
             <NuxtLink :to="`/blog/${post._id}`" class="block">
               <div class="mb-4 aspect-[4/3] overflow-hidden rounded-xl bg-[#eef4e8]">
-                <img v-if="post.imageUrl" :src="getImageUrl(post.imageUrl, 960) || undefined" :alt="post.title" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" decoding="async" width="960" height="720" />
+                <img v-if="post.imageUrl" :src="getImageUrl(post.imageUrl, 800) || undefined" :alt="post.title" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" decoding="async" width="800" height="600" />
                 <div v-else class="flex h-full w-full items-center justify-center text-gm-primary">
                   <span class="material-symbols-outlined gm-visual-icon">edit_square</span>
                 </div>
@@ -284,7 +284,7 @@ function blogExcerpt(excerpt: string, body: string) {
               class="w-[calc(50%-0.5rem)]"
             >
               <div class="gm-card-lift mb-3 aspect-square overflow-hidden rounded-xl bg-[#f5f6f2]">
-                <img v-if="story.imageUrl" :src="getImageUrl(story.imageUrl, 720) || undefined" :alt="story.title" class="h-full w-full object-cover transition duration-300 hover:scale-105" loading="lazy" decoding="async" width="720" height="720" />
+                <img v-if="story.imageUrl" :src="getImageUrl(story.imageUrl, 800) || undefined" :alt="story.title" class="h-full w-full object-cover transition duration-300 hover:scale-105" loading="lazy" decoding="async" width="800" height="800" />
                 <div v-else class="flex h-full items-center justify-center text-gm-primary">
                   <span class="material-symbols-outlined gm-visual-icon">forum</span>
                 </div>
@@ -309,7 +309,7 @@ function blogExcerpt(excerpt: string, body: string) {
                 :class="carouselStories.length <= 3 ? 'max-w-80' : ''"
               >
                 <div class="gm-card-lift mb-3 aspect-square overflow-hidden rounded-xl bg-[#f5f6f2]">
-                  <img v-if="story.imageUrl" :src="getImageUrl(story.imageUrl, 720) || undefined" :alt="story.title" class="h-full w-full object-cover transition duration-300 hover:scale-105" loading="lazy" decoding="async" width="720" height="720" />
+                  <img v-if="story.imageUrl" :src="getImageUrl(story.imageUrl, 800) || undefined" :alt="story.title" class="h-full w-full object-cover transition duration-300 hover:scale-105" loading="lazy" decoding="async" width="800" height="800" />
                   <div v-else class="flex h-full items-center justify-center text-gm-primary">
                     <span class="material-symbols-outlined gm-visual-icon">forum</span>
                   </div>

@@ -7,16 +7,16 @@ const props = defineProps<{
 }>()
 
 const primaryImageSrc = computed(() =>
-  props.images[0] ? getImageUrl(props.images[0], 900) : null,
+  props.images[0] ? getImageUrl(props.images[0], 800) : null,
 )
 const secondaryImageSrc = computed(() =>
-  props.images[1] ? getImageUrl(props.images[1], 700) : null,
+  props.images[1] ? getImageUrl(props.images[1], 800) : null,
 )
 const communityImageSrc = computed(() =>
-  props.images[2] ? getImageUrl(props.images[2], 700) : null,
+  props.images[2] ? getImageUrl(props.images[2], 800) : null,
 )
 const libraryImageSrc = computed(() =>
-  props.images[3] ? getImageUrl(props.images[3], 900) : null,
+  props.images[3] ? getImageUrl(props.images[3], 800) : null,
 )
 </script>
 
@@ -66,7 +66,7 @@ const libraryImageSrc = computed(() =>
                   class="h-full w-full object-cover"
                   fetchpriority="high"
                   decoding="async"
-                  width="900"
+                  width="800"
                   height="700"
                 />
                 <div
@@ -84,7 +84,7 @@ const libraryImageSrc = computed(() =>
                   class="h-full w-full object-cover"
                   loading="eager"
                   decoding="async"
-                  width="700"
+                  width="800"
                   height="700"
                 />
                 <div
@@ -104,7 +104,7 @@ const libraryImageSrc = computed(() =>
                   class="h-full w-full object-cover"
                   loading="lazy"
                   decoding="async"
-                  width="700"
+                  width="800"
                   height="700"
                 />
                 <div
@@ -122,7 +122,7 @@ const libraryImageSrc = computed(() =>
                   class="h-full w-full object-cover"
                   loading="lazy"
                   decoding="async"
-                  width="900"
+                  width="800"
                   height="700"
                 />
                 <div

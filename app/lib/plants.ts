@@ -40,7 +40,7 @@ export type PlantPreset = {
   difficulty: 'easy' | 'medium' | 'advanced'
   wateringThreshold: number
   lightingThreshold: number
-  sensorProfile: PlantSensorProfile
+  sensorProfile?: PlantSensorProfile
   lifecycleProfile: LifecycleProfile
 }
 

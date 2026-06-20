@@ -37,7 +37,7 @@ interface MarketplaceProduct {
   featured: boolean
   price: number
   status: string
-  type: string
+  type: 'official' | 'community'
   priceLabel: string
   quantityLabel: string
   statusLabel: string

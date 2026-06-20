@@ -102,7 +102,7 @@ watch(
     imageFile.value = null
     wateringThreshold.value = preset.wateringThreshold
     lightingThreshold.value = preset.lightingThreshold
-    sensorProfile.value = cloneSensorProfile(preset.sensorProfile)
+    sensorProfile.value = cloneSensorProfile(preset.sensorProfile ?? defaultPlantSensorProfile)
     lifecycleProfile.value = { ...preset.lifecycleProfile }
   },
   { immediate: true },

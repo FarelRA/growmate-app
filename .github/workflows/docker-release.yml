@@ -9,10 +9,21 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  CONVEX_SELF_HOSTED_URL: http://localhost:3210
+  CONVEX_SELF_HOSTED_ADMIN_KEY: gm-convex-adm
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      convex:
+        image: ghcr.io/get-convex/convex-backend:latest
+        ports:
+          - 3210:3210
+        env:
+          CONVEX_SELF_HOSTED_ADMIN_KEY: gm-convex-adm
+          CONVEX_INSTANCE_NAME: growmate
+          CONVEX_INSTANCE_SECRET: gm-convex-sec
     steps:
       - uses: actions/checkout@v4
 
@@ -22,6 +33,19 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Generate Convex types
+        run: |
+          echo "Waiting for Convex backend..."
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:3210 > /dev/null 2>&1; then
+              echo "Convex backend ready"
+              break
+            fi
+            echo "Attempt $i/30..."
+            sleep 2
+          done
+          npx convex deploy --yes
 
       - name: Lint
         run: bun run lint

@@ -1,7 +1,7 @@
 # GrowMate
 
 [![Docker Release](https://github.com/FarelRA/growmate-app/actions/workflows/docker-release.yml/badge.svg)](https://github.com/FarelRA/growmate-app/actions/workflows/docker-release.yml)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
 
 Smart urban farming platform — monitor IoT devices, get AI gardening advice, connect with the community, and manage your grow operations from a mobile-friendly PWA.
 
@@ -365,7 +365,7 @@ Plus internal auth tables managed by `@convex-dev/auth`.
 ## Stack
 
 - **Frontend:** Nuxt 4, Vue 3, Tailwind v4, PWA
-- **Backend:** Convex (schema, auth, real-time queries)
+- **Backend:** Convex (schema, auth, real-time queries), MinIO (S3-compatible storage)
 - **AI:** Google Gemini via OpenAI-compatible API
 - **Auth:** Convex Auth with password providers
 - **Infra:** Bun, Nitro, sharp (image optimization)
@@ -383,4 +383,4 @@ like to change.
 
 ## License
 
-MIT
+[GNU General Public License v3.0](LICENSE)

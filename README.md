@@ -1,57 +1,129 @@
-# GrowMate App
+# GrowMate
 
-Smart urban farming platform with IoT device monitoring, AI gardening assistant, community hub, marketplace, and support workflows.
+[![Docker Release](https://github.com/FarelRA/growmate-app/actions/workflows/docker-release.yml/badge.svg)](https://github.com/FarelRA/growmate-app/actions/workflows/docker-release.yml)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Built on **Nuxt 4** + **Vue 3** + **Convex** + **Tailwind CSS v4**, managed with **Bun**.
+Smart urban farming platform — monitor IoT devices, get AI gardening advice, connect with the community, and manage your grow operations from a mobile-friendly PWA.
 
-## Setup
+Built with **Nuxt 4**, **Vue 3**, **Convex** (self-hosted), and **Tailwind CSS v4**. Managed with **Bun**.
+
+## Features
+
+- **IoT device monitoring** — real-time sensor readings (soil moisture, light, temperature, humidity) with live charts
+- **AI gardening assistant** — "Floral Assistant" powered by Google Gemini with full conversation history
+- **Smart alerts & automation** — threshold-based notifications, care schedules, automated actuator commands
+- **Plant catalog** — 10+ preset plants with sensor/lifecycle profiles; add custom plants
+- **Community hub** — posts, comments, likes with activity points and leaderboard
+- **Marketplace** — buy/sell plants and equipment with built-in chat
+- **Admin panel** — manage users, devices, products, blog posts, and support tickets
+- **PWA** — installable on mobile, works offline with service worker caching
+- **Self-hosted** — full stack runs on your own infrastructure via Docker Compose
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Development](#development)
+- [Project Structure](#project-structure)
+- [Scripts](#scripts)
+- [Deployment](#deployment)
+- [Environment Reference](#environment-reference)
+- [Database](#database)
+- [Stack](#stack)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Installation
+
+### Prerequisites
+
+- [Bun](https://bun.sh) >= 1.3
+- Node.js >= 20
+
+### Setup
 
 ```sh
+git clone https://github.com/FarelRA/growmate-app.git
+cd growmate-app
 bun install
 ```
 
-Copy `.env.local` and configure your Convex deployment and API keys:
+Copy the example environment file and edit it:
 
 ```sh
-cp .env.local .env
+cp .env.example .env
+```
+
+At minimum, set a Convex deployment URL (self-hosted or Convex cloud):
+
+```ini
+NUXT_PUBLIC_CONVEX_URL=https://convex.growmate.bond
 ```
 
 ## Development
 
-```sh
-bun run dev          # Nuxt dev server
-bun run convex:dev   # Convex dev session (separate terminal)
-```
-
-## Quality
+Start the Nuxt dev server:
 
 ```sh
-bun run check        # typecheck + lint + test + build
-bun run typecheck    # nuxt typecheck
-bun run lint         # oxlint + eslint
-bun run format       # prettier
-bun run test         # unit tests (vitest)
-bun run test:watch   # unit tests (watch mode)
-bun run test:ui      # unit tests (vitest UI)
-bun run test:e2e     # e2e tests (playwright)
+bun run dev
 ```
+
+In a separate terminal, start a local Convex dev session (replaces your production backend for development):
+
+```sh
+bun run convex:dev
+```
+
+The app is available at `http://localhost:3000`.
 
 ## Project Structure
 
 ```
-app/          # Nuxt pages, components, composables, lib
-convex/       # Convex backend (schema, auth, queries, mutations)
-server/       # Nitro server routes (sitemap, image optimization)
-public/       # Static assets (icons, favicon, robots.txt)
+app/              # Nuxt application (pages, components, composables, lib)
+  assets/         # Global CSS (Tailwind entry point)
+  components/     # UI components (shell, chat, marketing, charts)
+  composables/    # Vue composables (dashboard, admin, marketplace, etc.)
+  lib/            # Utilities (auth, images, errors, SEO, markdown)
+  pages/          # File-based routing (25+ pages)
+  plugins/        # Convex Vue client plugin
+  middleware/     # Global auth middleware
+components/       # Page-specific components (admin, dashboard, marketplace panels)
+convex/           # Convex backend
+  _generated/     # Auto-generated client types
+  helpers/        # Reusable query/mutation helpers
+  seedData/       # Seed data for plants, products, blog
+  schema.ts       # Database schema (23 tables)
+  auth.ts         # Auth configuration
+  *.ts            # Feature modules (plants, devices, sensors, blog, etc.)
+server/           # Nitro server layer
+  routes/api/v1/  # REST endpoints (camera, sensors, upload)
+  utils/          # Server utilities (Convex client, images, storage, sitemap)
+tests/            # Tests
+  app/            # Component and lib tests
+  convex/         # Helper and type tests
+  server/         # API route and utility tests
+  e2e/            # Playwright E2E tests
+public/           # Static assets (icons, favicon)
+stores/           # Pinia stores (reserved)
 ```
 
-## Environment
+## Scripts
 
-| Variable | Required | Description |
-|---|---|---|
-| `NUXT_PUBLIC_CONVEX_URL` | Yes | Convex deployment URL |
-| `OPENAI_API_KEY` | For AI | Gemini/OpenAI API key |
-| `DEVICE_API_KEY` | For IoT | Device telemetry auth |
+| Command | Description |
+|---|---|
+| `bun run dev` | Start Nuxt dev server |
+| `bun run build` | Build for production |
+| `bun run preview` | Preview production build |
+| `bun run check` | Full CI pipeline: typecheck (Nuxt + Convex) → lint → test → build |
+| `bun run typecheck` | Nuxt typecheck only |
+| `bun run typecheck:convex` | Convex typecheck only |
+| `bun run lint` | Run all linters (oxlint + eslint) |
+| `bun run format` | Format with Prettier |
+| `bun run test` | Run Vitest unit tests |
+| `bun run test:watch` | Tests in watch mode |
+| `bun run test:e2e` | Playwright E2E tests |
+| `bun run convex:deploy` | Deploy Convex functions to production |
+| `bun run convex:dev` | Start local Convex dev backend |
+| `bun run convex:seed:all` | Seed all data (admin → plants → products → blog) |
 
 ## Deployment
 
@@ -217,7 +289,7 @@ On the server, set up a webhook or cron to pull and restart:
 docker compose pull growmate && docker compose up -d growmate
 ```
 
-### Environment reference
+## Environment Reference
 
 **Docker Compose env vars** (set in `.env`, consumed by containers):
 
@@ -248,6 +320,48 @@ docker compose pull growmate && docker compose up -d growmate
 | `MINIO_SECRET_KEY` | Seed functions | `npx convex env set MINIO_SECRET_KEY ...` |
 | `MINIO_BUCKET_IMAGE` | Seed functions | `npx convex env set MINIO_BUCKET_IMAGE images` |
 
+**Nuxt runtime config** (used in browser and server):
+
+| Config key | Env var | Default |
+|---|---|---|
+| `public.convexUrl` | `NUXT_PUBLIC_CONVEX_URL` | `VITE_CONVEX_URL` fallback |
+| `public.imageBaseUrl` | `NUXT_PUBLIC_MINIO_BASE_URL` | `https://storage.growmate.bond` |
+| `public.minioBucketImage` | `NUXT_PUBLIC_MINIO_BUCKET_IMAGE` | `images` |
+| `deviceApiKey` | `DEVICE_API_KEY` | — |
+
+## Database
+
+The Convex backend manages 23 tables:
+
+| Table | Purpose |
+|---|---|
+| `users` | Accounts with role, handle, profile |
+| `plantCatalog` | Built-in plant presets (10 species) |
+| `plants` | User's plants, linked to devices |
+| `devices` | IoT devices with sensor config |
+| `sensors` | Current sensor readings per plant |
+| `sensorReadings` | Historical time-series data (90-day retention) |
+| `plantImages` | Camera / manual plant snapshots |
+| `automationLogs` | Actuator command audit trail |
+| `growEvents` | Full event log (plant, device, care) |
+| `careSchedules` | Scheduled care tasks |
+| `assistantThreads` | AI chat sessions |
+| `assistantMessages` | AI chat messages |
+| `supportRequests` | Support tickets |
+| `supportMessages` | Support conversation messages |
+| `products` | Marketplace product listings |
+| `communityPosts` | Forum posts |
+| `blogPosts` | Blog articles |
+| `postComments` | Post comments |
+| `postLikes` | Post likes |
+| `marketplaceThreads` | Marketplace chat threads |
+| `marketplaceMessages` | Marketplace chat messages |
+| `notifications` | User notifications |
+| `listingDrafts` | Saved product listing drafts |
+| `userActivities` | Points-earning activity log |
+
+Plus internal auth tables managed by `@convex-dev/auth`.
+
 ## Stack
 
 - **Frontend:** Nuxt 4, Vue 3, Tailwind v4, PWA
@@ -255,3 +369,18 @@ docker compose pull growmate && docker compose up -d growmate
 - **AI:** Google Gemini via OpenAI-compatible API
 - **Auth:** Convex Auth with password providers
 - **Infra:** Bun, Nitro, sharp (image optimization)
+
+## Contributing
+
+Contributions are welcome. Please open an issue first to discuss what you'd
+like to change.
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Run `bun run check` to verify everything passes
+4. Commit and push
+5. Open a pull request
+
+## License
+
+MIT

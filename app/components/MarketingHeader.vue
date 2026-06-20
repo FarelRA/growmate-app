@@ -8,7 +8,7 @@ const mobileMenuOpen = ref(false)
 const searchOpen = ref(false)
 const searchQuery = ref('')
 
-const navigation = [
+const navigation: { label: string; to: string; detail?: string }[] = [
   { label: growmateTerms.publicNav.products, to: '/products' },
   { label: growmateTerms.publicNav.marketplace, to: '/marketplace' },
   { label: growmateTerms.publicNav.plantLibrary, to: '/plant-library' },

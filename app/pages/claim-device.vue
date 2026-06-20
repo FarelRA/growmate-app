@@ -52,7 +52,7 @@ async function checkDevice() {
     const result = await convexClient.query(api.devices.getUnclaimedDevice, { deviceId: trimmed })
     unclaimedDevice.value = result
     if (result) {
-      toast.success(`Perangkat ditemukan: ${unclaimedDevice.value.name}`)
+      toast.success(`Perangkat ditemukan: ${result.name}`)
     } else {
       toast.error('Perangkat tidak ditemukan atau sudah diklaim')
     }

@@ -29,7 +29,7 @@ const normalizedPoints = computed(() => {
   const range = max - min || 1
 
   return props.points.map((point, index) => {
-    const x = padding + (index * (width - padding * 2)) / Math.max(props.points.length - 1, 1)
+    const x = padding + (index * (props.width - padding * 2)) / Math.max(props.points.length - 1, 1)
     const y = props.height - padding - ((point.value - min) / range) * (props.height - padding * 2)
     return `${x},${y}`
   })

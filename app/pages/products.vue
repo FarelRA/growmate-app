@@ -28,8 +28,31 @@ usePublicSeo({
   ],
 })
 
+interface MarketplaceProduct {
+  _id: string
+  title: string
+  description: string
+  category: string
+  imageUrl: string | null
+  featured: boolean
+  price: number
+  status: string
+  type: string
+  priceLabel: string
+  quantityLabel: string
+  statusLabel: string
+  sellerName: string
+  shopeeUrl?: string | null
+}
+
+interface MarketplaceResponse {
+  official: MarketplaceProduct[]
+  community: MarketplaceProduct[]
+  featured: MarketplaceProduct | null
+}
+
 const query = ref('')
-const { data } = await usePublicConvexQuery('public-marketplace-products', api.marketplace.marketplace, {})
+const { data } = await usePublicConvexQuery<Record<string, never>, MarketplaceResponse>('public-marketplace-products', api.marketplace.marketplace, {})
 
 const officialProducts = computed(() => data.value?.official ?? [])
 const featured = computed(() => data.value?.featured ?? officialProducts.value[0] ?? null)

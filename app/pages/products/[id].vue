@@ -6,9 +6,25 @@ import { createBreadcrumbSchema, toAbsoluteUrl, toMetaDescription } from '@/lib/
 
 definePageMeta({ public: true })
 
+interface ProductDetail {
+  _id: string
+  title: string
+  description: string
+  category: string
+  imageUrl: string | null
+  price: number
+  status: string
+  type: string
+  priceLabel: string
+  quantityLabel: string
+  statusLabel: string
+  sellerName: string
+  shopeeUrl?: string | null
+}
+
 const route = useRoute()
 const productId = String(route.params.id || '')
-const { data: product, pending, error } = await usePublicConvexQuery(`public-marketplace-product-detail-${productId}`, api.marketplace.getProductById, { productId })
+const { data: product, pending, error } = await usePublicConvexQuery<{ productId: string }, ProductDetail | null>(`public-marketplace-product-detail-${productId}`, api.marketplace.getProductById, { productId })
 const productImage = computed(() => getImageUrl(product.value?.imageUrl, 1200))
 
 usePublicSeo({
@@ -20,7 +36,7 @@ usePublicSeo({
           'Lihat detail produk GrowMate untuk solusi budidaya cerdas, pemantauan perangkat, dan kebutuhan pertanian modern.',
       ),
   ),
-  path: computed(() => `/products/${productId.value}`),
+  path: computed(() => `/products/${productId}`),
   image: computed(() => product.value?.imageUrl ? getImageUrl(product.value.imageUrl, 1200) : null),
   type: 'website',
   schema: computed(() => {
@@ -30,7 +46,7 @@ usePublicSeo({
       createBreadcrumbSchema([
         { name: 'Beranda', path: '/' },
         { name: 'Produk', path: '/products' },
-        { name: product.value.title, path: `/products/${productId.value}` },
+        { name: product.value.title, path: `/products/${productId}` },
       ]),
       {
         '@context': 'https://schema.org',
@@ -48,7 +64,7 @@ usePublicSeo({
             product.value.status === 'sold'
               ? 'https://schema.org/OutOfStock'
               : 'https://schema.org/InStock',
-          url: toAbsoluteUrl(`/products/${productId.value}`),
+          url: toAbsoluteUrl(`/products/${productId}`),
         },
       },
     ]

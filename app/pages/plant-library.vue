@@ -28,8 +28,16 @@ usePublicSeo({
   ],
 })
 
+interface PlantCatalogItem {
+  _id: string
+  name: string
+  species: string
+  category: string
+  imageUrl: string | null
+}
+
 const selectedCategory = ref<'all' | string>('all')
-const { data } = await usePublicConvexQuery('public-plant-library', api.plants.plantLibrary, {})
+const { data } = await usePublicConvexQuery<Record<string, never>, PlantCatalogItem[]>('public-plant-library', api.plants.plantLibrary, {})
 
 const categories = computed(() => ['all', ...new Set((data.value ?? []).map((item) => item.category))])
 const filtered = computed(() => {

@@ -6,9 +6,22 @@ import { createBreadcrumbSchema, toAbsoluteUrl, toMetaDescription } from '@/lib/
 
 definePageMeta({ public: true })
 
+interface StoryDetail {
+  _id: string
+  title: string
+  body: string
+  imageUrl: string | null
+  user: { _id: string; name?: string } | null
+  createdAt: number
+  updatedAt: number
+  likeCount: number
+  commentCount: number
+  timestamp: string
+}
+
 const route = useRoute()
 const storyId = String(route.params.id || '')
-const { data: story, pending, error } = await usePublicConvexQuery(`public-story-detail-${storyId}`, api.community.getPostById, { postId: storyId })
+const { data: story, pending, error } = await usePublicConvexQuery<{ postId: string }, StoryDetail | null>(`public-story-detail-${storyId}`, api.community.getPostById, { postId: storyId })
 const storyImage = computed(() => getImageUrl(story.value?.imageUrl, 1440))
 
 usePublicSeo({
@@ -20,7 +33,7 @@ usePublicSeo({
           'Baca cerita pengguna GrowMate tentang pengalaman budidaya, pembelajaran, dan perkembangan tanaman mereka.',
       ),
   ),
-  path: computed(() => `/stories/${storyId.value}`),
+  path: computed(() => `/stories/${storyId}`),
   image: computed(() => story.value?.imageUrl ? getImageUrl(story.value.imageUrl, 1200) : null),
   type: 'article',
   schema: computed(() => {
@@ -35,7 +48,7 @@ usePublicSeo({
       createBreadcrumbSchema([
         { name: 'Beranda', path: '/' },
         { name: 'Cerita Pengguna', path: '/stories' },
-        { name: story.value.title, path: `/stories/${storyId.value}` },
+        { name: story.value.title, path: `/stories/${storyId}` },
       ]),
       {
         '@context': 'https://schema.org',
@@ -53,7 +66,7 @@ usePublicSeo({
         },
         datePublished: new Date(story.value.createdAt).toISOString(),
         dateModified: new Date(story.value.updatedAt).toISOString(),
-        mainEntityOfPage: toAbsoluteUrl(`/stories/${storyId.value}`),
+        mainEntityOfPage: toAbsoluteUrl(`/stories/${storyId}`),
       },
     ]
   }),

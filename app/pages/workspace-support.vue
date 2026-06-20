@@ -51,7 +51,7 @@ watch(
       !selectedRequestId.value ||
       !requests.some((request) => request._id === selectedRequestId.value)
     ) {
-      selectedRequestId.value = requests[0]._id
+      selectedRequestId.value = requests[0]!._id
     }
   },
   { immediate: true },
@@ -62,6 +62,7 @@ async function handleCreateTicket() {
   creatingTicket.value = true
   try {
     const result = await createSupportRequest({ topic: newTicketTopic.value, priority: 'normal' })
+    if (!result) return
     newTicketTopic.value = ''
     toast.success('Tiket dukungan dibuat')
     await router.replace({ path: '/workspace-support', query: { ticketId: result.requestId } })

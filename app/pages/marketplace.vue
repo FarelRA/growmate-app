@@ -3,6 +3,19 @@ import { computed, ref } from 'vue'
 import { api } from '@/lib/api'
 import { createBreadcrumbSchema } from '@/lib/seo'
 
+interface Product {
+  _id: string
+  title: string
+  description: string
+  category: string
+  sellerName: string
+  imageUrl: string | null
+}
+interface MarketplaceData {
+  official: Product[]
+  community: Product[]
+}
+
 definePageMeta({ public: true })
 
 usePublicSeo({
@@ -28,7 +41,7 @@ usePublicSeo({
 })
 
 const query = ref('')
-const { data } = await usePublicConvexQuery('public-marketplace-listing', api.marketplace.marketplace, {})
+const { data } = await usePublicConvexQuery<Record<string, unknown>, MarketplaceData>('public-marketplace-listing', api.marketplace.marketplace, {})
 
 const communityProducts = computed(() => data.value?.community ?? [])
 const filteredProducts = computed(() => {

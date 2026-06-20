@@ -2,7 +2,7 @@
 export interface ChatMessage {
   _id: string
   role: 'user' | 'assistant'
-  status: 'done' | 'streaming'
+  status: 'done' | 'streaming' | 'complete' | 'error'
   body?: string
 }
 

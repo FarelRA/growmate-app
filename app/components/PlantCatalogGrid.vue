@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { PlantPreset, PlantCategory } from '@/lib/plants'
+import type { PlantPreset } from '@/lib/plants'
+import type { PlantCategory } from '@/composables/usePlantSearch'
 import { lifecycleStageOptions } from '@/lib/plants'
 import { getImageUrl } from '@/lib/images'
 

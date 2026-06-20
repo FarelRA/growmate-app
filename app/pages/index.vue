@@ -29,10 +29,48 @@ usePublicSeo({
   ],
 })
 
-const { data: marketplace } = await usePublicConvexQuery('public-marketplace-home', api.marketplace.marketplace, {})
-const { data: community } = await usePublicConvexQuery('public-community-home', api.community.community, {})
-const { data: plantLibrary } = await usePublicConvexQuery('public-plant-library-home', api.plants.plantLibrary, {})
-const { data: blogPosts } = await usePublicConvexQuery('public-blog-home', api.blog.publicBlog, {})
+const { data: marketplace } = await usePublicConvexQuery<Record<string, unknown>, MarketplaceData>('public-marketplace-home', api.marketplace.marketplace, {})
+const { data: community } = await usePublicConvexQuery<Record<string, unknown>, CommunityData>('public-community-home', api.community.community, {})
+const { data: plantLibrary } = await usePublicConvexQuery<Record<string, unknown>, PlantPreset[]>('public-plant-library-home', api.plants.plantLibrary, {})
+const { data: blogPosts } = await usePublicConvexQuery<Record<string, unknown>, BlogPost[]>('public-blog-home', api.blog.publicBlog, {})
+
+interface MarketplaceProduct {
+  _id: string
+  title: string
+  imageUrl: string | null
+  featured: boolean
+  description: string
+  price: number
+}
+interface MarketplaceData {
+  official: MarketplaceProduct[]
+  community: MarketplaceProduct[]
+  featured: MarketplaceProduct | null
+}
+interface CommunityStory {
+  _id: string
+  title: string
+  body: string
+  imageUrl: string | null
+  user: { name?: string } | null
+}
+interface CommunityData {
+  posts: CommunityStory[]
+}
+interface PlantPreset {
+  _id: string
+  name: string
+  category: string
+  imageUrl: string | null
+}
+interface BlogPost {
+  _id: string
+  title: string
+  excerpt: string
+  body: string
+  imageUrl: string | null
+  relativeTime: string
+}
 
 const carouselPosition = ref(0)
 

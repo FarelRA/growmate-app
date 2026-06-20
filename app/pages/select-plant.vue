@@ -58,7 +58,8 @@ const {
 
 const targetDeviceId = computed(() => {
   const fromQuery = typeof route.query.deviceId === 'string' ? route.query.deviceId : null
-  return fromQuery || setupStatus.value?.nextDeviceId || activeDeviceId.value || null
+  const setupData = setupStatus.value as { nextDeviceId?: string | null } | null
+  return fromQuery || setupData?.nextDeviceId || activeDeviceId.value || null
 })
 
 const targetDevice = computed(

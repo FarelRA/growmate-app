@@ -78,6 +78,7 @@ async function handleLike(postId: string) {
   likingPosts.value.add(postId)
   try {
     const result = await likePost({ postId: postId as Id<'communityPosts'> })
+    if (!result) return
     toast.success(result.liked ? 'Postingan disukai' : 'Suka dihapus')
   } catch (error: unknown) {
     toast.error(getErrorMessage(error, 'Gagal memperbarui suka'))

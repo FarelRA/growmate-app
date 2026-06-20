@@ -5,11 +5,23 @@ import { getImageUrl } from '@/lib/images'
 import { renderMarkdown } from '@/lib/markdown'
 import { createBreadcrumbSchema, toAbsoluteUrl, toMetaDescription } from '@/lib/seo'
 
+interface BlogPost {
+  _id: string
+  title: string
+  excerpt: string
+  body: string
+  imageUrl: string | null
+  authorName: string
+  relativeTime: string
+  createdAt: number
+  updatedAt: number
+}
+
 definePageMeta({ public: true })
 
 const route = useRoute()
 const postId = computed(() => String(route.params.id || ''))
-const { data } = await usePublicConvexQuery('public-blog-detail', api.blog.publicBlog, {})
+const { data } = await usePublicConvexQuery<Record<string, unknown>, BlogPost[]>('public-blog-detail', api.blog.publicBlog, {})
 
 const post = computed(() => (data.value ?? []).find((item) => item._id === postId.value) ?? null)
 const renderedBody = computed(() => renderMarkdown(post.value?.body ?? ''))

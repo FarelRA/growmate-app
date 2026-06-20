@@ -161,7 +161,7 @@ export const checkSetupStatus = query({
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx)
     if (!user)
-      return { authenticated: false, hasProfile: false, hasDevice: false, setupComplete: false }
+      return { authenticated: false, hasProfile: false, hasDevice: false, setupComplete: false, isAdmin: false }
 
     const devices = await getUserDevices(ctx, user._id)
     return buildSetupStatus(user, devices)

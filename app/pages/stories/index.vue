@@ -27,7 +27,22 @@ usePublicSeo({
   ],
 })
 
-const { data } = await usePublicConvexQuery('public-stories-index', api.community.community, {})
+interface StoryItem {
+  _id: string
+  title: string
+  body: string
+  imageUrl: string | null
+  user: { name?: string } | null
+  likeCount: number
+  commentCount: number
+  timestamp: string
+}
+
+interface CommunityData {
+  posts: StoryItem[]
+}
+
+const { data } = await usePublicConvexQuery<Record<string, never>, CommunityData>('public-stories-index', api.community.community, {})
 const stories = computed(() => data.value?.posts ?? [])
 </script>
 

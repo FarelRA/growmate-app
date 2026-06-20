@@ -33,7 +33,7 @@ export type PlantPreset = {
   name: string
   species: string
   growthStage: PlantLifecycleStage
-  imageUrl: string
+  imageUrl: string | null
   description: string
   location: string
   category: 'herb' | 'leafy' | 'fruiting' | 'houseplant' | 'flower' | 'microgreen'

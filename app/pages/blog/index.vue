@@ -4,6 +4,16 @@ import { api } from '@/lib/api'
 import { getImageUrl } from '@/lib/images'
 import { createBreadcrumbSchema } from '@/lib/seo'
 
+interface BlogPost {
+  _id: string
+  title: string
+  excerpt: string
+  body: string
+  imageUrl: string | null
+  authorName: string
+  relativeTime: string
+}
+
 definePageMeta({ public: true })
 
 usePublicSeo({
@@ -28,7 +38,7 @@ usePublicSeo({
   ],
 })
 
-const { data } = await usePublicConvexQuery('public-blog-index', api.blog.publicBlog, {})
+const { data } = await usePublicConvexQuery<Record<string, unknown>, BlogPost[]>('public-blog-index', api.blog.publicBlog, {})
 const posts = computed(() => data.value ?? [])
 
 function excerpt(post: { excerpt: string; body: string }) {

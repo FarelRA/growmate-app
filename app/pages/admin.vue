@@ -21,7 +21,7 @@ const {
   resetDeviceForm, editDevice,
   resetProductForm, editProduct,
   resetPlantPresetForm, editPlantPreset,
-  editBlogPost,
+  editBlogPost, resetBlogPostForm,
   handleProductImageChange, handlePlantPresetImageChange, handleBlogImageChange,
   handleSaveDevice, handleDeleteDevice,
   handleTicketUpdate, handleSendTicketMessage,

@@ -7,6 +7,9 @@ export function getErrorMessage(error: unknown, fallback: string) {
   }
 
   if (error instanceof Error && error.message) {
+    if (import.meta.client) {
+      console.warn('[getErrorMessage] Unhandled non-ConvexError:', error)
+    }
     return error.message
   }
 

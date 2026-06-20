@@ -21,7 +21,7 @@ export function CustomPassword<DataModel extends GenericDataModel = GenericDataM
         if (error instanceof Error && error.message === "TooManyFailedAttempts") {
           throw new ConvexError("Terlalu banyak percobaan. Silakan coba lagi nanti.")
         }
-        throw error
+        throw new ConvexError("Email atau password salah")
       }
     },
   } as typeof base

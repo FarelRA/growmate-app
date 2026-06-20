@@ -1,4 +1,4 @@
-import { v } from 'convex/values'
+import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
 import type { Ctx, CommunityPostDoc } from './types'
@@ -94,7 +94,7 @@ export const createPost = mutation({
     const title = args.title.trim()
     const body = args.body.trim()
     if (!title || !body) {
-      throw new Error('Judul dan isi postingan wajib diisi')
+      throw new ConvexError('Judul dan isi postingan wajib diisi')
     }
     const postId = await ctx.db.insert('communityPosts', {
       userId: user._id,
@@ -155,7 +155,7 @@ export const createComment = mutation({
     const now = Date.now()
     const body = args.body.trim()
     if (!body) {
-      throw new Error('Komentar tidak boleh kosong')
+      throw new ConvexError('Komentar tidak boleh kosong')
     }
     const commentId = await ctx.db.insert('postComments', {
       postId: args.postId,
@@ -182,7 +182,7 @@ export const deletePost = mutation({
     const user = await requireUser(ctx)
     const post = await ctx.db.get(args.postId)
     if (!post || String(post.userId) !== String(user._id)) {
-      throw new Error('Postingan tidak ditemukan')
+      throw new ConvexError('Postingan tidak ditemukan')
     }
 
     const [likes, comments] = await Promise.all([

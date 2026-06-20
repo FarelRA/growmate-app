@@ -1,4 +1,4 @@
-import { v } from 'convex/values'
+import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import type { DeviceDoc } from './types'
 import {
@@ -72,7 +72,7 @@ export const completeProfile = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx)
-    if (!user) throw new Error('Anda harus masuk terlebih dahulu')
+    if (!user) throw new ConvexError('Anda harus masuk terlebih dahulu')
 
     const handle = normalizeHandle(args.handle?.trim() || args.name)
     const existingHandle = await ctx.db
@@ -80,7 +80,7 @@ export const completeProfile = mutation({
       .withIndex('by_handle', (q) => q.eq('handle', handle))
       .first()
     if (existingHandle && String(existingHandle._id) !== String(user._id)) {
-      throw new Error('Nama pengguna tersebut sudah digunakan')
+      throw new ConvexError('Nama pengguna tersebut sudah digunakan')
     }
 
     const now = Date.now()
@@ -109,8 +109,8 @@ export const claimDevice = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx)
-    if (!user) throw new Error('Anda harus masuk terlebih dahulu')
-    if (!user.name) throw new Error('Lengkapi profil Anda terlebih dahulu')
+    if (!user) throw new ConvexError('Anda harus masuk terlebih dahulu')
+    if (!user.name) throw new ConvexError('Lengkapi profil Anda terlebih dahulu')
 
     const device = await ctx.db
       .query('devices')
@@ -118,11 +118,11 @@ export const claimDevice = mutation({
       .first()
 
     if (!device) {
-      throw new Error('Perangkat tidak ditemukan. Periksa kembali ID perangkat lalu coba lagi.')
+      throw new ConvexError('Perangkat tidak ditemukan. Periksa kembali ID perangkat lalu coba lagi.')
     }
 
     if (device.userId) {
-      throw new Error('Perangkat ini sudah terhubung ke akun lain')
+      throw new ConvexError('Perangkat ini sudah terhubung ke akun lain')
     }
 
     const now = Date.now()
@@ -202,7 +202,7 @@ export const updateCurrentUserProfile = mutation({
       .withIndex('by_handle', (q) => q.eq('handle', normalizedHandle))
       .first()
     if (existingHandle && String(existingHandle._id) !== String(user._id)) {
-      throw new Error('Nama pengguna tersebut sudah digunakan')
+      throw new ConvexError('Nama pengguna tersebut sudah digunakan')
     }
 
     await ctx.db.patch(user._id, {

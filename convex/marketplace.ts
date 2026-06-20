@@ -1,4 +1,4 @@
-import { v } from 'convex/values'
+import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { getCurrentUser, requireUser, enrichMarketplaceProduct, getMarketplaceThreadsForUser, formatCurrencyIdr } from './helpers'
 
@@ -106,26 +106,26 @@ export const saveMarketplaceDraft = mutation({
     const user = await requireUser(ctx)
     const now = Date.now()
     if (!args.title.trim() || !args.description.trim() || !args.category.trim()) {
-      throw new Error('Judul, deskripsi, dan kategori wajib diisi')
+      throw new ConvexError('Judul, deskripsi, dan kategori wajib diisi')
     }
     if (args.quantity <= 0) {
-      throw new Error('Jumlah harus lebih besar dari nol')
+      throw new ConvexError('Jumlah harus lebih besar dari nol')
     }
     if (args.price < 0) {
-      throw new Error('Harga tidak boleh bernilai negatif')
+      throw new ConvexError('Harga tidak boleh bernilai negatif')
     }
     let imageUrl = args.imageUrl
 
     if (args.draftId) {
       const existing = await ctx.db.get(args.draftId)
       if (!existing || String(existing.userId) !== String(user._id)) {
-        throw new Error('Draft tidak ditemukan')
+        throw new ConvexError('Draft tidak ditemukan')
       }
       imageUrl = imageUrl ?? existing.imageUrl
     }
 
     if (!imageUrl) {
-      throw new Error('Gambar penawaran wajib diisi')
+      throw new ConvexError('Gambar penawaran wajib diisi')
     }
 
     const payload = {
@@ -163,10 +163,10 @@ export const publishMarketplaceDraft = mutation({
     const user = await requireUser(ctx)
     const draft = await ctx.db.get(args.draftId)
     if (!draft || String(draft.userId) !== String(user._id)) {
-      throw new Error('Draft tidak ditemukan')
+      throw new ConvexError('Draft tidak ditemukan')
     }
     if (draft.quantity <= 0) {
-      throw new Error('Jumlah pada draft harus lebih besar dari nol sebelum dipublikasikan')
+      throw new ConvexError('Jumlah pada draft harus lebih besar dari nol sebelum dipublikasikan')
     }
 
     const now = Date.now()
@@ -219,7 +219,7 @@ export const updateMarketplaceListingStatus = mutation({
     const user = await requireUser(ctx)
     const product = await ctx.db.get(args.productId)
     if (!product || String(product.sellerId) !== String(user._id) || product.type !== 'community') {
-      throw new Error('Penawaran tidak ditemukan')
+      throw new ConvexError('Penawaran tidak ditemukan')
     }
 
     await ctx.db.patch(args.productId, {
@@ -248,17 +248,17 @@ export const updateMarketplaceListing = mutation({
     const user = await requireUser(ctx)
     const product = await ctx.db.get(args.productId)
     if (!product || String(product.sellerId) !== String(user._id) || product.type !== 'community') {
-      throw new Error('Penawaran tidak ditemukan')
+      throw new ConvexError('Penawaran tidak ditemukan')
     }
 
     if (!args.title.trim() || !args.description.trim() || !args.category.trim()) {
-      throw new Error('Judul, deskripsi, dan kategori wajib diisi')
+      throw new ConvexError('Judul, deskripsi, dan kategori wajib diisi')
     }
     if (args.quantity <= 0) {
-      throw new Error('Jumlah harus lebih besar dari nol')
+      throw new ConvexError('Jumlah harus lebih besar dari nol')
     }
     if (args.price < 0) {
-      throw new Error('Harga tidak boleh bernilai negatif')
+      throw new ConvexError('Harga tidak boleh bernilai negatif')
     }
 
     const imageUrl = args.imageUrl ?? product.imageUrl
@@ -287,7 +287,7 @@ export const deleteMarketplaceDraft = mutation({
     const user = await requireUser(ctx)
     const draft = await ctx.db.get(args.draftId)
     if (!draft || String(draft.userId) !== String(user._id)) {
-      throw new Error('Draft tidak ditemukan')
+      throw new ConvexError('Draft tidak ditemukan')
     }
 
     await ctx.db.delete(args.draftId)
@@ -301,7 +301,7 @@ export const deleteMarketplaceListing = mutation({
     const user = await requireUser(ctx)
     const product = await ctx.db.get(args.productId)
     if (!product || String(product.sellerId) !== String(user._id) || product.type !== 'community') {
-      throw new Error('Penawaran tidak ditemukan')
+      throw new ConvexError('Penawaran tidak ditemukan')
     }
 
     const threads = await ctx.db
@@ -334,16 +334,16 @@ export const sendMarketplaceMessage = mutation({
     const user = await requireUser(ctx)
     const product = await ctx.db.get(args.productId)
     if (!product || product.type !== 'community') {
-      throw new Error('Penawaran tidak ditemukan')
+      throw new ConvexError('Penawaran tidak ditemukan')
     }
     if (String(product.sellerId) === String(user._id)) {
-      throw new Error('Penjual tidak dapat memulai percakapan pada listing miliknya sendiri')
+      throw new ConvexError('Penjual tidak dapat memulai percakapan pada listing miliknya sendiri')
     }
 
     const now = Date.now()
     const body = args.body.trim()
     if (!body) {
-      throw new Error('Pesan tidak boleh kosong')
+      throw new ConvexError('Pesan tidak boleh kosong')
     }
 
     let thread = args.threadId ? await ctx.db.get(args.threadId) : null
@@ -416,19 +416,19 @@ export const replyMarketplaceThread = mutation({
     const user = await requireUser(ctx)
     const thread = await ctx.db.get(args.threadId)
     if (!thread) {
-      throw new Error('Percakapan tidak ditemukan')
+      throw new ConvexError('Percakapan tidak ditemukan')
     }
     if (
       String(thread.buyerId) !== String(user._id) &&
       String(thread.sellerId) !== String(user._id)
     ) {
-      throw new Error('Percakapan tidak ditemukan')
+      throw new ConvexError('Percakapan tidak ditemukan')
     }
 
     const now = Date.now()
     const body = args.body.trim()
     if (!body) {
-      throw new Error('Pesan tidak boleh kosong')
+      throw new ConvexError('Pesan tidak boleh kosong')
     }
     const isSeller = String(thread.sellerId) === String(user._id)
     const receiverId = isSeller ? thread.buyerId : thread.sellerId
@@ -467,13 +467,13 @@ export const markMarketplaceThreadRead = mutation({
     const user = await requireUser(ctx)
     const thread = await ctx.db.get(args.threadId)
     if (!thread) {
-      throw new Error('Percakapan tidak ditemukan')
+      throw new ConvexError('Percakapan tidak ditemukan')
     }
     const now = Date.now()
     const isSeller = String(thread.sellerId) === String(user._id)
     const isBuyer = String(thread.buyerId) === String(user._id)
     if (!isSeller && !isBuyer) {
-      throw new Error('Percakapan tidak ditemukan')
+      throw new ConvexError('Percakapan tidak ditemukan')
     }
 
     await ctx.db.patch(args.threadId, {

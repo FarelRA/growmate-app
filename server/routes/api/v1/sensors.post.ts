@@ -78,8 +78,7 @@ export default defineEventHandler(async (event) => {
     if (error && typeof error === 'object' && 'statusCode' in error) {
       throw error
     }
-    const message =
-      error instanceof Error ? error.message : 'Internal server error'
-    throw createError({ statusCode: 500, statusMessage: message })
+    console.error('Sensor data ingestion failed:', error)
+    throw createError({ statusCode: 500, statusMessage: 'Internal server error' })
   }
 })

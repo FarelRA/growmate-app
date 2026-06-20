@@ -1,4 +1,4 @@
-import { v } from 'convex/values'
+import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import type { DeviceDoc, PlantStageValue, DeviceAutomationKey, SensorKind } from './types'
 import {
@@ -418,7 +418,7 @@ export const updateDeviceAutomation = mutation({
         ? await getDeviceByExternalId(ctx, args.deviceId)
         : await requireOwnedDevice(ctx, user._id, args.deviceId)
     if (!device) {
-      throw new Error('Perangkat tidak ditemukan')
+      throw new ConvexError('Perangkat tidak ditemukan')
     }
 
     const includesLowLevelAutomation =
@@ -429,7 +429,7 @@ export const updateDeviceAutomation = mutation({
       args.lightingHysteresis !== undefined
 
     if (includesLowLevelAutomation && user.role !== 'admin') {
-      throw new Error('Hanya admin yang dapat mengubah pengaturan teknis otomatisasi perangkat')
+      throw new ConvexError('Hanya admin yang dapat mengubah pengaturan teknis otomatisasi perangkat')
     }
 
     const updates: Partial<Pick<DeviceDoc, DeviceAutomationKey>> = {}

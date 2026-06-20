@@ -1,4 +1,4 @@
-import { v } from 'convex/values'
+import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
@@ -301,7 +301,7 @@ export const adminSaveDevice = mutation({
 
     const existingByDeviceId = await getDeviceByExternalId(ctx, args.deviceId.trim())
     if (existingByDeviceId && String(existingByDeviceId._id) !== String(args.existingDeviceId)) {
-       throw new Error('ID perangkat tersebut sudah digunakan')
+       throw new ConvexError('ID perangkat tersebut sudah digunakan')
     }
 
     const payload = {
@@ -321,7 +321,7 @@ export const adminSaveDevice = mutation({
     if (args.existingDeviceId) {
       const existing = await ctx.db.get(args.existingDeviceId)
       if (!existing) {
-         throw new Error('Perangkat tidak ditemukan')
+         throw new ConvexError('Perangkat tidak ditemukan')
       }
 
       await ctx.db.patch(args.existingDeviceId, payload)
@@ -349,10 +349,10 @@ export const adminDeleteDevice = mutation({
     await requireAdmin(ctx)
     const device = await ctx.db.get(args.deviceId)
     if (!device) {
-       throw new Error('Perangkat tidak ditemukan')
+       throw new ConvexError('Perangkat tidak ditemukan')
     }
     if (device.userId || device.plantId) {
-       throw new Error('Lepaskan klaim perangkat dan arsipkan tanaman aktif sebelum menghapus perangkat ini')
+       throw new ConvexError('Lepaskan klaim perangkat dan arsipkan tanaman aktif sebelum menghapus perangkat ini')
     }
 
     await ctx.db.delete(args.deviceId)
@@ -387,14 +387,14 @@ export const adminSaveOfficialProduct = mutation({
     if (args.productId) {
       const existing = await ctx.db.get(args.productId)
       if (!existing || existing.type !== 'official') {
-        throw new Error('Produk resmi tidak ditemukan')
+        throw new ConvexError('Produk resmi tidak ditemukan')
       }
 
       imageUrl = imageUrl ?? existing.imageUrl
     }
 
     if (!imageUrl) {
-      throw new Error('Gambar produk wajib diisi')
+      throw new ConvexError('Gambar produk wajib diisi')
     }
 
     const payload = {
@@ -464,12 +464,12 @@ export const adminSavePlantPreset = mutation({
     const now = Date.now()
     const key = normalizePlantPresetKey(args.key || args.name)
     if (!key) {
-      throw new Error('Kunci preset tanaman wajib diisi')
+      throw new ConvexError('Kunci preset tanaman wajib diisi')
     }
 
     const existing = args.presetId ? await ctx.db.get(args.presetId) : null
     if (args.presetId && (!existing || existing._id !== args.presetId)) {
-      throw new Error('Preset tanaman tidak ditemukan')
+      throw new ConvexError('Preset tanaman tidak ditemukan')
     }
 
     const duplicate = await ctx.db
@@ -477,12 +477,12 @@ export const adminSavePlantPreset = mutation({
       .withIndex('by_key', (q) => q.eq('key', key))
       .first()
     if (duplicate && String(duplicate._id) !== String(args.presetId)) {
-      throw new Error('Preset tanaman dengan kunci ini sudah ada')
+      throw new ConvexError('Preset tanaman dengan kunci ini sudah ada')
     }
 
     const finalImageUrl = args.imageUrl ?? existing?.imageUrl
     if (!finalImageUrl) {
-      throw new Error('Gambar preset tanaman wajib diisi')
+      throw new ConvexError('Gambar preset tanaman wajib diisi')
     }
 
     const payload = {
@@ -521,7 +521,7 @@ export const adminDeletePlantPreset = mutation({
     await requireAdmin(ctx)
     const preset = await ctx.db.get(args.presetId)
     if (!preset) {
-      throw new Error('Preset tanaman tidak ditemukan')
+      throw new ConvexError('Preset tanaman tidak ditemukan')
     }
 
     await ctx.db.delete(args.presetId)
@@ -543,7 +543,7 @@ export const adminUpdateOfficialProductStatus = mutation({
     await requireAdmin(ctx)
     const product = await ctx.db.get(args.productId)
     if (!product || product.type !== 'official') {
-      throw new Error('Produk resmi tidak ditemukan')
+      throw new ConvexError('Produk resmi tidak ditemukan')
     }
 
     await ctx.db.patch(args.productId, {
@@ -561,7 +561,7 @@ export const adminDeleteOfficialProduct = mutation({
     await requireAdmin(ctx)
     const product = await ctx.db.get(args.productId)
     if (!product || product.type !== 'official') {
-      throw new Error('Produk resmi tidak ditemukan')
+      throw new ConvexError('Produk resmi tidak ditemukan')
     }
 
     await ctx.db.delete(args.productId)
@@ -579,11 +579,11 @@ export const adminUpdateUserAccess = mutation({
     const admin = await requireAdmin(ctx)
     const target = await ctx.db.get(args.userId)
     if (!target) {
-      throw new Error('Pengguna tidak ditemukan')
+      throw new ConvexError('Pengguna tidak ditemukan')
     }
 
     if (String(target._id) === String(admin._id) && args.role && args.role !== 'admin') {
-      throw new Error('Admin tidak dapat menghapus peran admin miliknya sendiri dari halaman ini')
+      throw new ConvexError('Admin tidak dapat menghapus peran admin miliknya sendiri dari halaman ini')
     }
 
     await ctx.db.patch(args.userId, {

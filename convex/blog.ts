@@ -1,4 +1,4 @@
-import { v } from 'convex/values'
+import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import {
   requireAdmin, enrichBlogPost,
@@ -34,11 +34,11 @@ export const adminSaveBlogPost = mutation({
     const finalImageUrl = args.imageUrl ?? existing?.imageUrl
 
     if (args.postId && !existing) {
-      throw new Error('Postingan blog tidak ditemukan')
+      throw new ConvexError('Postingan blog tidak ditemukan')
     }
 
     if (!finalImageUrl) {
-      throw new Error('Gambar sampul blog wajib diisi')
+      throw new ConvexError('Gambar sampul blog wajib diisi')
     }
 
     const payload = {
@@ -72,7 +72,7 @@ export const adminDeleteBlogPost = mutation({
     await requireAdmin(ctx)
     const post = await ctx.db.get(args.postId)
     if (!post) {
-      throw new Error('Postingan blog tidak ditemukan')
+      throw new ConvexError('Postingan blog tidak ditemukan')
     }
 
     await ctx.db.delete(args.postId)

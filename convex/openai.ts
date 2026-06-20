@@ -280,12 +280,9 @@ export const generateAIResponse = internalAction({
       return { response: fallback };
     } catch (error) {
       console.error("OpenAI-compatible request failed:", error);
-      const message = error instanceof Error
-        ? `Floral Assistant failed: ${error.message}`
-        : "Floral Assistant failed unexpectedly.";
       await ctx.runMutation(internal.assistant.insertAIResponse, {
         assistantMessageId: args.assistantMessageId,
-        body: message,
+        body: "Maaf, asisten sedang mengalami gangguan. Silakan coba lagi.",
         status: "error",
       });
       throw error;

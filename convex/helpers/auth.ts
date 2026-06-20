@@ -1,3 +1,4 @@
+import { ConvexError } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import type { QueryCtx, MutationCtx } from '../_generated/server'
 
@@ -13,7 +14,7 @@ export async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
 export async function requireUser(ctx: QueryCtx | MutationCtx) {
   const user = await getCurrentUser(ctx)
   if (!user) {
-    throw new Error('Autentikasi diperlukan')
+    throw new ConvexError('Autentikasi diperlukan')
   }
   return user
 }
@@ -21,7 +22,7 @@ export async function requireUser(ctx: QueryCtx | MutationCtx) {
 export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
   const user = await requireUser(ctx)
   if (user.role !== 'admin') {
-    throw new Error('Akses admin diperlukan')
+    throw new ConvexError('Akses admin diperlukan')
   }
   return user
 }

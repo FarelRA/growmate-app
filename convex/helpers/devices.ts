@@ -1,3 +1,4 @@
+import { ConvexError } from 'convex/values'
 import type { Ctx, MutationCtx, DeviceDoc, DeviceQueuedCommands, QueuedDeviceAction } from '../types'
 import type { Id } from '../_generated/dataModel'
 import {
@@ -124,7 +125,7 @@ export async function getUserDevices(ctx: Ctx, userId: Id<'users'>) {
 export async function requireOwnedDevice(ctx: Ctx, userId: Id<'users'>, deviceId: string) {
   const device = await getDeviceByExternalId(ctx, deviceId)
   if (!device || device.userId !== userId) {
-    throw new Error('Perangkat tidak ditemukan')
+    throw new ConvexError('Perangkat tidak ditemukan')
   }
   return device
 }

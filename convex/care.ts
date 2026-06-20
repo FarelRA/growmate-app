@@ -1,4 +1,4 @@
-import { v } from 'convex/values'
+import { v, ConvexError } from 'convex/values'
 import { mutation } from './_generated/server'
 import type { CareScheduleDoc, ScheduleCadence, ScheduleCadenceUnit } from './types'
 import {
@@ -86,13 +86,13 @@ export const toggleCareSchedule = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
     const schedule = await ctx.db.get(args.scheduleId)
-    if (!schedule) throw new Error('Jadwal tidak ditemukan')
+    if (!schedule) throw new ConvexError('Jadwal tidak ditemukan')
 
     const plant = await ctx.db.get(schedule.plantId)
-    if (!plant) throw new Error('Tanaman tidak ditemukan')
+    if (!plant) throw new ConvexError('Tanaman tidak ditemukan')
 
     const device = await ctx.db.get(plant.deviceId)
-    if (!device || device.userId !== user._id) throw new Error('Jadwal tidak ditemukan')
+    if (!device || device.userId !== user._id) throw new ConvexError('Jadwal tidak ditemukan')
 
     await ctx.db.patch(args.scheduleId, { enabled: args.enabled })
 
@@ -127,15 +127,15 @@ export const saveCareSchedule = mutation({
     const user = await requireUser(ctx)
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
     if (!device || !device.plantId) {
-      throw new Error('Perangkat dengan tanaman aktif tidak ditemukan')
+      throw new ConvexError('Perangkat dengan tanaman aktif tidak ditemukan')
     }
 
     const plant = await ctx.db.get(device.plantId)
-    if (!plant || plant.archived) throw new Error('Tanaman tidak ditemukan')
+    if (!plant || plant.archived) throw new ConvexError('Tanaman tidak ditemukan')
 
     const now = Date.now()
     const title = args.title.trim()
-    if (!title) throw new Error('Judul jadwal wajib diisi')
+    if (!title) throw new ConvexError('Judul jadwal wajib diisi')
 
     const cadence = normalizeScheduleCadence({
       cadenceUnit: args.cadenceUnit,
@@ -149,7 +149,7 @@ export const saveCareSchedule = mutation({
     if (scheduleId) {
       const existing = await ctx.db.get(scheduleId)
       if (!existing || String(existing.plantId) !== String(plant._id)) {
-        throw new Error('Jadwal tidak ditemukan')
+        throw new ConvexError('Jadwal tidak ditemukan')
       }
 
       await ctx.db.patch(scheduleId, {
@@ -200,13 +200,13 @@ export const deleteCareSchedule = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
     const schedule = await ctx.db.get(args.scheduleId)
-    if (!schedule) throw new Error('Jadwal tidak ditemukan')
+    if (!schedule) throw new ConvexError('Jadwal tidak ditemukan')
 
     const plant = await ctx.db.get(schedule.plantId)
-    if (!plant) throw new Error('Tanaman tidak ditemukan')
+    if (!plant) throw new ConvexError('Tanaman tidak ditemukan')
 
     const device = await ctx.db.get(plant.deviceId)
-    if (!device || device.userId !== user._id) throw new Error('Jadwal tidak ditemukan')
+    if (!device || device.userId !== user._id) throw new ConvexError('Jadwal tidak ditemukan')
 
     await ctx.db.delete(args.scheduleId)
 
@@ -231,7 +231,7 @@ export const triggerWatering = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    if (!device) throw new Error('Perangkat tidak ditemukan')
+    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
 
     await executeManualWatering(ctx, user, device)
     return { success: true }
@@ -246,7 +246,7 @@ export const triggerLighting = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    if (!device) throw new Error('Perangkat tidak ditemukan')
+    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
 
     await executeManualLighting(ctx, user, device, args.enabled)
     return { success: true, enabled: args.enabled }

@@ -1,4 +1,4 @@
-import { v } from 'convex/values'
+import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { requireUser, requireAdmin, formatTimestamp, getSupportMessages } from './helpers'
 
@@ -46,7 +46,7 @@ export const createSupportRequest = mutation({
     const user = await requireUser(ctx)
     const topic = args.topic.trim()
     if (!topic) {
-      throw new Error('Topik dukungan wajib diisi')
+      throw new ConvexError('Topik dukungan wajib diisi')
     }
 
     const now = Date.now()
@@ -89,18 +89,18 @@ export const sendSupportMessage = mutation({
     const user = await requireUser(ctx)
     const request = await ctx.db.get(args.requestId)
     if (!request) {
-      throw new Error('Permintaan dukungan tidak ditemukan')
+      throw new ConvexError('Permintaan dukungan tidak ditemukan')
     }
 
     const isAdmin = user.role === 'admin'
     const isOwner = String(request.userId) === String(user._id)
     if (!isAdmin && !isOwner) {
-      throw new Error('Permintaan dukungan tidak ditemukan')
+      throw new ConvexError('Permintaan dukungan tidak ditemukan')
     }
 
     const body = args.body.trim()
     if (!body) {
-      throw new Error('Pesan tidak boleh kosong')
+      throw new ConvexError('Pesan tidak boleh kosong')
     }
 
     const now = Date.now()
@@ -144,7 +144,7 @@ export const closeSupportRequest = mutation({
     const user = await requireUser(ctx)
     const request = await ctx.db.get(args.requestId)
     if (!request || String(request.userId) !== String(user._id)) {
-      throw new Error('Permintaan dukungan tidak ditemukan')
+      throw new ConvexError('Permintaan dukungan tidak ditemukan')
     }
 
     const now = Date.now()
@@ -193,7 +193,7 @@ export const adminUpdateSupportRequest = mutation({
     const admin = await requireAdmin(ctx)
     const request = await ctx.db.get(args.requestId)
     if (!request) {
-       throw new Error('Permintaan dukungan tidak ditemukan')
+       throw new ConvexError('Permintaan dukungan tidak ditemukan')
     }
 
     const now = Date.now()

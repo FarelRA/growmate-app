@@ -1,4 +1,4 @@
-import { v } from 'convex/values'
+import { v, ConvexError } from 'convex/values'
 import { query, mutation, internalMutation } from './_generated/server'
 import type { Id } from './_generated/dataModel'
 import type { Ctx, UserDoc, DeviceDoc, PlantDoc, SensorDoc, CareScheduleDoc, SensorKind } from './types'
@@ -336,10 +336,10 @@ export const assistantTriggerWatering = internalMutation({
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId)
-    if (!user) throw new Error('Pengguna tidak ditemukan')
+    if (!user) throw new ConvexError('Pengguna tidak ditemukan')
 
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    if (!device) throw new Error('Perangkat tidak ditemukan')
+    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
 
     await executeManualWatering(ctx, user, device)
     return { success: true, deviceName: device.name }
@@ -354,10 +354,10 @@ export const assistantTriggerLighting = internalMutation({
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId)
-    if (!user) throw new Error('Pengguna tidak ditemukan')
+    if (!user) throw new ConvexError('Pengguna tidak ditemukan')
 
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    if (!device) throw new Error('Perangkat tidak ditemukan')
+    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
 
     await executeManualLighting(ctx, user, device, args.enabled)
     return { success: true, enabled: args.enabled, deviceName: device.name }
@@ -371,10 +371,10 @@ export const assistantCreateSupportRequest = internalMutation({
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId)
-    if (!user) throw new Error('Pengguna tidak ditemukan')
+    if (!user) throw new ConvexError('Pengguna tidak ditemukan')
 
     const topic = args.topic.trim()
-    if (!topic) throw new Error('Topik dukungan wajib diisi')
+    if (!topic) throw new ConvexError('Topik dukungan wajib diisi')
 
     const now = Date.now()
     const requestId = await ctx.db.insert('supportRequests', {
@@ -415,16 +415,16 @@ export const assistantToggleSchedule = internalMutation({
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId)
-    if (!user) throw new Error('Pengguna tidak ditemukan')
+    if (!user) throw new ConvexError('Pengguna tidak ditemukan')
 
     const schedule = await ctx.db.get(args.scheduleId)
-    if (!schedule) throw new Error('Jadwal tidak ditemukan')
+    if (!schedule) throw new ConvexError('Jadwal tidak ditemukan')
 
     const plant = await ctx.db.get(schedule.plantId)
-    if (!plant) throw new Error('Tanaman tidak ditemukan')
+    if (!plant) throw new ConvexError('Tanaman tidak ditemukan')
 
     const device = await ctx.db.get(plant.deviceId)
-    if (!device || String(device.userId) !== String(user._id)) throw new Error('Jadwal tidak ditemukan')
+    if (!device || String(device.userId) !== String(user._id)) throw new ConvexError('Jadwal tidak ditemukan')
 
     await ctx.db.patch(args.scheduleId, { enabled: args.enabled })
     await recordGrowEvent(ctx, {
@@ -451,14 +451,14 @@ export const assistantDeleteSchedule = internalMutation({
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId)
-    if (!user) throw new Error('Pengguna tidak ditemukan')
+    if (!user) throw new ConvexError('Pengguna tidak ditemukan')
 
     const schedule = await ctx.db.get(args.scheduleId)
-    if (!schedule) throw new Error('Jadwal tidak ditemukan')
+    if (!schedule) throw new ConvexError('Jadwal tidak ditemukan')
     const plant = await ctx.db.get(schedule.plantId)
-    if (!plant) throw new Error('Tanaman tidak ditemukan')
+    if (!plant) throw new ConvexError('Tanaman tidak ditemukan')
     const device = await ctx.db.get(plant.deviceId)
-    if (!device || String(device.userId) !== String(user._id)) throw new Error('Jadwal tidak ditemukan')
+    if (!device || String(device.userId) !== String(user._id)) throw new ConvexError('Jadwal tidak ditemukan')
 
     await ctx.db.delete(args.scheduleId)
     await recordGrowEvent(ctx, {
@@ -488,14 +488,14 @@ export const assistantCreateSchedule = internalMutation({
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId)
-    if (!user) throw new Error('Pengguna tidak ditemukan')
+    if (!user) throw new ConvexError('Pengguna tidak ditemukan')
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    if (!device || !device.plantId) throw new Error('Perangkat dengan tanaman aktif tidak ditemukan')
+    if (!device || !device.plantId) throw new ConvexError('Perangkat dengan tanaman aktif tidak ditemukan')
     const plant = await ctx.db.get(device.plantId)
-    if (!plant || plant.archived) throw new Error('Tanaman tidak ditemukan')
+    if (!plant || plant.archived) throw new ConvexError('Tanaman tidak ditemukan')
     const now = Date.now()
     const title = args.title.trim()
-    if (!title) throw new Error('Judul jadwal wajib diisi')
+    if (!title) throw new ConvexError('Judul jadwal wajib diisi')
 
     const cadence = normalizeScheduleCadence(args)
     const nextRunAt = computeNextRunAtFromCadence(cadence, now)
@@ -552,14 +552,14 @@ export const sendAssistantMessage = mutation({
       thread = await ctx.db.get(threadId)
     }
 
-    if (!thread) throw new Error('Percakapan asisten tidak dapat dimulai')
+    if (!thread) throw new ConvexError('Percakapan asisten tidak dapat dimulai')
 
     const trimmedBody = args.body.trim()
-    if (!trimmedBody) throw new Error('Pesan tidak boleh kosong')
+    if (!trimmedBody) throw new ConvexError('Pesan tidak boleh kosong')
 
     const quota = await getAssistantUsage(ctx, thread._id, user.tier)
     if (quota.remainingToday <= 0) {
-      throw new Error(
+      throw new ConvexError(
         `Batas penggunaan asisten harian sudah tercapai. Paket Anda saat ini memiliki ${quota.limit} pesan per hari.`,
       )
     }

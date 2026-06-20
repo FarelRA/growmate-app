@@ -1,4 +1,4 @@
-import { v } from 'convex/values'
+import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { getCurrentUser, requireUser, formatTimestamp, getRelativeTime } from './helpers'
 
@@ -33,7 +33,7 @@ export const markNotificationRead = mutation({
     const user = await requireUser(ctx)
     const notification = await ctx.db.get(args.notificationId)
     if (!notification || String(notification.userId) !== String(user._id)) {
-      throw new Error('Notifikasi tidak ditemukan')
+      throw new ConvexError('Notifikasi tidak ditemukan')
     }
 
     if (!notification.read) {

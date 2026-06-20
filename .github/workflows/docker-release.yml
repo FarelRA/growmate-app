@@ -23,14 +23,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Lint
-        run: bun run lint
-
-      - name: Unit tests
-        run: bun run test
-
-      - name: Typecheck
-        run: bun run typecheck
+      - name: Check (typecheck, lint, test, build)
+        run: bun run check
 
   docker:
     needs: test

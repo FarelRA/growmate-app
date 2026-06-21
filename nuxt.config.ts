@@ -4,9 +4,6 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineNuxtConfig({
   compatibilityDate: '2026-05-15',
   modules: ['@vite-pwa/nuxt'],
-  components: [
-    { path: '~/components', pathPrefix: false },
-  ],
   ssr: true,
   app: {
     head: {

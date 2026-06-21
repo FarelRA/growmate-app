@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { getImageUrl } from '@/lib/images'
 import MetricLineChart from '@/components/MetricLineChart.vue'
 
 defineProps<{
@@ -78,7 +79,7 @@ defineProps<{
               :key="image._id"
               class="overflow-hidden rounded-[1.25rem] bg-[#f3f3f3]"
             >
-              <img :src="image.imageUrl ?? undefined" :alt="historyData.currentPlant?.name || 'Snapshot tanaman'" class="h-24 w-full object-cover" />
+              <img :src="getImageUrl(image.imageUrl, 200) ?? undefined" :alt="historyData.currentPlant?.name || 'Snapshot tanaman'" class="h-24 w-full object-cover" />
               <div class="px-3 py-2 text-[11px] text-gm-muted">{{ image.capturedAtLabel }}</div>
             </div>
           </div>

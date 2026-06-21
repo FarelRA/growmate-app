@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { PlantLifecycleStage } from '@/lib/plants'
+import { getImageUrl } from '@/lib/images'
 const props = defineProps<{
   plantPresetForm: {
     presetId: string | null
@@ -100,7 +101,7 @@ const sensorKinds = ['soil', 'light', 'temperature', 'air', 'water'] as const
     <article class="space-y-4">
       <article v-for="preset in props.plantPresetList" :key="preset._id" class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
         <div class="flex gap-4">
-          <img :src="preset.imageUrl ?? undefined" :alt="preset.name" class="h-20 w-20 shrink-0 rounded-[1.25rem] object-cover" />
+          <img :src="getImageUrl(preset.imageUrl, 200) ?? undefined" :alt="preset.name" class="h-20 w-20 shrink-0 rounded-[1.25rem] object-cover" />
           <div class="min-w-0 flex-1">
             <div class="text-lg font-bold text-gm-text">{{ preset.name }}</div>
             <div class="mt-1 text-sm text-gm-muted">{{ preset.species }} • {{ preset.category }} • {{ preset.difficulty }}</div>

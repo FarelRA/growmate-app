@@ -1,5 +1,6 @@
 <script setup lang="ts">
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { getImageUrl } from '@/lib/images'
 defineProps<{
   featured: { _id: string; imageUrl?: string | null; title: string; description: string; priceLabel: string; shopeeUrl?: string | null } | null
   filteredOfficial: { _id: string; imageUrl?: string | null; title: string; description: string; priceLabel: string; shopeeUrl?: string | null }[]
@@ -36,7 +37,7 @@ defineEmits<{
       >
         <img
           v-if="hasWorkingImage(featured._id, featured.imageUrl)"
-          :src="featured.imageUrl ?? undefined"
+          :src="getImageUrl(featured.imageUrl, 800) ?? undefined"
           :alt="featured.title"
           class="h-72 w-full object-cover"
           @error="$emit('handleImageError', featured._id)"
@@ -103,7 +104,7 @@ defineEmits<{
       >
         <img
           v-if="hasWorkingImage(item._id, item.imageUrl)"
-          :src="item.imageUrl ?? undefined"
+          :src="getImageUrl(item.imageUrl, 400) ?? undefined"
           :alt="item.title"
           class="h-52 w-full object-cover"
           @error="$emit('handleImageError', item._id)"
@@ -139,7 +140,7 @@ defineEmits<{
       >
         <img
           v-if="hasWorkingImage(item._id, item.imageUrl)"
-          :src="item.imageUrl ?? undefined"
+          :src="getImageUrl(item.imageUrl, 400) ?? undefined"
           :alt="item.title"
           class="h-48 w-full object-cover"
           @error="$emit('handleImageError', item._id)"

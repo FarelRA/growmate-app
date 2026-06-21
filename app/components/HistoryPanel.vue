@@ -6,7 +6,7 @@ defineProps<{
     timeline: { _id: string; title: string; detail?: string; timestampLabel: string; relativeTime: string }[]
     currentPlant: { name: string; species: string } | null
     imageHistory: { _id: string; imageUrl: string | null; capturedAtLabel: string }[]
-    archivedPlants: { _id: string; name: string; species: string; plantedAtLabel: string; archivedAtLabel: string }[]
+    archivedPlants: { _id: string; name: string; species: string; plantedAtLabel: string; archivedAtLabel: string | null }[]
   } | null
   historyMetricCards: { key: string; label: string; unit: string; stroke: string; fill: string; points: { value: number; measuredAt: number }[]; latest: number | undefined }[]
 }>()
@@ -78,7 +78,7 @@ defineProps<{
               :key="image._id"
               class="overflow-hidden rounded-[1.25rem] bg-[#f3f3f3]"
             >
-              <img :src="image.imageUrl" :alt="historyData.currentPlant?.name || 'Snapshot tanaman'" class="h-24 w-full object-cover" />
+              <img :src="image.imageUrl ?? undefined" :alt="historyData.currentPlant?.name || 'Snapshot tanaman'" class="h-24 w-full object-cover" />
               <div class="px-3 py-2 text-[11px] text-gm-muted">{{ image.capturedAtLabel }}</div>
             </div>
           </div>

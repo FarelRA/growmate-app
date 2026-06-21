@@ -1,12 +1,12 @@
 <script setup lang="ts">
 const props = defineProps<{
-  supportQueue: { _id: string; topic: string; userName: string; status: string; priority: string }[]
+  supportQueue: { _id: string; topic: string; userName: string; status: 'open' | 'in_progress' | 'resolved' | 'closed'; priority: 'low' | 'normal' | 'high' | 'urgent' }[]
   selectedSupportRequest: {
     _id: string
     topic: string
     userName: string
-    status: string
-    priority: string
+    status: 'open' | 'in_progress' | 'resolved' | 'closed'
+    priority: 'low' | 'normal' | 'high' | 'urgent'
     messages: { _id: string; senderRole: string; senderName: string; createdAtLabel: string; body: string }[]
   } | null
   selectedSupportRequestId: string | null

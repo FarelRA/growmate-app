@@ -2,7 +2,7 @@
 defineProps<{
   featured: { _id: string; imageUrl?: string | null; title: string; description: string; priceLabel: string; shopeeUrl?: string | null } | null
   filteredOfficial: { _id: string; imageUrl?: string | null; title: string; description: string; priceLabel: string; shopeeUrl?: string | null }[]
-  filteredCommunity: { _id: string; image?: string | null; title: string; description: string; priceLabel: string; statusLabel: string; quantityAvailable: number; locationLabel?: string | null; sellerName: string; contactThreadId: string | null; status: string }[]
+  filteredCommunity: { _id: string; imageUrl?: string | null; title: string; description: string; priceLabel: string; statusLabel: string; quantityAvailable: number; locationLabel?: string | null; sellerName: string; contactThreadId: string | null; status: string }[]
   searchQuery: string
   selectedCategory: string
   hasWorkingImage: (id: string, imageUrl?: string | null) => boolean
@@ -35,7 +35,7 @@ defineEmits<{
       >
         <img
           v-if="hasWorkingImage(featured._id, featured.imageUrl)"
-          :src="featured.imageUrl"
+          :src="featured.imageUrl ?? undefined"
           :alt="featured.title"
           class="h-72 w-full object-cover"
           @error="$emit('handleImageError', featured._id)"
@@ -50,7 +50,7 @@ defineEmits<{
           </div>
           <h2 class="font-headline text-2xl font-bold text-gm-text">{{ featured.title }}</h2>
           <p class="text-sm text-gm-muted">{{ featured.description }}</p>
-          <button @click="$emit('openExternal', featured.shopeeUrl)" class="w-full rounded-full bg-[#ee4d2d] px-5 py-3 text-sm font-bold text-white">
+          <button @click="$emit('openExternal', featured.shopeeUrl ?? '')" class="w-full rounded-full bg-[#ee4d2d] px-5 py-3 text-sm font-bold text-white">
             Beli via Shopee
           </button>
         </div>
@@ -102,7 +102,7 @@ defineEmits<{
       >
         <img
           v-if="hasWorkingImage(item._id, item.imageUrl)"
-          :src="item.imageUrl"
+          :src="item.imageUrl ?? undefined"
           :alt="item.title"
           class="h-52 w-full object-cover"
           @error="$emit('handleImageError', item._id)"
@@ -117,7 +117,7 @@ defineEmits<{
           </div>
           <h3 class="font-headline text-xl font-bold text-gm-text">{{ item.title }}</h3>
           <p class="text-sm text-gm-muted">{{ item.description }}</p>
-          <button @click="$emit('openExternal', item.shopeeUrl)" class="w-full rounded-full bg-[#ee4d2d] px-5 py-3 text-sm font-bold text-white">Beli via Shopee</button>
+          <button @click="$emit('openExternal', item.shopeeUrl ?? '')" class="w-full rounded-full bg-[#ee4d2d] px-5 py-3 text-sm font-bold text-white">Beli via Shopee</button>
         </div>
       </article>
     </div>
@@ -138,7 +138,7 @@ defineEmits<{
       >
         <img
           v-if="hasWorkingImage(item._id, item.imageUrl)"
-          :src="item.imageUrl"
+          :src="item.imageUrl ?? undefined"
           :alt="item.title"
           class="h-48 w-full object-cover"
           @error="$emit('handleImageError', item._id)"

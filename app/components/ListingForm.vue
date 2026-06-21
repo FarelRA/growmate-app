@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type DraftForm = { draftId: string | null; title: string; description: string; category: string; quantity: number; quantityUnit: string; price: number; priceUnit: string; locationLabel: string; contactPreference: 'chat' | 'pickup' | 'delivery' }
+type DraftForm = { draftId: string | null; title: string; description: string; category: string; quantity: number; quantityUnit: string; price: number; priceUnit: string; locationLabel: string; contactPreference: string }
 
 const props = defineProps<{
   draftForm: DraftForm
@@ -21,8 +21,8 @@ const emit = defineEmits<{
   deleteDraft: [draftId: string]
   deleteListing: [productId: string]
   resetForm: []
-  editDraft: [draft: { _id: string; imageUrl: string | null; title: string; description: string; category: string; quantity: number; quantityUnit: string; price: number; priceUnit: string; locationLabel: string; contactPreference: string; status: string }]
-  editListing: [listing: { _id: string; imageUrl: string | null; title: string; description: string; price: number; category: string; quantityAvailable: number; priceUnit: string; locationLabel: string; contactPreference: string; shopeeUrl: string | null; status: string; sellerName: string }]
+  editDraft: [draft: { _id: string; title: string; quantityLabel: string; priceLabel: string; locationLabel: string; status: string }]
+  editListing: [listing: { _id: string; title: string; quantityLabel: string; priceLabel: string; statusLabel: string }]
   imageChange: [event: Event]
   'update:draftForm': [value: DraftForm]
 }>()

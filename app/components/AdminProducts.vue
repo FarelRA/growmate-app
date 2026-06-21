@@ -21,11 +21,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   saveProduct: []
   deleteProduct: [id: string]
-  editProduct: [product: object]
+  editProduct: [product: { _id: string; imageUrl: string | null; title: string; priceLabel: string; statusLabel: string; description: string; status: string }]
   resetProductForm: []
   handleProductImageChange: [event: Event]
   updateProductStatus: [productId: string, status: 'active' | 'reserved' | 'sold' | 'archived']
-  'update:productForm': [form: object]
+  'update:productForm': [form: { productId: string | null; title: string; description: string; price: number; category: string; quantityAvailable: number; priceUnit: string; featured: boolean; status: string; shopeeUrl: string }]
 }>()
 </script>
 
@@ -56,7 +56,7 @@ const emit = defineEmits<{
     <article class="space-y-4">
       <article v-for="product in props.productList" :key="product._id" class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
         <div class="flex gap-4">
-          <img :src="product.imageUrl" :alt="product.title" class="h-20 w-20 shrink-0 rounded-[1.25rem] object-cover" />
+          <img :src="product.imageUrl ?? undefined" :alt="product.title" class="h-20 w-20 shrink-0 rounded-[1.25rem] object-cover" />
           <div class="min-w-0 flex-1">
             <div class="text-lg font-bold text-gm-text">{{ product.title }}</div>
             <div class="mt-1 text-sm text-gm-muted">{{ product.priceLabel }} • {{ product.statusLabel }}</div>

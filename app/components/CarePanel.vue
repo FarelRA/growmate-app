@@ -2,7 +2,7 @@
 const props = defineProps<{
   device: { autoWatering: boolean; autoLighting: boolean; lightEnabled: boolean; deviceId: string } | null
   schedules: { _id: string; title: string; cadenceLabel: string; nextRunLabel: string; enabled: boolean }[]
-  scheduleForm: { scheduleId: string | null; title: string; cadenceValue: number; cadenceUnit: string; timeOfDay: string }
+  scheduleForm: { scheduleId: string | null; title: string; cadenceValue: number; cadenceUnit: 'hours' | 'days'; timeOfDay: string }
   schedulePreview: string
   savingSchedule: boolean
   deletingScheduleId: string | null
@@ -16,8 +16,8 @@ const emit = defineEmits<{
   saveSchedule: []
   deleteSchedule: [scheduleId: string]
   resetSchedule: []
-  editSchedule: [schedule: { _id: string; title: string; cadenceValue: number; cadenceUnit: string; timeOfDayMinutes: number | null }]
-  'update:scheduleForm': [value: { scheduleId: string | null; title: string; cadenceValue: number; cadenceUnit: string; timeOfDay: string }]
+  editSchedule: [schedule: { _id: string; title: string; cadenceLabel: string; nextRunLabel: string; enabled: boolean }]
+  'update:scheduleForm': [value: { scheduleId: string | null; title: string; cadenceValue: number; cadenceUnit: 'hours' | 'days'; timeOfDay: string }]
 }>()
 
 function updateForm(field: string, value: string | number) {

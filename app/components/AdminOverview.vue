@@ -5,7 +5,7 @@ defineProps<{
   recentEvents: { _id: string; title: string; detail?: string; relativeTime: string; timestampLabel: string }[]
 }>()
 defineEmits<{
-  editDevice: [device: { _id: string; name: string; deviceId: string; firmwareVersion: string; autoWatering: boolean; autoLighting: boolean; wateringThreshold: number; wateringDuration: number; wateringCooldown: number; lightingThreshold: number; lightingHysteresis: number }]
+  editDevice: [device: { _id: string; name: string; deviceId: string; ownerName: string | null }]
 }>()
 </script>
 

@@ -36,10 +36,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   savePlantPreset: []
   deletePlantPreset: [id: string]
-  editPlantPreset: [preset: object]
+  editPlantPreset: [preset: { _id: string; imageUrl: string | null; name: string; species: string; category: string; difficulty: string }]
   resetPlantPresetForm: []
   handlePlantPresetImageChange: [event: Event]
-  'update:plantPresetForm': [form: object]
+  'update:plantPresetForm': [form: { presetId: string | null; key: string; name: string; species: string; growthStage: string; description: string; location: string; category: string; difficulty: string; wateringThreshold: number; lightingThreshold: number; sensorProfile: { soil: { min: number; max: number }; light: { min: number; max: number }; temperature: { min: number; max: number }; air: { min: number; max: number }; water: { min: number; max: number } }; lifecycleProfile: { seedDormancyDays: number; germinationDays: number; seedlingDevelopmentDays: number; vegetativeGrowthDays: number; floweringReproductionDays: number; maturitySenescenceDays: number } }]
 }>()
 
 const sensorKinds = ['soil', 'light', 'temperature', 'air', 'water'] as const
@@ -98,7 +98,7 @@ const sensorKinds = ['soil', 'light', 'temperature', 'air', 'water'] as const
     <article class="space-y-4">
       <article v-for="preset in props.plantPresetList" :key="preset._id" class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
         <div class="flex gap-4">
-          <img :src="preset.imageUrl" :alt="preset.name" class="h-20 w-20 shrink-0 rounded-[1.25rem] object-cover" />
+          <img :src="preset.imageUrl ?? undefined" :alt="preset.name" class="h-20 w-20 shrink-0 rounded-[1.25rem] object-cover" />
           <div class="min-w-0 flex-1">
             <div class="text-lg font-bold text-gm-text">{{ preset.name }}</div>
             <div class="mt-1 text-sm text-gm-muted">{{ preset.species }} • {{ preset.category }} • {{ preset.difficulty }}</div>

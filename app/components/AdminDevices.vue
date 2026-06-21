@@ -21,9 +21,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   saveDevice: []
   deleteDevice: [id: string]
-  editDevice: [device: object]
+  editDevice: [device: { _id: string; name: string; deviceId: string; ownerName: string | null; firmwareVersion?: string; isOnline?: boolean }]
   resetDeviceForm: []
-  'update:deviceForm': [form: object]
+  'update:deviceForm': [form: { existingDeviceId: string | null; deviceId: string; name: string; firmwareVersion: string; autoWatering: boolean; autoLighting: boolean; wateringThreshold: number; wateringDuration: number; wateringCooldown: number; lightingThreshold: number; lightingHysteresis: number }]
 }>()
 </script>
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 defineProps<{
-  devices: { deviceId: string; name: string; isOnline: boolean; plant: { name: string; species: string } | null; archivedPlants: { _id: string; name: string; archivedAtLabel: string }[] }[]
+  devices: { deviceId: string; name: string; isOnline: boolean; plant: { name: string; species: string } | null; archivedPlants: { _id: string; name: string; archivedAtLabel: string | null }[] }[]
   currentDeviceId: string | undefined
   removingDeviceId: string | null
 }>()

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 defineProps<{
-  featured: { _id: string; image?: string | null; title: string; description: string; priceLabel: string; shopeeUrl: string } | null
-  filteredOfficial: { _id: string; image?: string | null; title: string; description: string; priceLabel: string; shopeeUrl: string }[]
+  featured: { _id: string; imageUrl?: string | null; title: string; description: string; priceLabel: string; shopeeUrl?: string | null } | null
+  filteredOfficial: { _id: string; imageUrl?: string | null; title: string; description: string; priceLabel: string; shopeeUrl?: string | null }[]
   filteredCommunity: { _id: string; image?: string | null; title: string; description: string; priceLabel: string; statusLabel: string; quantityAvailable: number; locationLabel?: string | null; sellerName: string; contactThreadId: string | null; status: string }[]
   searchQuery: string
   selectedCategory: string
-  hasWorkingImage: (id: string, image?: string | null) => boolean
+  hasWorkingImage: (id: string, imageUrl?: string | null) => boolean
 }>()
 
 defineEmits<{
@@ -34,8 +34,8 @@ defineEmits<{
         class="overflow-hidden rounded-[2rem] bg-white shadow-[0_20px_60px_rgba(15,23,42,0.08)]"
       >
         <img
-          v-if="hasWorkingImage(featured._id, featured.image)"
-          :src="featured.image"
+          v-if="hasWorkingImage(featured._id, featured.imageUrl)"
+          :src="featured.imageUrl"
           :alt="featured.title"
           class="h-72 w-full object-cover"
           @error="$emit('handleImageError', featured._id)"
@@ -101,8 +101,8 @@ defineEmits<{
         class="overflow-hidden rounded-[2rem] bg-white shadow-[0_12px_40px_rgba(15,23,42,0.05)]"
       >
         <img
-          v-if="hasWorkingImage(item._id, item.image)"
-          :src="item.image"
+          v-if="hasWorkingImage(item._id, item.imageUrl)"
+          :src="item.imageUrl"
           :alt="item.title"
           class="h-52 w-full object-cover"
           @error="$emit('handleImageError', item._id)"
@@ -137,8 +137,8 @@ defineEmits<{
         class="overflow-hidden rounded-[2rem] bg-white shadow-[0_12px_40px_rgba(15,23,42,0.05)]"
       >
         <img
-          v-if="hasWorkingImage(item._id, item.image)"
-          :src="item.image"
+          v-if="hasWorkingImage(item._id, item.imageUrl)"
+          :src="item.imageUrl"
           :alt="item.title"
           class="h-48 w-full object-cover"
           @error="$emit('handleImageError', item._id)"

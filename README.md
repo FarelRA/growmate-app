@@ -5,7 +5,7 @@
 
 Smart urban farming platform — monitor IoT devices, get AI gardening advice, connect with the community, and manage your grow operations from a mobile-friendly PWA.
 
-Built with **Nuxt 4**, **Vue 3**, **Convex** (self-hosted), **MinIO**, and **Tailwind CSS v4**. Managed with **Bun**.
+Built with **Nuxt 4**, **Vue 3**, **Convex**, **MinIO**, and **Tailwind CSS v4**. Managed with **Bun**.
 
 ## Features
 
@@ -37,7 +37,7 @@ Built with **Nuxt 4**, **Vue 3**, **Convex** (self-hosted), **MinIO**, and **Tai
 ### Prerequisites
 
 - [Bun](https://bun.sh) >= 1.3
-- Node.js >= 20
+- [Node.js](https://nodejs.org) >= 20
 
 ### Setup
 
@@ -53,7 +53,7 @@ Copy the example environment file and edit it:
 cp .env.example .env
 ```
 
-At minimum, set a Convex deployment URL (self-hosted or Convex cloud):
+At minimum, set a Convex deployment URL:
 
 ```ini
 NUXT_PUBLIC_CONVEX_URL=https://convex.growmate.bond
@@ -67,7 +67,7 @@ Start the Nuxt dev server:
 bun run dev
 ```
 
-In a separate terminal, start a local Convex dev session (replaces your production backend for development):
+In a separate terminal, start a local Convex dev session:
 
 ```sh
 bun run convex:dev
@@ -138,16 +138,16 @@ Self-hosted deployment uses four containers behind Traefik with automatic TLS:
 
 ### Prerequisites
 
-- Server with Docker Compose (or Podman)
-- Domains pointing to the server (replace `*.growmate.bond` with yours)
+- Server with Docker Compose
+- Domains pointing to the server
 - GitHub repo with CI/CD configured
 - [GitHub Container Registry](https://ghcr.io) token for pulling
 
 ### 1. Prepare the server
 
 ```sh
-mkdir -p /home/podman/services/data
-git clone https://github.com/FarelRA/growmate-app.git /home/podman/services
+git clone https://github.com/FarelRA/growmate-app.git
+cd growmate-app
 ```
 
 Copy the example env and edit it:
@@ -164,13 +164,27 @@ At minimum you need to set:
 | `MINIO_ACCESS_KEY` | Any random string (20+ chars) |
 | `MINIO_SECRET_KEY` | Any random string (20+ chars) |
 | `DEVICE_API_KEY` | Any random string |
-| `OPENAI_API_KEY` | Google AI Studio |
+| `OPENAI_API_KEY` | OpenAI API key |
 
 ### 2. Generate the Convex admin key
 
 The admin key is derived from `INSTANCE_SECRET`. Two approaches:
 
-**Option A — let Convex generate it (first start):**
+**Option A — generate offline:**
+
+```sh
+docker pull ghcr.io/get-convex/convex-backend:latest
+docker run --rm ghcr.io/get-convex/convex-backend:latest \
+  generate_admin_key growmate <INSTANCE_SECRET>
+```
+
+Copy that value into `.env`:
+
+```ini
+CONVEX_SELF_HOSTED_ADMIN_KEY=<value>
+```
+
+**Option B — generate at first start:**
 
 Leave `CONVEX_SELF_HOSTED_ADMIN_KEY` blank in `.env`, then start only Convex:
 
@@ -182,7 +196,6 @@ Watch the logs for the admin key:
 
 ```sh
 docker compose logs convex 2>&1 | grep "Admin key"
-# → Admin key: growmate|<64-hex-chars>
 ```
 
 Copy that value into `.env`:
@@ -196,16 +209,6 @@ Then restart the stack:
 ```sh
 docker compose up -d
 ```
-
-**Option B — generate offline:**
-
-```sh
-docker pull ghcr.io/get-convex/convex-backend:latest
-docker run --rm ghcr.io/get-convex/convex-backend:latest \
-  generate_admin_key growmate <INSTANCE_SECRET>
-```
-
-Put the output in `CONVEX_SELF_HOSTED_ADMIN_KEY`.
 
 ### 3. Start the full stack
 
@@ -222,7 +225,7 @@ docker compose ps
 Test endpoints:
 
 ```sh
-curl -sI https://convex.growmate.bond  # → 200
+curl -sI https://convex.growmate.bond   # → 200 (Convex)
 curl -sI https://storage.growmate.bond  # → 200 (MinIO)
 curl -sI https://growmate.bond          # → 200 (Nuxt)
 ```
@@ -230,12 +233,8 @@ curl -sI https://growmate.bond          # → 200 (Nuxt)
 ### 4. Deploy Convex functions
 
 ```sh
-cd /home/podman/services
 npx convex deploy
 ```
-
-> `convex.json` is not committed — the CLI uses `CONVEX_SELF_HOSTED_URL` and
-> `CONVEX_SELF_HOSTED_ADMIN_KEY` from `.env` to authenticate.
 
 ### 5. Set Convex user environment variables
 
@@ -244,20 +243,28 @@ runtime (except `CONVEX_CLOUD_ORIGIN` and `CONVEX_SITE_ORIGIN`).
 User-facing env vars must be set via the Convex CLI:
 
 ```sh
-# JWT signing key (required by @convex-dev/auth)
+# Generate JWT signing key
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/jwt-key.pem
+# Generate Public JWKS for JWT verification
+openssl rsa -in /tmp/jwt-key.pem -traditional | npx pem-jwk | jq -s '{"keys": .}' > /tmp/jwks-key.json
+
+# Set JWT signing key
 npx convex env set JWT_PRIVATE_KEY --from-file /tmp/jwt-key.pem
-rm /tmp/jwt-key.pem
+# Set Generate Public JWKS
+npx convex env set JWKS --from-file /tmp/jwks-key.json
 
-# Admin credentials (for seed:admin)
-npx convex env set ADMIN_EMAIL admin@growmate.bond
-npx convex env set ADMIN_PASSWORD <your-password>
+# Remove the temporary files
+rm /tmp/jwt-key.pem /tmp/jwks-key.json
 
-# MinIO access (for seed:plants, :products, :blog)
-npx convex env set MINIO_ENDPOINT http://minio:9000
+# Admin credentials
+npx convex env set ADMIN_EMAIL "$ADMIN_EMAIL"
+npx convex env set ADMIN_PASSWORD "$ADMIN_PASSWORD"
+
+# MinIO access
+npx convex env set MINIO_ENDPOINT "$MINIO_ENDPOINT"
 npx convex env set MINIO_ACCESS_KEY "$MINIO_ACCESS_KEY"
 npx convex env set MINIO_SECRET_KEY "$MINIO_SECRET_KEY"
-npx convex env set MINIO_BUCKET_IMAGE images
+npx convex env set MINIO_BUCKET_IMAGE "$MINIO_BUCKET_IMAGE"
 ```
 
 ### 6. Seed initial data
@@ -286,7 +293,7 @@ Push to `main` triggers the workflow in `.github/workflows/docker-release.yml`:
 On the server, set up a webhook or cron to pull and restart:
 
 ```sh
-docker compose pull growmate && docker compose up -d growmate
+docker compose pull && docker compose up -d
 ```
 
 ## Environment Reference
@@ -313,12 +320,13 @@ docker compose pull growmate && docker compose up -d growmate
 | Variable | Required for | How to set |
 |---|---|---|
 | `JWT_PRIVATE_KEY` | Auth (token signing) | `npx convex env set JWT_PRIVATE_KEY --from-file key.pem` |
+| `JWKS` | Auth (token verification) | `npx convex env set JWKS '<json>'` |
 | `ADMIN_EMAIL` | `seed:admin` | `npx convex env set ADMIN_EMAIL ...` |
 | `ADMIN_PASSWORD` | `seed:admin` | `npx convex env set ADMIN_PASSWORD ...` |
-| `MINIO_ENDPOINT` | Seed functions (S3 upload) | `npx convex env set MINIO_ENDPOINT http://minio:9000` |
+| `MINIO_ENDPOINT` | Seed functions (S3 upload) | `npx convex env set MINIO_ENDPOINT ...` |
 | `MINIO_ACCESS_KEY` | Seed functions | `npx convex env set MINIO_ACCESS_KEY ...` |
 | `MINIO_SECRET_KEY` | Seed functions | `npx convex env set MINIO_SECRET_KEY ...` |
-| `MINIO_BUCKET_IMAGE` | Seed functions | `npx convex env set MINIO_BUCKET_IMAGE images` |
+| `MINIO_BUCKET_IMAGE` | Seed functions | `npx convex env set MINIO_BUCKET_IMAGE ...` |
 
 **Nuxt runtime config** (used in browser and server):
 

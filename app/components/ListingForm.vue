@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type DraftForm = { draftId: string | null; title: string; description: string; category: string; quantity: number; quantityUnit: string; price: number; priceUnit: string; locationLabel: string; contactPreference: 'chat' | 'pickup' | 'delivery' | string }
+type DraftForm = { draftId: string | null; title: string; description: string; category: string; quantity: number; quantityUnit: string; price: number; priceUnit: string; locationLabel: string; contactPreference: 'chat' | 'pickup' | 'delivery' }
 
 const props = defineProps<{
   draftForm: DraftForm

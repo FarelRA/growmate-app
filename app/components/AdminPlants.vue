@@ -1,16 +1,17 @@
 <script setup lang="ts">
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { PlantLifecycleStage } from '@/lib/plants'
 const props = defineProps<{
   plantPresetForm: {
     presetId: string | null
     key: string
     name: string
     species: string
-    growthStage: string
+    growthStage: PlantLifecycleStage
     description: string
     location: string
-    category: string
-    difficulty: string
+    category: 'herb' | 'leafy' | 'fruiting' | 'houseplant' | 'flower' | 'microgreen'
+    difficulty: 'easy' | 'medium' | 'advanced'
     wateringThreshold: number
     lightingThreshold: number
     sensorProfile: {
@@ -40,7 +41,7 @@ const emit = defineEmits<{
   editPlantPreset: [preset: any]
   resetPlantPresetForm: []
   handlePlantPresetImageChange: [event: Event]
-  'update:plantPresetForm': [form: { presetId: string | null; key: string; name: string; species: string; growthStage: string; description: string; location: string; category: string; difficulty: string; wateringThreshold: number; lightingThreshold: number; sensorProfile: { soil: { min: number; max: number }; light: { min: number; max: number }; temperature: { min: number; max: number }; air: { min: number; max: number }; water: { min: number; max: number } }; lifecycleProfile: { seedDormancyDays: number; germinationDays: number; seedlingDevelopmentDays: number; vegetativeGrowthDays: number; floweringReproductionDays: number; maturitySenescenceDays: number } }]
+  'update:plantPresetForm': [form: { presetId: string | null; key: string; name: string; species: string; growthStage: PlantLifecycleStage; description: string; location: string; category: 'herb' | 'leafy' | 'fruiting' | 'houseplant' | 'flower' | 'microgreen'; difficulty: 'easy' | 'medium' | 'advanced'; wateringThreshold: number; lightingThreshold: number; sensorProfile: { soil: { min: number; max: number }; light: { min: number; max: number }; temperature: { min: number; max: number }; air: { min: number; max: number }; water: { min: number; max: number } }; lifecycleProfile: { seedDormancyDays: number; germinationDays: number; seedlingDevelopmentDays: number; vegetativeGrowthDays: number; floweringReproductionDays: number; maturitySenescenceDays: number } }]
 }>()
 
 const sensorKinds = ['soil', 'light', 'temperature', 'air', 'water'] as const

@@ -10,7 +10,7 @@ const props = defineProps<{
     quantityAvailable: number
     priceUnit: string
     featured: boolean
-    status: string
+    status: 'archived' | 'active' | 'reserved' | 'sold'
     shopeeUrl: string
   }
   productImagePreview: string | null
@@ -26,7 +26,7 @@ const emit = defineEmits<{
   resetProductForm: []
   handleProductImageChange: [event: Event]
   updateProductStatus: [productId: string, status: 'active' | 'reserved' | 'sold' | 'archived']
-  'update:productForm': [form: { productId: string | null; title: string; description: string; price: number; category: string; quantityAvailable: number; priceUnit: string; featured: boolean; status: string; shopeeUrl: string }]
+  'update:productForm': [form: { productId: string | null; title: string; description: string; price: number; category: string; quantityAvailable: number; priceUnit: string; featured: boolean; status: 'archived' | 'active' | 'reserved' | 'sold'; shopeeUrl: string }]
 }>()
 </script>
 

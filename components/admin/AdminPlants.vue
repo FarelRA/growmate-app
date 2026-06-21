@@ -31,7 +31,7 @@ const props = defineProps<{
   plantPresetImagePreview: string | null
   savingPlantPreset: boolean
   deletingPlantPresetId: string | null
-  plantPresetList: { _id: string; image: string; name: string; species: string; category: string; difficulty: string }[]
+  plantPresetList: { _id: string; imageUrl: string | null; name: string; species: string; category: string; difficulty: string }[]
 }>()
 const emit = defineEmits<{
   savePlantPreset: []
@@ -98,7 +98,7 @@ const sensorKinds = ['soil', 'light', 'temperature', 'air', 'water'] as const
     <article class="space-y-4">
       <article v-for="preset in props.plantPresetList" :key="preset._id" class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
         <div class="flex gap-4">
-          <img :src="preset.image" :alt="preset.name" class="h-20 w-20 shrink-0 rounded-[1.25rem] object-cover" />
+          <img :src="preset.imageUrl" :alt="preset.name" class="h-20 w-20 shrink-0 rounded-[1.25rem] object-cover" />
           <div class="min-w-0 flex-1">
             <div class="text-lg font-bold text-gm-text">{{ preset.name }}</div>
             <div class="mt-1 text-sm text-gm-muted">{{ preset.species }} • {{ preset.category }} • {{ preset.difficulty }}</div>

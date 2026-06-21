@@ -11,7 +11,7 @@ const props = defineProps<{
   blogImagePreview: string | null
   savingBlogPost: boolean
   deletingBlogPostId: string | null
-  blogPostList: { _id: string; image: string; title: string; relativeTime: string; published: boolean; authorName: string }[]
+  blogPostList: { _id: string; imageUrl: string | null; title: string; relativeTime: string; published: boolean; authorName: string }[]
   renderedBlogPreview: string
 }>()
 const emit = defineEmits<{
@@ -48,7 +48,7 @@ const emit = defineEmits<{
       <article v-for="post in props.blogPostList" :key="post._id" class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
         <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div class="flex gap-4">
-            <img :src="post.image" :alt="post.title" class="h-20 w-20 rounded-[1.25rem] object-cover" />
+            <img :src="post.imageUrl" :alt="post.title" class="h-20 w-20 rounded-[1.25rem] object-cover" />
             <div><div class="text-lg font-bold text-gm-text">{{ post.title }}</div><div class="mt-1 text-sm text-gm-muted">{{ post.relativeTime }} • {{ post.published ? 'Published' : 'Draft' }}</div><div class="mt-1 text-xs text-gm-muted">{{ post.authorName }}</div></div>
           </div>
           <div class="flex flex-wrap gap-2">

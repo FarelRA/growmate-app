@@ -20,7 +20,7 @@ services:
       - traefik-data:/data
 
   growmate:
-    image: ghcr.io/FarelRA/growmate-app:latest
+    image: ghcr.io/farelra/growmate-app:latest
     environment:
       NUXT_PUBLIC_MINIO_BASE_URL: ${NUXT_PUBLIC_MINIO_BASE_URL}
       NUXT_PUBLIC_MINIO_BUCKET_IMAGE: ${NUXT_PUBLIC_MINIO_BUCKET_IMAGE}
@@ -73,10 +73,22 @@ services:
       - convex-data:/convex/data
     labels:
       - traefik.enable=true
+
+      # API router: /api/* and /instance_name → port 3210 (Cloud API)
+      - traefik.http.routers.convex-api.rule=Host(`convex.growmate.bond`) && (PathPrefix(`/api/`) || PathPrefix(`/instance_name`))
+      - traefik.http.routers.convex-api.entrypoints=websecure
+      - traefik.http.routers.convex-api.tls.certresolver=letsencrypt
+      - traefik.http.routers.convex-api.priority=10
+      - traefik.http.routers.convex-api.service=convex-api
+      - traefik.http.services.convex-api.loadbalancer.server.port=3210
+
+      # Default router: everything else → port 3211 (HTTP Actions / Site)
       - traefik.http.routers.convex.rule=Host(`convex.growmate.bond`)
       - traefik.http.routers.convex.entrypoints=websecure
       - traefik.http.routers.convex.tls.certresolver=letsencrypt
-      - traefik.http.services.convex.loadbalancer.server.port=3210
+      - traefik.http.routers.convex.priority=0
+      - traefik.http.routers.convex.service=convex-site
+      - traefik.http.services.convex-site.loadbalancer.server.port=3211
 
 volumes:
   minio-data:

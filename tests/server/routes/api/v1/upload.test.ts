@@ -168,7 +168,6 @@ describe('POST /api/v1/upload', () => {
         { size: 400, buffer: Buffer.from('s400') },
         { size: 800, buffer: Buffer.from('s800') },
         { size: 1200, buffer: Buffer.from('s1200') },
-        { size: 'original', buffer: Buffer.from('orig') },
       ])
       mockUploadFile.mockResolvedValue(undefined)
     })
@@ -187,7 +186,7 @@ describe('POST /api/v1/upload', () => {
       expect(mockGenerateHash).toHaveBeenCalledWith(fileData)
       expect(mockProcessImage).toHaveBeenCalledWith(fileData, [50, 200, 400, 800, 1200])
 
-      expect(mockUploadFile).toHaveBeenCalledTimes(6)
+      expect(mockUploadFile).toHaveBeenCalledTimes(5)
       for (const size of [50, 200, 400, 800, 1200]) {
         expect(mockUploadFile).toHaveBeenCalledWith(
           'images',
@@ -196,12 +195,6 @@ describe('POST /api/v1/upload', () => {
           'image/webp',
         )
       }
-      expect(mockUploadFile).toHaveBeenCalledWith(
-        'images',
-        'abc123def456/original.webp',
-        Buffer.from('orig'),
-        'image/webp',
-      )
 
       expect(result).toEqual({ path: 'abc123def456' })
     })

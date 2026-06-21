@@ -1,4 +1,4 @@
-export type SeedImageSize = 'original' | '50w' | '200w' | '400w' | '800w' | '1200w'
+export type SeedImageSize = '50w' | '200w' | '400w' | '800w' | '1200w'
 
 export interface SeedImage {
   hash: string

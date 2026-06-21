@@ -52,11 +52,7 @@ export default defineEventHandler(async (event) => {
     const images = await processImage(input, sizes)
 
     for (const image of images) {
-      const key =
-        image.size === 'original'
-          ? `${pathPrefix}/original.webp`
-          : `${pathPrefix}/${image.size}w.webp`
-      await uploadFile(IMAGE_BUCKET, key, image.buffer, 'image/webp')
+      await uploadFile(IMAGE_BUCKET, `${pathPrefix}/${image.size}w.webp`, image.buffer, 'image/webp')
     }
 
     const convex = useConvex()

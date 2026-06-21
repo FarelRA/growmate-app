@@ -19,19 +19,18 @@ describe('processImage', () => {
     vi.clearAllMocks()
   })
 
-  it('resizes images to all given sizes plus original', async () => {
+  it('resizes images to all given sizes', async () => {
     const input = Buffer.from('fake-image-data')
     const sizes = [50, 200]
 
     const results = await processImage(input, sizes)
 
-    expect(results).toHaveLength(3)
+    expect(results).toHaveLength(2)
     expect(results[0].size).toBe(50)
     expect(results[1].size).toBe(200)
-    expect(results[2].size).toBe('original')
     expect(mockChain.resize).toHaveBeenCalledTimes(2)
-    expect(mockChain.webp).toHaveBeenCalledTimes(3)
-    expect(mockChain.toBuffer).toHaveBeenCalledTimes(3)
+    expect(mockChain.webp).toHaveBeenCalledTimes(2)
+    expect(mockChain.toBuffer).toHaveBeenCalledTimes(2)
   })
 
   it('uses withoutEnlargement and cover fit for resize', async () => {
@@ -51,14 +50,6 @@ describe('processImage', () => {
     await processImage(input, [50])
 
     expect(mockChain.webp).toHaveBeenCalledWith({ quality: 80 })
-  })
-
-  it('sets webp quality 85 for original', async () => {
-    const input = Buffer.from('fake-image-data')
-
-    await processImage(input, [50])
-
-    expect(mockChain.webp).toHaveBeenLastCalledWith({ quality: 85 })
   })
 
   it('reads metadata from input', async () => {
@@ -88,16 +79,14 @@ describe('processImage', () => {
   it('handles single size array', async () => {
     const results = await processImage(Buffer.from('img'), [400])
 
-    expect(results).toHaveLength(2)
+    expect(results).toHaveLength(1)
     expect(results[0].size).toBe(400)
-    expect(results[1].size).toBe('original')
   })
 
-  it('handles empty sizes array (only original)', async () => {
+  it('handles empty sizes array', async () => {
     const results = await processImage(Buffer.from('img'), [])
 
-    expect(results).toHaveLength(1)
-    expect(results[0].size).toBe('original')
+    expect(results).toHaveLength(0)
   })
 })
 

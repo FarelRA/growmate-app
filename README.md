@@ -133,7 +133,8 @@ Self-hosted deployment uses four containers behind Traefik with automatic TLS:
 |---|---|---|---|
 | Traefik | `traefik:latest` | — | 80/443 |
 | Nuxt app | `ghcr.io/farelra/growmate-app` | `growmate.bond` | 3000 |
-| Convex backend | `ghcr.io/get-convex/convex-backend` | `convex.growmate.bond` | 3210 |
+| Convex backend (API) | `ghcr.io/get-convex/convex-backend` | `convex.growmate.bond` | 3210 |
+| Convex backend (Site) | `ghcr.io/get-convex/convex-backend` | `convex.growmate.bond` | 3211 |
 | MinIO S3 | `minio/minio:latest` | `storage.growmate.bond` | 9000 |
 
 ### Prerequisites

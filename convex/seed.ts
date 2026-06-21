@@ -20,7 +20,7 @@ function parseDataUri(uri: string): Buffer {
   return Buffer.from(base64, "base64");
 }
 
-const IMAGE_SIZES_FOR_SEED = ["original", "50w", "200w", "400w", "800w", "1200w"] as const;
+const IMAGE_SIZES_FOR_SEED = ["50w", "200w", "400w", "800w", "1200w"] as const;
 
 async function uploadSeedImages(
   bucket: string,

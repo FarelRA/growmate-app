@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import sharp from 'sharp'
 
 export interface ProcessedImage {
-  size: number | 'original'
+  size: number
   buffer: Buffer
 }
 
@@ -28,12 +28,6 @@ export async function processImage(
       .toBuffer()
     results.push({ size, buffer })
   }
-
-  const original = await sharp(input)
-    .clone()
-    .webp({ quality: 85 })
-    .toBuffer()
-  results.push({ size: 'original', buffer: original })
 
   return results
 }

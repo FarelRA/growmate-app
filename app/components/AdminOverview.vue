@@ -1,11 +1,12 @@
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-explicit-any */
 defineProps<{
-  supportQueue: { _id: string; topic: string; userName: string; priority: string; status: string }[]
-  devices: { _id: string; name: string; deviceId: string; ownerName: string | null }[]
-  recentEvents: { _id: string; title: string; detail?: string; relativeTime: string; timestampLabel: string }[]
+  supportQueue: any[]
+  devices: any[]
+  recentEvents: any[]
 }>()
 defineEmits<{
-  editDevice: [device: { _id: string; name: string; deviceId: string; ownerName: string | null }]
+  editDevice: [device: any]
 }>()
 </script>
 

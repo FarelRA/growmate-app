@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-explicit-any */
 defineProps<{
   featured: { _id: string; imageUrl?: string | null; title: string; description: string; priceLabel: string; shopeeUrl?: string | null } | null
   filteredOfficial: { _id: string; imageUrl?: string | null; title: string; description: string; priceLabel: string; shopeeUrl?: string | null }[]
@@ -13,7 +14,7 @@ defineEmits<{
   handleImageError: [id: string]
   'update:searchQuery': [value: string]
   'update:selectedCategory': [value: 'all' | 'official' | 'community']
-  openInquiry: [listing: object]
+  openInquiry: [listing: any]
 }>()
 </script>
 

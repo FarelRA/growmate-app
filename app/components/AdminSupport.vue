@@ -1,14 +1,8 @@
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const props = defineProps<{
-  supportQueue: { _id: string; topic: string; userName: string; status: 'open' | 'in_progress' | 'resolved' | 'closed'; priority: 'low' | 'normal' | 'high' | 'urgent' }[]
-  selectedSupportRequest: {
-    _id: string
-    topic: string
-    userName: string
-    status: 'open' | 'in_progress' | 'resolved' | 'closed'
-    priority: 'low' | 'normal' | 'high' | 'urgent'
-    messages: { _id: string; senderRole: string; senderName: string; createdAtLabel: string; body: string }[]
-  } | null
+  supportQueue: any[]
+  selectedSupportRequest: any
   selectedSupportRequestId: string | null
   supportReplyInput: string
   updatingTicketId: string | null

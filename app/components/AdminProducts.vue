@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const props = defineProps<{
   productForm: {
     productId: string | null
@@ -16,12 +17,12 @@ const props = defineProps<{
   savingProduct: boolean
   deletingProductId: string | null
   updatingProductId: string | null
-  productList: { _id: string; imageUrl: string | null; title: string; priceLabel: string; statusLabel: string; description: string; status: string }[]
+  productList: any[]
 }>()
 const emit = defineEmits<{
   saveProduct: []
   deleteProduct: [id: string]
-  editProduct: [product: { _id: string; imageUrl: string | null; title: string; priceLabel: string; statusLabel: string; description: string; status: string }]
+  editProduct: [product: any]
   resetProductForm: []
   handleProductImageChange: [event: Event]
   updateProductStatus: [productId: string, status: 'active' | 'reserved' | 'sold' | 'archived']

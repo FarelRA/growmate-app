@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const props = defineProps<{
   blogPostForm: {
     postId: string | null
@@ -11,13 +12,13 @@ const props = defineProps<{
   blogImagePreview: string | null
   savingBlogPost: boolean
   deletingBlogPostId: string | null
-  blogPostList: { _id: string; imageUrl: string | null; title: string; relativeTime: string; published: boolean; authorName: string }[]
+  blogPostList: any[]
   renderedBlogPreview: string
 }>()
 const emit = defineEmits<{
   saveBlogPost: []
   deleteBlogPost: [id: string]
-  editBlogPost: [post: { _id: string; imageUrl: string | null; title: string; relativeTime: string; published: boolean; authorName: string }]
+  editBlogPost: [post: any]
   resetBlogPostForm: []
   handleBlogImageChange: [event: Event]
   'update:blogPostForm': [form: { postId: string | null; title: string; excerpt: string; body: string; published: boolean; featured: boolean }]

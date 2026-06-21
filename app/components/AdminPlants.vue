@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const props = defineProps<{
   plantPresetForm: {
     presetId: string | null
@@ -31,12 +32,12 @@ const props = defineProps<{
   plantPresetImagePreview: string | null
   savingPlantPreset: boolean
   deletingPlantPresetId: string | null
-  plantPresetList: { _id: string; imageUrl: string | null; name: string; species: string; category: string; difficulty: string }[]
+  plantPresetList: any[]
 }>()
 const emit = defineEmits<{
   savePlantPreset: []
   deletePlantPreset: [id: string]
-  editPlantPreset: [preset: { _id: string; imageUrl: string | null; name: string; species: string; category: string; difficulty: string }]
+  editPlantPreset: [preset: any]
   resetPlantPresetForm: []
   handlePlantPresetImageChange: [event: Event]
   'update:plantPresetForm': [form: { presetId: string | null; key: string; name: string; species: string; growthStage: string; description: string; location: string; category: string; difficulty: string; wateringThreshold: number; lightingThreshold: number; sensorProfile: { soil: { min: number; max: number }; light: { min: number; max: number }; temperature: { min: number; max: number }; air: { min: number; max: number }; water: { min: number; max: number } }; lifecycleProfile: { seedDormancyDays: number; germinationDays: number; seedlingDevelopmentDays: number; vegetativeGrowthDays: number; floweringReproductionDays: number; maturitySenescenceDays: number } }]

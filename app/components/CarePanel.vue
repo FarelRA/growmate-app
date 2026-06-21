@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const props = defineProps<{
   device: { autoWatering: boolean; autoLighting: boolean; lightEnabled: boolean; deviceId: string } | null
   schedules: { _id: string; title: string; cadenceLabel: string; nextRunLabel: string; enabled: boolean }[]
@@ -16,7 +17,7 @@ const emit = defineEmits<{
   saveSchedule: []
   deleteSchedule: [scheduleId: string]
   resetSchedule: []
-  editSchedule: [schedule: { _id: string; title: string; cadenceLabel: string; nextRunLabel: string; enabled: boolean }]
+  editSchedule: [schedule: any]
   'update:scheduleForm': [value: { scheduleId: string | null; title: string; cadenceValue: number; cadenceUnit: 'hours' | 'days'; timeOfDay: string }]
 }>()
 

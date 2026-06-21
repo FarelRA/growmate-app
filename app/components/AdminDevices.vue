@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const props = defineProps<{
   deviceForm: {
     existingDeviceId: string | null
@@ -15,13 +16,13 @@ const props = defineProps<{
   }
   savingDevice: boolean
   deletingDeviceId: string | null
-  devices: { _id: string; name: string; deviceId: string; ownerName: string | null; firmwareVersion?: string; isOnline?: boolean }[]
+  devices: any[]
   plantPresets: unknown[]
 }>()
 const emit = defineEmits<{
   saveDevice: []
   deleteDevice: [id: string]
-  editDevice: [device: { _id: string; name: string; deviceId: string; ownerName: string | null; firmwareVersion?: string; isOnline?: boolean }]
+  editDevice: [device: any]
   resetDeviceForm: []
   'update:deviceForm': [form: { existingDeviceId: string | null; deviceId: string; name: string; firmwareVersion: string; autoWatering: boolean; autoLighting: boolean; wateringThreshold: number; wateringDuration: number; wateringCooldown: number; lightingThreshold: number; lightingHysteresis: number }]
 }>()

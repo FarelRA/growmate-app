@@ -7,6 +7,7 @@ const crons = cronJobs()
 crons.interval('cleanup-old-sensor-readings', { hours: 24 }, internal.crons.cleanupSensorReadings)
 crons.interval('cleanup-old-grow-events', { hours: 24 }, internal.crons.cleanupGrowEvents)
 crons.interval('cleanup-old-automation-logs', { hours: 24 }, internal.crons.cleanupAutomationLogs)
+crons.interval('cleanup-old-video-recordings', { hours: 24 }, internal.crons.cleanupVideoRecordings)
 
 export const cleanupSensorReadings = internalMutation({
   args: {},
@@ -54,6 +55,23 @@ export const cleanupAutomationLogs = internalMutation({
         .take(500)
       for (const l of batch) {
         await ctx.db.delete(l._id)
+      }
+    } while (batch.length === 500)
+  },
+})
+
+export const cleanupVideoRecordings = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
+    let batch
+    do {
+      batch = await ctx.db
+        .query('videoRecordings')
+        .withIndex('by_capturedAt', (q) => q.lte('capturedAt', cutoff))
+        .take(500)
+      for (const r of batch) {
+        await ctx.db.delete(r._id)
       }
     } while (batch.length === 500)
   },

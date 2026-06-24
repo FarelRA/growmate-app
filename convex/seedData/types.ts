@@ -37,6 +37,10 @@ export interface PlantSeedData {
   difficulty: 'easy' | 'medium' | 'advanced'
   wateringThreshold: number
   lightingThreshold: number
+  fertilizingThreshold?: number
+  fertilizerCadenceDays?: number
+  pesticideCadenceDays?: number
+  nutrientNotes?: string
   sensorProfile: SeedSensorProfile
   lifecycleProfile: SeedLifecycleProfile
   image: SeedImage

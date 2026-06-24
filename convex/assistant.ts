@@ -8,8 +8,11 @@ import {
   normalizePlantSensorProfile, getSensorStatus, getSensorLabel, getSensorTarget,
   getSensorRange, computePlantHealth, formatPlantStage, getDeviceWateringDuration,
   getDeviceWateringCooldown, getDeviceLightingHysteresis,
+  getDeviceFertilizingDuration, getDevicePesticideDuration,
+  getDeviceFertilizingCooldown, getDevicePesticideCooldown,
   recordGrowEvent, computePlantProgress,
   executeManualWatering, executeManualLighting,
+  executeManualFertilizing, executeManualPesticide,
 } from './helpers'
 import { formatScheduleSummary, normalizeScheduleCadence, computeNextRunAtFromCadence, formatScheduleCadence } from './care'
 import { internal } from './_generated/api'
@@ -100,7 +103,7 @@ async function buildAssistantContext(
 
   const sensorSummaries = sensors.map((sensor) => ({
     kind: sensor.kind,
-    label: getSensorLabel(sensor.kind as SensorKind),
+    label: getSensorLabel(sensor.kind as SensorKind, device?.version as 'v1' | 'v2' | undefined),
     value: sensor.value,
     unit: sensor.unit,
     status: getSensorStatus(sensor.kind as SensorKind, sensor.value, sensorProfile),
@@ -121,6 +124,7 @@ async function buildAssistantContext(
       ? {
           name: device.name,
           deviceId: device.deviceId,
+          version: device.version ?? 'v1',
           autoWatering: device.autoWatering,
           autoLighting: device.autoLighting,
           wateringThreshold: device.wateringThreshold,
@@ -129,6 +133,16 @@ async function buildAssistantContext(
           lightingThreshold: device.lightingThreshold,
           lightingHysteresis: getDeviceLightingHysteresis(device),
           lightEnabled: device.lightEnabled,
+          autoFertilizing: device.autoFertilizing,
+          autoPesticide: device.autoPesticide,
+          fertilizingThreshold: device.fertilizingThreshold,
+          fertilizingDuration: getDeviceFertilizingDuration(device),
+          fertilizingCooldown: getDeviceFertilizingCooldown(device),
+          pesticideThreshold: device.pesticideThreshold,
+          pesticideDuration: getDevicePesticideDuration(device),
+          pesticideCooldown: getDevicePesticideCooldown(device),
+          lastFertilized: device.lastFertilized ? formatTimestamp(device.lastFertilized) : null,
+          lastPesticideApplied: device.lastPesticideApplied ? formatTimestamp(device.lastPesticideApplied) : null,
           lastSeen: formatTimestamp(device.lastSeen),
         }
       : null,
@@ -361,6 +375,40 @@ export const assistantTriggerLighting = internalMutation({
 
     await executeManualLighting(ctx, user, device, args.enabled)
     return { success: true, enabled: args.enabled, deviceName: device.name }
+  },
+})
+
+export const assistantTriggerFertilizing = internalMutation({
+  args: {
+    userId: v.id('users'),
+    deviceId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId)
+    if (!user) throw new ConvexError('Pengguna tidak ditemukan')
+
+    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
+    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
+
+    await executeManualFertilizing(ctx, user, device)
+    return { success: true, deviceName: device.name }
+  },
+})
+
+export const assistantTriggerPesticide = internalMutation({
+  args: {
+    userId: v.id('users'),
+    deviceId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId)
+    if (!user) throw new ConvexError('Pengguna tidak ditemukan')
+
+    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
+    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
+
+    await executeManualPesticide(ctx, user, device)
+    return { success: true, deviceName: device.name }
   },
 })
 

@@ -84,6 +84,10 @@ export default defineSchema({
     difficulty: v.union(v.literal('easy'), v.literal('medium'), v.literal('advanced')),
     wateringThreshold: v.number(),
     lightingThreshold: v.number(),
+    fertilizingThreshold: v.optional(v.number()),
+    fertilizerCadenceDays: v.optional(v.number()),
+    pesticideCadenceDays: v.optional(v.number()),
+    nutrientNotes: v.optional(v.string()),
     sensorProfile: v.optional(plantSensorProfile),
     lifecycleProfile: lifecycleProfileValidator,
     createdAt: v.number(),
@@ -112,6 +116,10 @@ export default defineSchema({
     ),
     wateringThreshold: v.number(),
     lightingThreshold: v.number(),
+    fertilizingThreshold: v.optional(v.number()),
+    fertilizerCadenceDays: v.optional(v.number()),
+    pesticideCadenceDays: v.optional(v.number()),
+    nutrientNotes: v.optional(v.string()),
     sensorProfile: v.optional(plantSensorProfile),
     lifecycleProfile: lifecycleProfileValidator,
     location: v.string(),
@@ -137,6 +145,7 @@ export default defineSchema({
     name: v.string(),
     plantId: v.optional(v.id('plants')),
     // Automation Configuration
+    version: v.union(v.literal('v1'), v.literal('v2')),
     autoWatering: v.boolean(),
     autoLighting: v.boolean(),
     wateringThreshold: v.number(),
@@ -144,6 +153,15 @@ export default defineSchema({
     wateringCooldown: v.number(),
     lightingThreshold: v.number(),
     lightingHysteresis: v.number(),
+    // V2 Automation Configuration
+    autoFertilizing: v.boolean(),
+    autoPesticide: v.boolean(),
+    fertilizingThreshold: v.number(),
+    fertilizingDuration: v.number(),
+    fertilizingCooldown: v.number(),
+    pesticideThreshold: v.number(),
+    pesticideDuration: v.number(),
+    pesticideCooldown: v.number(),
     // Current State
     lightEnabled: v.boolean(),
     queuedCommands: v.optional(
@@ -162,13 +180,50 @@ export default defineSchema({
             enabled: v.boolean(),
           }),
         ),
+        fertilizer: v.union(
+          v.null(),
+          v.object({
+            kind: v.literal('fertilizer'),
+            durationMs: v.number(),
+          }),
+        ),
+        pesticide: v.union(
+          v.null(),
+          v.object({
+            kind: v.literal('pesticide'),
+            durationMs: v.number(),
+          }),
+        ),
       }),
     ),
     reportedLightEnabled: v.optional(v.boolean()),
     reportedPumpEnabled: v.optional(v.boolean()),
+    reportedFertilizerEnabled: v.optional(v.boolean()),
+    reportedPesticideEnabled: v.optional(v.boolean()),
     lastStateSyncAt: v.optional(v.number()),
     lastWatered: v.optional(v.number()),
     lastLightChange: v.optional(v.number()),
+    lastFertilized: v.optional(v.number()),
+    lastPesticideApplied: v.optional(v.number()),
+    // V2 Stream
+    streamUrl: v.optional(v.string()),
+    tankCapacity: v.optional(v.number()),
+    tankMinLevel: v.optional(v.number()),
+    // V2 Battery
+    batteryCapacityAh: v.optional(v.number()),
+    batteryCurrent: v.optional(v.number()),
+    batteryAccumulatedMah: v.optional(v.number()),
+    batterySoC: v.optional(v.number()),
+    lastBatteryReading: v.optional(v.number()),
+    batteryLastFullCharge: v.optional(v.number()),
+    // V2 Limit switches
+    reportedTankSwitchOpen: v.optional(v.boolean()),
+    reportedDrawerSwitchOpen: v.optional(v.boolean()),
+    // V2 Device variant flags
+    hasModem: v.optional(v.boolean()),
+    hasSolarPanel: v.optional(v.boolean()),
+    modemImei: v.optional(v.string()),
+    solarPanelWatts: v.optional(v.number()),
     // Metadata
     lastSeen: v.number(),
     firmwareVersion: v.optional(v.string()),
@@ -257,6 +312,12 @@ export default defineSchema({
       v.literal('manual_pump'),
       v.literal('manual_light'),
       v.literal('schedule_completed'),
+      v.literal('fertilizer_opened'),
+      v.literal('fertilizer_closed'),
+      v.literal('pesticide_opened'),
+      v.literal('pesticide_closed'),
+      v.literal('manual_fertilizer'),
+      v.literal('manual_pesticide'),
     ),
     soilValue: v.optional(v.number()),
     lightValue: v.optional(v.number()),
@@ -302,6 +363,9 @@ export default defineSchema({
       v.literal('care_schedule_completed'),
       v.literal('care_schedule_deleted'),
       v.literal('manual_lighting_triggered'),
+      v.literal('manual_fertilizing_triggered'),
+      v.literal('manual_pesticide_triggered'),
+      v.literal('stream_registered'),
     ),
     title: v.string(),
     detail: v.optional(v.string()),
@@ -565,4 +629,20 @@ export default defineSchema({
   })
     .index('by_user', ['userId'])
     .index('by_createdAt', ['createdAt']),
+
+  // ============================================
+  // VIDEO RECORDINGS - V2 H.264 segment metadata
+  // ============================================
+  videoRecordings: defineTable({
+    deviceId: v.id('devices'),
+    fileName: v.string(),
+    path: v.string(),
+    size: v.number(),
+    durationMs: v.optional(v.number()),
+    capturedAt: v.number(),
+    uploadedAt: v.number(),
+  })
+    .index('by_device', ['deviceId'])
+    .index('by_device_and_capturedAt', ['deviceId', 'capturedAt'])
+    .index('by_capturedAt', ['capturedAt']),
 })

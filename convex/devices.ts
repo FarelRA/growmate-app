@@ -64,6 +64,10 @@ export const assignPlantToDevice = mutation({
     ),
     wateringThreshold: v.optional(v.number()),
     lightingThreshold: v.optional(v.number()),
+    fertilizingThreshold: v.optional(v.number()),
+    fertilizerCadenceDays: v.optional(v.number()),
+    pesticideCadenceDays: v.optional(v.number()),
+    nutrientNotes: v.optional(v.string()),
     sensorProfile: v.optional(plantSensorProfile),
     lifecycleProfile: v.optional(lifecycleProfileValidator),
     location: v.optional(v.string()),
@@ -91,6 +95,10 @@ export const assignPlantToDevice = mutation({
       growthStage: args.growthStage ?? 'seed_dormancy',
       wateringThreshold,
       lightingThreshold,
+      fertilizingThreshold: args.fertilizingThreshold,
+      fertilizerCadenceDays: args.fertilizerCadenceDays,
+      pesticideCadenceDays: args.pesticideCadenceDays,
+      nutrientNotes: args.nutrientNotes?.trim(),
       sensorProfile,
       lifecycleProfile,
       location: args.location?.trim() || device.name,
@@ -214,7 +222,23 @@ export const dashboard = query({
       const recentEvents = await getRecentGrowEvents(ctx, device._id, 10)
       return {
         user,
-        device: await buildDeviceSummary(ctx, device),
+        device: {
+          ...(await buildDeviceSummary(ctx, device)),
+          version: device.version ?? 'v1',
+          autoFertilizing: device.autoFertilizing,
+          autoPesticide: device.autoPesticide,
+          fertilizingThreshold: device.fertilizingThreshold,
+          fertilizingDuration: device.fertilizingDuration,
+          fertilizingCooldown: device.fertilizingCooldown,
+          pesticideThreshold: device.pesticideThreshold,
+          pesticideDuration: device.pesticideDuration,
+          pesticideCooldown: device.pesticideCooldown,
+          lastFertilized: device.lastFertilized,
+          lastPesticideApplied: device.lastPesticideApplied,
+          streamUrl: device.streamUrl,
+          tankCapacity: device.tankCapacity,
+          tankMinLevel: device.tankMinLevel,
+        },
         plant: null,
         sensors: [],
         schedules: [],
@@ -248,7 +272,7 @@ export const dashboard = query({
         kind: s.kind,
         value: s.value,
         unit: s.unit,
-        label: getSensorLabel(s.kind as SensorKind),
+        label: getSensorLabel(s.kind as SensorKind, device.version as 'v1' | 'v2'),
         status: getSensorStatus(s.kind as SensorKind, s.value, sensorProfile),
         target: getSensorTarget(
           s.kind as SensorKind,
@@ -307,7 +331,23 @@ export const dashboard = query({
         growthStageLabel: formatPlantStage(plant.growthStage),
         progress: plantProgress,
       },
-      device: await buildDeviceSummary(ctx, device),
+      device: {
+        ...(await buildDeviceSummary(ctx, device)),
+        version: device.version ?? 'v1',
+        autoFertilizing: device.autoFertilizing,
+        autoPesticide: device.autoPesticide,
+        fertilizingThreshold: device.fertilizingThreshold,
+        fertilizingDuration: device.fertilizingDuration,
+        fertilizingCooldown: device.fertilizingCooldown,
+        pesticideThreshold: device.pesticideThreshold,
+        pesticideDuration: device.pesticideDuration,
+        pesticideCooldown: device.pesticideCooldown,
+        lastFertilized: device.lastFertilized,
+        lastPesticideApplied: device.lastPesticideApplied,
+        streamUrl: device.streamUrl,
+        tankCapacity: device.tankCapacity,
+        tankMinLevel: device.tankMinLevel,
+      },
       sensors,
       schedules: formattedSchedules,
       healthComputation: getHealthComputationGuide(sensorProfile),
@@ -346,9 +386,31 @@ export const deviceHistory = query({
         : Promise.resolve([]),
     ])
 
+    const recordings = await ctx.db
+      .query('videoRecordings')
+      .withIndex('by_device', (q) => q.eq('deviceId', device._id))
+      .order('desc')
+      .take(20)
+
     if (!currentPlant || currentPlant.archived) {
       return {
-        device: await buildDeviceSummary(ctx, device),
+        device: {
+          ...(await buildDeviceSummary(ctx, device)),
+          version: device.version ?? 'v1',
+          autoFertilizing: device.autoFertilizing,
+          autoPesticide: device.autoPesticide,
+          fertilizingThreshold: device.fertilizingThreshold,
+          fertilizingDuration: device.fertilizingDuration,
+          fertilizingCooldown: device.fertilizingCooldown,
+          pesticideThreshold: device.pesticideThreshold,
+          pesticideDuration: device.pesticideDuration,
+          pesticideCooldown: device.pesticideCooldown,
+          lastFertilized: device.lastFertilized,
+          lastPesticideApplied: device.lastPesticideApplied,
+          streamUrl: device.streamUrl,
+          tankCapacity: device.tankCapacity,
+          tankMinLevel: device.tankMinLevel,
+        },
         currentPlant: null,
         archivedPlants: archivedPlants
           .sort((a, b) => (b.archivedAt ?? b.updatedAt) - (a.archivedAt ?? a.updatedAt))
@@ -365,6 +427,15 @@ export const deviceHistory = query({
         automationLogs: [],
         timeline,
         imageHistory,
+        recordings: recordings.map((r) => ({
+          _id: r._id,
+          fileName: r.fileName,
+          path: r.path,
+          size: r.size,
+          durationMs: r.durationMs,
+          capturedAt: r.capturedAt,
+          capturedAtLabel: formatTimestamp(r.capturedAt),
+        })),
       }
     }
 
@@ -374,7 +445,23 @@ export const deviceHistory = query({
     ])
 
     return {
-      device: await buildDeviceSummary(ctx, device),
+      device: {
+        ...(await buildDeviceSummary(ctx, device)),
+        version: device.version ?? 'v1',
+        autoFertilizing: device.autoFertilizing,
+        autoPesticide: device.autoPesticide,
+        fertilizingThreshold: device.fertilizingThreshold,
+        fertilizingDuration: device.fertilizingDuration,
+        fertilizingCooldown: device.fertilizingCooldown,
+        pesticideThreshold: device.pesticideThreshold,
+        pesticideDuration: device.pesticideDuration,
+        pesticideCooldown: device.pesticideCooldown,
+        lastFertilized: device.lastFertilized,
+        lastPesticideApplied: device.lastPesticideApplied,
+        streamUrl: device.streamUrl,
+        tankCapacity: device.tankCapacity,
+        tankMinLevel: device.tankMinLevel,
+      },
       currentPlant: {
         ...(await buildPlantView(ctx, currentPlant)),
         plantedAtLabel: formatTimestamp(currentPlant.plantedAt),
@@ -396,6 +483,15 @@ export const deviceHistory = query({
       automationLogs,
       timeline,
       imageHistory,
+      recordings: recordings.map((r) => ({
+        _id: r._id,
+        fileName: r.fileName,
+        path: r.path,
+        size: r.size,
+        durationMs: r.durationMs,
+        capturedAt: r.capturedAt,
+        capturedAtLabel: formatTimestamp(r.capturedAt),
+      })),
     }
   },
 })
@@ -410,6 +506,14 @@ export const updateDeviceAutomation = mutation({
     wateringCooldown: v.optional(v.number()),
     lightingThreshold: v.optional(v.number()),
     lightingHysteresis: v.optional(v.number()),
+    autoFertilizing: v.optional(v.boolean()),
+    autoPesticide: v.optional(v.boolean()),
+    fertilizingThreshold: v.optional(v.number()),
+    fertilizingDuration: v.optional(v.number()),
+    fertilizingCooldown: v.optional(v.number()),
+    pesticideThreshold: v.optional(v.number()),
+    pesticideDuration: v.optional(v.number()),
+    pesticideCooldown: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
@@ -426,7 +530,13 @@ export const updateDeviceAutomation = mutation({
       args.wateringDuration !== undefined ||
       args.wateringCooldown !== undefined ||
       args.lightingThreshold !== undefined ||
-      args.lightingHysteresis !== undefined
+      args.lightingHysteresis !== undefined ||
+      args.fertilizingThreshold !== undefined ||
+      args.fertilizingDuration !== undefined ||
+      args.fertilizingCooldown !== undefined ||
+      args.pesticideThreshold !== undefined ||
+      args.pesticideDuration !== undefined ||
+      args.pesticideCooldown !== undefined
 
     if (includesLowLevelAutomation && user.role !== 'admin') {
       throw new ConvexError('Hanya admin yang dapat mengubah pengaturan teknis otomatisasi perangkat')
@@ -440,6 +550,14 @@ export const updateDeviceAutomation = mutation({
     if (args.wateringCooldown !== undefined) updates.wateringCooldown = args.wateringCooldown
     if (args.lightingThreshold !== undefined) updates.lightingThreshold = args.lightingThreshold
     if (args.lightingHysteresis !== undefined) updates.lightingHysteresis = args.lightingHysteresis
+    if (args.autoFertilizing !== undefined) updates.autoFertilizing = args.autoFertilizing
+    if (args.autoPesticide !== undefined) updates.autoPesticide = args.autoPesticide
+    if (args.fertilizingThreshold !== undefined) updates.fertilizingThreshold = args.fertilizingThreshold
+    if (args.fertilizingDuration !== undefined) updates.fertilizingDuration = args.fertilizingDuration
+    if (args.fertilizingCooldown !== undefined) updates.fertilizingCooldown = args.fertilizingCooldown
+    if (args.pesticideThreshold !== undefined) updates.pesticideThreshold = args.pesticideThreshold
+    if (args.pesticideDuration !== undefined) updates.pesticideDuration = args.pesticideDuration
+    if (args.pesticideCooldown !== undefined) updates.pesticideCooldown = args.pesticideCooldown
 
     const changedFields = Object.entries(updates).reduce<Record<string, string | number | boolean>>(
       (acc, [rawKey, value]) => {

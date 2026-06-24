@@ -24,10 +24,16 @@ export {
   getDeviceWateringDuration,
   getDeviceWateringCooldown,
   getDeviceLightingHysteresis,
+  getDeviceFertilizingDuration,
+  getDevicePesticideDuration,
+  getDeviceFertilizingCooldown,
+  getDevicePesticideCooldown,
   getQueuedDeviceCommands,
   buildDeviceCommandList,
   buildQueuedPumpAction,
   buildQueuedLightAction,
+  buildQueuedFertilizerAction,
+  buildQueuedPesticideAction,
   getDeviceByExternalId,
   getDefaultDeviceName,
   ensureDeviceExists,
@@ -38,6 +44,8 @@ export {
   buildDeviceSummary,
   executeManualWatering,
   executeManualLighting,
+  executeManualFertilizing,
+  executeManualPesticide,
 } from './devices'
 
 export {
@@ -79,3 +87,11 @@ export {
   addUserActivity,
   computeUserPlantPoints,
 } from './generic'
+
+export {
+  evaluateFertilizingRule,
+  evaluatePesticideRule,
+  estimateBatterySoC,
+} from './v2sensors'
+
+export { parseStreamUrl } from './streams'

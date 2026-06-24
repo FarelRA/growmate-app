@@ -36,6 +36,9 @@ export type GrowEventType =
   | 'care_schedule_completed'
   | 'care_schedule_deleted'
   | 'manual_lighting_triggered'
+  | 'manual_fertilizing_triggered'
+  | 'manual_pesticide_triggered'
+  | 'stream_registered'
 
 export type MetricPoint = {
   value: number
@@ -50,6 +53,14 @@ export type DeviceAutomationKey =
   | 'wateringCooldown'
   | 'lightingThreshold'
   | 'lightingHysteresis'
+  | 'autoFertilizing'
+  | 'autoPesticide'
+  | 'fertilizingThreshold'
+  | 'fertilizingDuration'
+  | 'fertilizingCooldown'
+  | 'pesticideThreshold'
+  | 'pesticideDuration'
+  | 'pesticideCooldown'
 
 export type ScheduleCadenceUnit = 'hours' | 'days'
 
@@ -63,10 +74,14 @@ export type ScheduleCadence = {
 export type QueuedDeviceAction =
   | { kind: 'pump'; durationMs: number }
   | { kind: 'light'; enabled: boolean }
+  | { kind: 'fertilizer'; durationMs: number }
+  | { kind: 'pesticide'; durationMs: number }
 
 export type DeviceQueuedCommands = {
   pump: Extract<QueuedDeviceAction, { kind: 'pump' }> | null
   light: Extract<QueuedDeviceAction, { kind: 'light' }> | null
+  fertilizer: Extract<QueuedDeviceAction, { kind: 'fertilizer' }> | null
+  pesticide: Extract<QueuedDeviceAction, { kind: 'pesticide' }> | null
 }
 
 export type LifecycleProfile = {
@@ -112,7 +127,16 @@ export const DEFAULT_WATERING_DURATION = 8
 export const DEFAULT_WATERING_COOLDOWN = 6 * 60 * 60
 export const DEFAULT_LIGHTING_HYSTERESIS = 8
 export const ADC_RAW_MIN = 0
-export const ADC_RAW_MAX = 4095
+export const ADC_RAW_MAX = 65535
+
+export const DEFAULT_FERTILIZING_THRESHOLD = 35
+export const DEFAULT_FERTILIZING_DURATION = 10
+export const DEFAULT_FERTILIZING_COOLDOWN = 432000
+export const DEFAULT_PESTICIDE_THRESHOLD = 0
+export const DEFAULT_PESTICIDE_DURATION = 10
+export const DEFAULT_PESTICIDE_COOLDOWN = 604800
+export const DEFAULT_TANK_CAPACITY = 10
+export const DEFAULT_TANK_MIN_LEVEL = 10
 
 export const plantStagePoints: Record<PlantStageValue, number> = {
   seed_dormancy: 5,

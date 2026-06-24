@@ -31,6 +31,7 @@ function buildSystemPrompt() {
     "You may use tools to act on the user's behalf when they clearly ask you to do so or strongly imply consent.",
     "Before using a tool, make sure the action matches the user's request and the current GrowMate context.",
     "If a tool fails, explain the failure and propose the next best option.",
+    "For V2 devices (version: 'v2'), the device supports fertilizing and pesticide solenoids in addition to watering. Use trigger_fertilizing for fertilizer application and trigger_pesticide for pesticide application. V2 devices do not have a grow light.",
   ].join("\n");
 }
 
@@ -122,6 +123,22 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "trigger_fertilizing",
+      description: "Start a manual fertilizing cycle for the user's active V2 GrowMate device. Only available for V2 devices.",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "trigger_pesticide",
+      description: "Start a manual pesticide application cycle for the user's active V2 GrowMate device. Only available for V2 devices.",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
+    },
+  },
 ];
 
 async function executeTool(ctx: ActionCtx, args: {
@@ -169,6 +186,16 @@ async function executeTool(ctx: ActionCtx, args: {
       return await ctx.runMutation(internal.assistant.assistantCreateSupportRequest, {
         userId: args.userId as Id<'users'>,
         topic: String(parsed.topic ?? ""),
+      });
+    case "trigger_fertilizing":
+      return await ctx.runMutation(internal.assistant.assistantTriggerFertilizing, {
+        userId: args.userId as Id<'users'>,
+        deviceId: args.deviceId,
+      });
+    case "trigger_pesticide":
+      return await ctx.runMutation(internal.assistant.assistantTriggerPesticide, {
+        userId: args.userId as Id<'users'>,
+        deviceId: args.deviceId,
       });
     default:
       throw new Error(`Alat tidak dikenal: ${args.name}`);

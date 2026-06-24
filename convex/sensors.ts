@@ -3,10 +3,13 @@ import { mutation, type MutationCtx } from './_generated/server'
 import type { DeviceDoc, PlantDoc, SensorDoc, SensorKind } from './types'
 import {
   ensureDeviceExists, getQueuedDeviceCommands, buildDeviceCommandList, buildQueuedPumpAction,
-  buildQueuedLightAction,
+  buildQueuedLightAction, buildQueuedFertilizerAction, buildQueuedPesticideAction,
   normalizeRawSensorValue, recordGrowEvent, recordPlantImage,
   recordAutomationEvent, getDeviceByExternalId,
 } from './helpers'
+import {
+  evaluateFertilizingRule, evaluatePesticideRule, estimateBatterySoC,
+} from './helpers/v2sensors'
 
 type DeviceUpdateValue = boolean | number | string | Record<string, unknown> | null | undefined
 
@@ -37,7 +40,16 @@ async function ingestSensorReadings(
   activePlant: PlantDoc | null,
   sensors: { kind: SensorKind; value: number; unit: string; raw?: number }[],
   now: number,
-  currentState?: { pumpEnabled: boolean; lightEnabled: boolean },
+  currentState?: {
+    pumpEnabled: boolean
+    lightEnabled: boolean
+    fertilizerEnabled?: boolean
+    pesticideEnabled?: boolean
+    tankSwitchOpen?: boolean
+    drawerSwitchOpen?: boolean
+    batteryCurrent?: number
+    batteryAccumulatedMah?: number
+  },
   firmwareVersion?: string,
 ): Promise<IngestionResult> {
   const currentSensors = await ctx.db
@@ -62,6 +74,42 @@ async function ingestSensorReadings(
   if (currentState) {
     deviceUpdates.reportedPumpEnabled = currentState.pumpEnabled
     deviceUpdates.reportedLightEnabled = currentState.lightEnabled
+    if (currentState.fertilizerEnabled !== undefined) {
+      deviceUpdates.reportedFertilizerEnabled = currentState.fertilizerEnabled
+    }
+    if (currentState.pesticideEnabled !== undefined) {
+      deviceUpdates.reportedPesticideEnabled = currentState.pesticideEnabled
+    }
+    if (currentState.tankSwitchOpen !== undefined) {
+      deviceUpdates.reportedTankSwitchOpen = currentState.tankSwitchOpen
+    }
+    if (currentState.drawerSwitchOpen !== undefined) {
+      deviceUpdates.reportedDrawerSwitchOpen = currentState.drawerSwitchOpen
+    }
+    if (currentState.batteryCurrent !== undefined) {
+      const timeDeltaMs = now - (device.lastBatteryReading ?? now)
+      let prevAccumulated = device.batteryAccumulatedMah ?? 0
+
+      // Full-charge detection: charging current near 0mA means battery is full
+      // Reset accumulator and mark SoC as 100%
+      if (currentState.batteryCurrent >= 0 && currentState.batteryCurrent < 50) {
+        prevAccumulated = 0
+        deviceUpdates.batteryAccumulatedMah = 0
+        deviceUpdates.batterySoC = 100
+        deviceUpdates.batteryLastFullCharge = now
+      } else {
+        const { accumulatedMah, soc } = estimateBatterySoC(
+          currentState.batteryCurrent,
+          prevAccumulated,
+          device.batteryCapacityAh ?? 5,
+          timeDeltaMs,
+        )
+        deviceUpdates.batteryAccumulatedMah = accumulatedMah
+        deviceUpdates.batterySoC = soc
+      }
+      deviceUpdates.batteryCurrent = currentState.batteryCurrent
+    }
+    deviceUpdates.lastBatteryReading = now
     deviceUpdates.lastStateSyncAt = now
   }
 
@@ -198,6 +246,12 @@ export const ingestSensorData = mutation({
       v.object({
         pumpEnabled: v.boolean(),
         lightEnabled: v.boolean(),
+        fertilizerEnabled: v.optional(v.boolean()),
+        pesticideEnabled: v.optional(v.boolean()),
+        tankSwitchOpen: v.optional(v.boolean()),
+        drawerSwitchOpen: v.optional(v.boolean()),
+        batteryCurrent: v.optional(v.number()),
+        batteryAccumulatedMah: v.optional(v.number()),
       }),
     ),
     sensors: v.array(
@@ -269,42 +323,131 @@ export const ingestSensorData = mutation({
       }
     }
 
-    const currentLightDesired = typeof deviceUpdates.lightEnabled === 'boolean'
-      ? Boolean(deviceUpdates.lightEnabled)
-      : device.lightEnabled
-    const lighting = evaluateLightingRule(device, activePlant, sensorState, currentLightDesired)
-    if (lighting.shouldActivate) {
-      deviceUpdates.lightEnabled = lighting.nextLightEnabled
-      deviceUpdates.lastLightChange = now
-      Object.assign(deviceUpdates, buildQueuedLightAction(device, lighting.nextLightEnabled))
+    if (device.version === 'v2') {
+      // V2-specific: fertilizing + pesticide rules
+      // V2 has no grow light — skip lighting evaluation
+      const fertilizing = evaluateFertilizingRule(device, activePlant, sensorState, now)
+      if (fertilizing.shouldFertilize && fertilizing.cooledDown) {
+        deviceUpdates.lastFertilized = now
+        Object.assign(deviceUpdates, buildQueuedFertilizerAction(device, device.fertilizingDuration))
+        Object.assign(deviceUpdates, buildQueuedPumpAction(device, device.fertilizingDuration))
 
-      if (activePlant) {
-        await recordAutomationEvent(ctx, {
-          deviceId: device._id,
-          plantId: activePlant._id,
-          action: lighting.nextLightEnabled ? 'light_on' : 'light_off',
-          lightValue: lighting.lightValue!,
-          threshold: lighting.effectiveThreshold,
-          timestamp: now,
-        })
+        if (activePlant) {
+          await recordAutomationEvent(ctx, {
+            deviceId: device._id,
+            plantId: activePlant._id,
+            action: 'fertilizer_opened',
+            soilValue: fertilizing.soilValue!,
+            threshold: fertilizing.effectiveThreshold,
+            duration: device.fertilizingDuration,
+            timestamp: now,
+          })
+          await recordAutomationEvent(ctx, {
+            deviceId: device._id,
+            plantId: activePlant._id,
+            action: 'fertilizer_closed',
+            soilValue: fertilizing.soilValue!,
+            threshold: fertilizing.effectiveThreshold,
+            duration: device.fertilizingDuration,
+            timestamp: now + device.fertilizingDuration * 1000,
+          })
+          await recordGrowEvent(ctx, {
+            deviceId: device._id,
+            plantId: activePlant._id,
+            source: 'automation',
+            entityType: 'automation',
+            eventType: 'automation_action_executed',
+            title: 'Pemupukan otomatis dijadwalkan',
+            detail: `${device.name} menjadwalkan pemupukan karena kelembapan tanah di bawah ambang batas.`,
+            data: {
+              soilValue: fertilizing.soilValue!,
+              threshold: fertilizing.effectiveThreshold,
+              duration: device.fertilizingDuration,
+            },
+            timestamp: now,
+          })
+        }
+      }
 
-        await recordGrowEvent(ctx, {
-          deviceId: device._id,
-          plantId: activePlant._id,
-          source: 'automation',
-          entityType: 'automation',
-          eventType: 'automation_action_executed',
-          title: 'Status lampu tumbuh diperbarui',
-          detail: lighting.nextLightEnabled
-            ? `${device.name} meminta lampu tumbuh menyala karena cahaya lingkungan terlalu rendah.`
-            : `${device.name} meminta lampu tumbuh mati karena cahaya lingkungan sudah pulih.`,
-          data: {
+      const pesticide = evaluatePesticideRule(device, activePlant, sensorState, now)
+      if (pesticide.shouldApply && pesticide.cooledDown) {
+        deviceUpdates.lastPesticideApplied = now
+        Object.assign(deviceUpdates, buildQueuedPesticideAction(device, device.pesticideDuration))
+        Object.assign(deviceUpdates, buildQueuedPumpAction(device, device.pesticideDuration))
+
+        if (activePlant) {
+          await recordAutomationEvent(ctx, {
+            deviceId: device._id,
+            plantId: activePlant._id,
+            action: 'pesticide_opened',
+            threshold: device.pesticideThreshold,
+            duration: device.pesticideDuration,
+            timestamp: now,
+          })
+          await recordAutomationEvent(ctx, {
+            deviceId: device._id,
+            plantId: activePlant._id,
+            action: 'pesticide_closed',
+            threshold: device.pesticideThreshold,
+            duration: device.pesticideDuration,
+            timestamp: now + device.pesticideDuration * 1000,
+          })
+          await recordGrowEvent(ctx, {
+            deviceId: device._id,
+            plantId: activePlant._id,
+            source: 'automation',
+            entityType: 'automation',
+            eventType: 'automation_action_executed',
+            title: 'Pestisida otomatis dijadwalkan',
+            detail: `${device.name} menjadwalkan aplikasi pestisida.`,
+            data: {
+              pestRisk: pesticide.pestRisk,
+              threshold: device.pesticideThreshold,
+              duration: device.pesticideDuration,
+            },
+            timestamp: now,
+          })
+        }
+      }
+    } else {
+      // V1-specific: lighting
+      const currentLightDesired = typeof deviceUpdates.lightEnabled === 'boolean'
+        ? Boolean(deviceUpdates.lightEnabled)
+        : device.lightEnabled
+      const lighting = evaluateLightingRule(device, activePlant, sensorState, currentLightDesired)
+      if (lighting.shouldActivate) {
+        deviceUpdates.lightEnabled = lighting.nextLightEnabled
+        deviceUpdates.lastLightChange = now
+        Object.assign(deviceUpdates, buildQueuedLightAction(device, lighting.nextLightEnabled))
+
+        if (activePlant) {
+          await recordAutomationEvent(ctx, {
+            deviceId: device._id,
+            plantId: activePlant._id,
+            action: lighting.nextLightEnabled ? 'light_on' : 'light_off',
             lightValue: lighting.lightValue!,
             threshold: lighting.effectiveThreshold,
-            hysteresis: device.lightingHysteresis,
-          },
-          timestamp: now,
-        })
+            timestamp: now,
+          })
+
+          await recordGrowEvent(ctx, {
+            deviceId: device._id,
+            plantId: activePlant._id,
+            source: 'automation',
+            entityType: 'automation',
+            eventType: 'automation_action_executed',
+            title: 'Status lampu tumbuh diperbarui',
+            detail: lighting.nextLightEnabled
+              ? `${device.name} meminta lampu tumbuh menyala karena cahaya lingkungan terlalu rendah.`
+              : `${device.name} meminta lampu tumbuh mati karena cahaya lingkungan sudah pulih.`,
+            data: {
+              lightValue: lighting.lightValue!,
+              threshold: lighting.effectiveThreshold,
+              hysteresis: device.lightingHysteresis,
+            },
+            timestamp: now,
+          })
+        }
       }
     }
 
@@ -326,7 +469,12 @@ export const ingestSensorData = mutation({
 export const clearDeviceCommands = mutation({
   args: {
     deviceId: v.string(),
-    commands: v.array(v.union(v.literal('pump'), v.literal('light'))),
+    commands: v.array(v.union(
+      v.literal('pump'),
+      v.literal('light'),
+      v.literal('fertilizer'),
+      v.literal('pesticide'),
+    )),
   },
   handler: async (ctx, args) => {
     const device = await getDeviceByExternalId(ctx, args.deviceId)
@@ -344,6 +492,14 @@ export const clearDeviceCommands = mutation({
       }
       if (command === 'light' && queuedCommands.light) {
         queuedCommands.light = null
+        cleared = true
+      }
+      if (command === 'fertilizer' && queuedCommands.fertilizer) {
+        queuedCommands.fertilizer = null
+        cleared = true
+      }
+      if (command === 'pesticide' && queuedCommands.pesticide) {
+        queuedCommands.pesticide = null
         cleared = true
       }
     }

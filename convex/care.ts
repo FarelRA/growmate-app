@@ -5,6 +5,7 @@ import {
   requireUser, recordGrowEvent,
   getSelectedDevice,
   executeManualWatering, executeManualLighting,
+  executeManualFertilizing, executeManualPesticide,
 } from './helpers'
 
 function clampScheduleTimeOfDayMinutes(value?: number | null) {
@@ -250,5 +251,29 @@ export const triggerLighting = mutation({
 
     await executeManualLighting(ctx, user, device, args.enabled)
     return { success: true, enabled: args.enabled }
+  },
+})
+
+export const triggerFertilizing = mutation({
+  args: { deviceId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx)
+    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
+    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
+
+    await executeManualFertilizing(ctx, user, device)
+    return { success: true }
+  },
+})
+
+export const triggerPesticide = mutation({
+  args: { deviceId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx)
+    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
+    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
+
+    await executeManualPesticide(ctx, user, device)
+    return { success: true }
   },
 })

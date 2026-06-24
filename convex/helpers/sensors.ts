@@ -107,7 +107,7 @@ export function getSensorTarget(
   }
 }
 
-export function getSensorLabel(kind: SensorKind): string {
+export function getSensorLabel(kind: SensorKind, deviceVersion?: 'v1' | 'v2'): string {
   switch (kind) {
     case 'soil':
       return 'Kelembapan Tanah'
@@ -118,7 +118,7 @@ export function getSensorLabel(kind: SensorKind): string {
     case 'air':
       return 'Kelembapan Udara'
     case 'water':
-      return 'Level Air'
+      return deviceVersion === 'v2' ? 'Level Tangki Pupuk' : 'Level Air'
   }
 }
 

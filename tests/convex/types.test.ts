@@ -45,8 +45,8 @@ describe('constants', () => {
     expect(ADC_RAW_MIN).toBe(0)
   })
 
-  it('ADC_RAW_MAX is 4095', () => {
-    expect(ADC_RAW_MAX).toBe(4095)
+  it('ADC_RAW_MAX is 65535', () => {
+    expect(ADC_RAW_MAX).toBe(65535)
   })
 })
 

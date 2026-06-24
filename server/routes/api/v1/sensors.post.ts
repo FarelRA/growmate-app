@@ -68,7 +68,7 @@ export default defineEventHandler(async (event) => {
       await convex.mutation(api.sensors.clearDeviceCommands, {
         deviceId: body.deviceId,
         commands: result.commands.map(
-          (command: { kind: 'pump' | 'light' }) => command.kind,
+          (command: { kind: string }) => command.kind as 'pump' | 'light' | 'fertilizer' | 'pesticide',
         ),
       })
     }

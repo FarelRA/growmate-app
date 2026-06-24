@@ -40,6 +40,10 @@ export type PlantPreset = {
   difficulty: 'easy' | 'medium' | 'advanced'
   wateringThreshold: number
   lightingThreshold: number
+  fertilizingThreshold?: number
+  fertilizerCadenceDays?: number
+  pesticideCadenceDays?: number
+  nutrientNotes?: string
   sensorProfile?: PlantSensorProfile
   lifecycleProfile: LifecycleProfile
 }
@@ -63,11 +67,14 @@ export const defaultPlantSensorProfile: PlantSensorProfile = {
 
 export const defaultCustomPlantPreset: Pick<
   PlantPreset,
-  'growthStage' | 'wateringThreshold' | 'lightingThreshold' | 'sensorProfile' | 'lifecycleProfile'
+  'growthStage' | 'wateringThreshold' | 'lightingThreshold' | 'fertilizingThreshold' | 'fertilizerCadenceDays' | 'pesticideCadenceDays' | 'sensorProfile' | 'lifecycleProfile'
 > = {
   growthStage: 'seed_dormancy',
   wateringThreshold: 34,
   lightingThreshold: 30,
+  fertilizingThreshold: 35,
+  fertilizerCadenceDays: 14,
+  pesticideCadenceDays: 30,
   sensorProfile: defaultPlantSensorProfile,
   lifecycleProfile: defaultLifecycleProfile,
 }

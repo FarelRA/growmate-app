@@ -592,7 +592,7 @@ describe('normalizeRawSensorValue', () => {
 
   it('clamps raw value to ADC range', () => {
     expect(normalizeRawSensorValue('soil', -100)).toBe(100)
-    expect(normalizeRawSensorValue('soil', 5000)).toBe(0)
+    expect(normalizeRawSensorValue('soil', 5000)).toBe(92)
   })
 })
 
@@ -882,7 +882,7 @@ describe('getQueuedDeviceCommands', () => {
   it('returns default null commands when queuedCommands is undefined', () => {
     const device = {} as any
     const result = getQueuedDeviceCommands(device)
-    expect(result).toEqual({ pump: null, light: null })
+    expect(result).toEqual({ pump: null, light: null, fertilizer: null, pesticide: null })
   })
 
   it('returns existing queued commands', () => {
@@ -890,11 +890,15 @@ describe('getQueuedDeviceCommands', () => {
       queuedCommands: {
         pump: { kind: 'pump', durationMs: 5000 },
         light: null,
+        fertilizer: null,
+        pesticide: null,
       },
     } as any
     const result = getQueuedDeviceCommands(device)
     expect(result.pump).toEqual({ kind: 'pump', durationMs: 5000 })
     expect(result.light).toBeNull()
+    expect(result.fertilizer).toBeNull()
+    expect(result.pesticide).toBeNull()
   })
 })
 

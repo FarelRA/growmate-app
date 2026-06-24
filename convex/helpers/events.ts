@@ -46,6 +46,12 @@ export async function recordAutomationEvent(
       | 'manual_pump'
       | 'manual_light'
       | 'schedule_completed'
+      | 'fertilizer_opened'
+      | 'fertilizer_closed'
+      | 'pesticide_opened'
+      | 'pesticide_closed'
+      | 'manual_fertilizer'
+      | 'manual_pesticide'
     soilValue?: number
     lightValue?: number
     threshold?: number

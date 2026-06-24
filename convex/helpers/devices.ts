@@ -4,6 +4,8 @@ import type { Id } from '../_generated/dataModel'
 import {
   DEFAULT_WATERING_THRESHOLD, DEFAULT_LIGHTING_THRESHOLD,
   DEFAULT_WATERING_DURATION, DEFAULT_WATERING_COOLDOWN, DEFAULT_LIGHTING_HYSTERESIS,
+  DEFAULT_FERTILIZING_THRESHOLD, DEFAULT_FERTILIZING_DURATION, DEFAULT_FERTILIZING_COOLDOWN,
+  DEFAULT_PESTICIDE_THRESHOLD, DEFAULT_PESTICIDE_DURATION, DEFAULT_PESTICIDE_COOLDOWN,
 } from '../types'
 import { formatTimestamp, isDeviceOnline } from './generic'
 import { formatPlantStage } from './plants'
@@ -41,6 +43,8 @@ export function getQueuedDeviceCommands(device: DeviceDoc): DeviceQueuedCommands
     device.queuedCommands ?? {
       pump: null,
       light: null,
+      fertilizer: null,
+      pesticide: null,
     }
   )
 }
@@ -93,6 +97,7 @@ export async function ensureDeviceExists(ctx: MutationCtx, deviceId: string, fir
   const deviceDocId = await ctx.db.insert('devices', {
     deviceId: normalizedDeviceId,
     name: getDefaultDeviceName(normalizedDeviceId),
+    version: 'v1',
     autoWatering: true,
     autoLighting: true,
     wateringThreshold: DEFAULT_WATERING_THRESHOLD,
@@ -100,10 +105,23 @@ export async function ensureDeviceExists(ctx: MutationCtx, deviceId: string, fir
     wateringCooldown: DEFAULT_WATERING_COOLDOWN,
     lightingThreshold: DEFAULT_LIGHTING_THRESHOLD,
     lightingHysteresis: DEFAULT_LIGHTING_HYSTERESIS,
+    autoFertilizing: false,
+    autoPesticide: false,
+    fertilizingThreshold: DEFAULT_FERTILIZING_THRESHOLD,
+    fertilizingDuration: DEFAULT_FERTILIZING_DURATION,
+    fertilizingCooldown: DEFAULT_FERTILIZING_COOLDOWN,
+    pesticideThreshold: DEFAULT_PESTICIDE_THRESHOLD,
+    pesticideDuration: DEFAULT_PESTICIDE_DURATION,
+    pesticideCooldown: DEFAULT_PESTICIDE_COOLDOWN,
     lightEnabled: false,
-    queuedCommands: { pump: null, light: null },
+    queuedCommands: { pump: null, light: null, fertilizer: null, pesticide: null },
     reportedLightEnabled: false,
     reportedPumpEnabled: false,
+    batteryCapacityAh: 5,
+    batteryAccumulatedMah: 0,
+    batterySoC: 50,
+    hasModem: false,
+    hasSolarPanel: false,
     lastSeen: now,
     firmwareVersion: firmwareVersion?.trim() || undefined,
     createdAt: now,
@@ -239,10 +257,17 @@ export async function executeManualWatering(
   const plant = device.plantId ? await ctx.db.get(device.plantId) : null
   const durationSeconds = getDeviceWateringDuration(device)
 
-  await ctx.db.patch(device._id, {
+  const updates: Record<string, unknown> = {
     ...buildQueuedPumpAction(device, durationSeconds),
     updatedAt: now,
-  })
+  }
+
+  // V2 devices also queue fertilizer during manual watering
+  if (device.version === 'v2') {
+    Object.assign(updates, buildQueuedFertilizerAction(device, durationSeconds))
+  }
+
+  await ctx.db.patch(device._id, updates)
 
   if (plant && !plant.archived) {
     await recordAutomationEvent(ctx, {
@@ -275,6 +300,132 @@ export async function executeManualWatering(
     read: false,
     createdAt: now,
   })
+}
+
+// ============================================
+// V2 HELPERS
+// ============================================
+
+export function buildQueuedFertilizerAction(device: DeviceDoc, durationSeconds: number) {
+  const queuedCommands = getQueuedDeviceCommands(device)
+  return {
+    queuedCommands: {
+      ...queuedCommands,
+      fertilizer: { kind: 'fertilizer' as const, durationMs: durationSeconds * 1000 },
+    },
+  }
+}
+
+export function buildQueuedPesticideAction(device: DeviceDoc, durationSeconds: number) {
+  const queuedCommands = getQueuedDeviceCommands(device)
+  return {
+    queuedCommands: {
+      ...queuedCommands,
+      pesticide: { kind: 'pesticide' as const, durationMs: durationSeconds * 1000 },
+    },
+  }
+}
+
+export function getDeviceFertilizingDuration(device: Pick<DeviceDoc, 'fertilizingDuration'>) {
+  return Number.isFinite(device.fertilizingDuration)
+    ? device.fertilizingDuration
+    : DEFAULT_FERTILIZING_DURATION
+}
+
+export function getDevicePesticideDuration(device: Pick<DeviceDoc, 'pesticideDuration'>) {
+  return Number.isFinite(device.pesticideDuration)
+    ? device.pesticideDuration
+    : DEFAULT_PESTICIDE_DURATION
+}
+
+export function getDeviceFertilizingCooldown(device: Pick<DeviceDoc, 'fertilizingCooldown'>) {
+  return Number.isFinite(device.fertilizingCooldown)
+    ? device.fertilizingCooldown
+    : DEFAULT_FERTILIZING_COOLDOWN
+}
+
+export function getDevicePesticideCooldown(device: Pick<DeviceDoc, 'pesticideCooldown'>) {
+  return Number.isFinite(device.pesticideCooldown)
+    ? device.pesticideCooldown
+    : DEFAULT_PESTICIDE_COOLDOWN
+}
+
+export async function executeManualFertilizing(
+  ctx: MutationCtx,
+  user: { _id: Id<'users'>; name?: string },
+  device: DeviceDoc,
+  now = Date.now(),
+): Promise<void> {
+  const plant = device.plantId ? await ctx.db.get(device.plantId) : null
+  const durationSeconds = getDeviceFertilizingDuration(device)
+
+  await ctx.db.patch(device._id, {
+    ...buildQueuedFertilizerAction(device, durationSeconds),
+    ...buildQueuedPumpAction(device, durationSeconds),
+    updatedAt: now,
+  })
+
+  if (plant && !plant.archived) {
+    await recordAutomationEvent(ctx, {
+      deviceId: device._id,
+      plantId: plant._id,
+      action: 'manual_fertilizer',
+      duration: durationSeconds,
+      timestamp: now,
+    })
+
+    await recordGrowEvent(ctx, {
+      deviceId: device._id,
+      plantId: plant._id,
+      userId: user._id,
+      source: 'user',
+      entityType: 'automation',
+      eventType: 'manual_fertilizing_triggered',
+      title: 'Pemupukan manual dipicu',
+      detail: `${device.name} memulai siklus pemupukan manual.`,
+      data: { duration: durationSeconds },
+      timestamp: now,
+    })
+  }
+}
+
+export async function executeManualPesticide(
+  ctx: MutationCtx,
+  user: { _id: Id<'users'>; name?: string },
+  device: DeviceDoc,
+  now = Date.now(),
+): Promise<void> {
+  const plant = device.plantId ? await ctx.db.get(device.plantId) : null
+  const durationSeconds = getDevicePesticideDuration(device)
+
+  await ctx.db.patch(device._id, {
+    ...buildQueuedPesticideAction(device, durationSeconds),
+    ...buildQueuedPumpAction(device, durationSeconds),
+    updatedAt: now,
+  })
+
+  if (plant && !plant.archived) {
+    await recordAutomationEvent(ctx, {
+      deviceId: device._id,
+      plantId: plant._id,
+      action: 'manual_pesticide',
+      duration: durationSeconds,
+      timestamp: now,
+    })
+
+    await recordGrowEvent(ctx, {
+      deviceId: device._id,
+      plantId: plant._id,
+      userId: user._id,
+      source: 'user',
+      entityType: 'automation',
+      eventType: 'manual_pesticide_triggered',
+      title: 'Pestisida manual dipicu',
+      detail: `${device.name} memulai siklus pestisida manual.`,
+      data: { duration: durationSeconds },
+      timestamp: now,
+    })
+  }
 }
 
 export async function executeManualLighting(

@@ -287,6 +287,7 @@ export const adminSaveDevice = mutation({
     deviceId: v.string(),
     name: v.optional(v.string()),
     firmwareVersion: v.optional(v.string()),
+    version: v.optional(v.union(v.literal('v1'), v.literal('v2'))),
     autoWatering: v.boolean(),
     autoLighting: v.boolean(),
     wateringThreshold: v.number(),
@@ -294,6 +295,19 @@ export const adminSaveDevice = mutation({
     wateringCooldown: v.number(),
     lightingThreshold: v.number(),
     lightingHysteresis: v.number(),
+    autoFertilizing: v.optional(v.boolean()),
+    autoPesticide: v.optional(v.boolean()),
+    fertilizingThreshold: v.optional(v.number()),
+    fertilizingDuration: v.optional(v.number()),
+    fertilizingCooldown: v.optional(v.number()),
+    pesticideThreshold: v.optional(v.number()),
+    pesticideDuration: v.optional(v.number()),
+    pesticideCooldown: v.optional(v.number()),
+    streamUrl: v.optional(v.string()),
+    tankCapacity: v.optional(v.number()),
+    tankMinLevel: v.optional(v.number()),
+    hasModem: v.optional(v.boolean()),
+    hasSolarPanel: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
@@ -316,7 +330,23 @@ export const adminSaveDevice = mutation({
       lightingThreshold: args.lightingThreshold,
       lightingHysteresis: args.lightingHysteresis,
       updatedAt: now,
-    }
+    } satisfies Record<string, unknown>
+
+    const optional: Record<string, unknown> = {}
+    if (args.version !== undefined) optional.version = args.version
+    if (args.autoFertilizing !== undefined) optional.autoFertilizing = args.autoFertilizing
+    if (args.autoPesticide !== undefined) optional.autoPesticide = args.autoPesticide
+    if (args.fertilizingThreshold !== undefined) optional.fertilizingThreshold = args.fertilizingThreshold
+    if (args.fertilizingDuration !== undefined) optional.fertilizingDuration = args.fertilizingDuration
+    if (args.fertilizingCooldown !== undefined) optional.fertilizingCooldown = args.fertilizingCooldown
+    if (args.pesticideThreshold !== undefined) optional.pesticideThreshold = args.pesticideThreshold
+    if (args.pesticideDuration !== undefined) optional.pesticideDuration = args.pesticideDuration
+    if (args.pesticideCooldown !== undefined) optional.pesticideCooldown = args.pesticideCooldown
+    if (args.streamUrl !== undefined) optional.streamUrl = args.streamUrl
+    if (args.tankCapacity !== undefined) optional.tankCapacity = args.tankCapacity
+    if (args.tankMinLevel !== undefined) optional.tankMinLevel = args.tankMinLevel
+    if (args.hasModem !== undefined) optional.hasModem = args.hasModem
+    if (args.hasSolarPanel !== undefined) optional.hasSolarPanel = args.hasSolarPanel
 
     if (args.existingDeviceId) {
       const existing = await ctx.db.get(args.existingDeviceId)
@@ -324,19 +354,36 @@ export const adminSaveDevice = mutation({
          throw new ConvexError('Perangkat tidak ditemukan')
       }
 
-      await ctx.db.patch(args.existingDeviceId, payload)
+      await ctx.db.patch(args.existingDeviceId, { ...payload, ...optional })
       return { success: true, deviceId: args.existingDeviceId }
     }
 
     const deviceDocId = await ctx.db.insert('devices', {
+      version: 'v1' as const,
       lightEnabled: false,
       queuedCommands: {
         pump: null,
         light: null,
+        fertilizer: null,
+        pesticide: null,
       },
+      autoFertilizing: false,
+      autoPesticide: false,
+      fertilizingThreshold: 35,
+      fertilizingDuration: 10,
+      fertilizingCooldown: 432000,
+      pesticideThreshold: 0,
+      pesticideDuration: 10,
+      pesticideCooldown: 604800,
+      batteryCapacityAh: 5,
+      batteryAccumulatedMah: 0,
+      batterySoC: 50,
+      hasModem: false,
+      hasSolarPanel: false,
       lastSeen: now,
       createdAt: now,
       ...payload,
+      ...optional,
     })
 
     return { success: true, deviceId: deviceDocId }
@@ -455,6 +502,10 @@ export const adminSavePlantPreset = mutation({
     difficulty: v.union(v.literal('easy'), v.literal('medium'), v.literal('advanced')),
     wateringThreshold: v.number(),
     lightingThreshold: v.number(),
+    fertilizingThreshold: v.optional(v.number()),
+    fertilizerCadenceDays: v.optional(v.number()),
+    pesticideCadenceDays: v.optional(v.number()),
+    nutrientNotes: v.optional(v.string()),
     sensorProfile: plantSensorProfile,
     lifecycleProfile: lifecycleProfileValidator,
     imageUrl: v.optional(v.string()),
@@ -500,15 +551,22 @@ export const adminSavePlantPreset = mutation({
       sensorProfile: normalizePlantSensorProfile(args.sensorProfile),
       lifecycleProfile: normalizeLifecycleProfile(args.lifecycleProfile),
       updatedAt: now,
-    }
+    } satisfies Record<string, unknown>
+
+    const optional: Record<string, unknown> = {}
+    if (args.fertilizingThreshold !== undefined) optional.fertilizingThreshold = args.fertilizingThreshold
+    if (args.fertilizerCadenceDays !== undefined) optional.fertilizerCadenceDays = args.fertilizerCadenceDays
+    if (args.pesticideCadenceDays !== undefined) optional.pesticideCadenceDays = args.pesticideCadenceDays
+    if (args.nutrientNotes !== undefined) optional.nutrientNotes = args.nutrientNotes.trim()
 
     if (existing) {
-      await ctx.db.patch(existing._id, payload)
+      await ctx.db.patch(existing._id, { ...payload, ...optional })
       return { success: true, presetId: existing._id }
     }
 
     const presetId = await ctx.db.insert('plantCatalog', {
       ...payload,
+      ...optional,
       createdAt: now,
     })
     return { success: true, presetId }

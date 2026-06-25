@@ -7,7 +7,7 @@ import { activeDeviceId, setActiveDeviceId, syncActiveDevice } from '@/lib/devic
 import { getErrorMessage } from '@/lib/errors'
 import type { Id } from '@/lib/convex-types'
 
-export type DashboardPanel = 'overview' | 'care' | 'devices' | 'history'
+export type DashboardPanel = 'overview' | 'care' | 'devices' | 'history' | 'stream'
 type ScheduleCadenceUnit = 'hours' | 'days'
 
 export function useDashboard() {
@@ -38,7 +38,7 @@ export function useDashboard() {
   }
 
   function isPanel(value: string | null): value is DashboardPanel {
-    return value === 'overview' || value === 'care' || value === 'devices' || value === 'history'
+    return value === 'overview' || value === 'care' || value === 'devices' || value === 'history' || value === 'stream'
   }
 
   const { data: devices } = useConvexQuery(api.devices.userDevices, {})
@@ -83,21 +83,90 @@ export function useDashboard() {
     computed(() => ({ deviceId: currentDeviceId.value })),
   )
 
+  const isV2 = computed(() => data.value?.device?.version === 'v2')
+
+  const streamUrl = computed(() =>
+    isV2.value ? `/api/v2/stream/${currentDeviceId.value}/live` : null,
+  )
+
+  const recordings = ref<{
+    _id: string
+    fileName: string
+    path: string
+    size: number
+    durationMs?: number
+    capturedAt: number
+    capturedAtLabel: string
+  }[]>([])
+
+  const streamActive = ref(false)
+  const isLiveLoading = ref(false)
+
+  const batterySoC = computed(() => data.value?.device?.batterySoC ?? 50)
+  const batteryCurrent = computed(() => data.value?.device?.batteryCurrent ?? 0)
+  const batteryCapacityAh = computed(() => data.value?.device?.batteryCapacityAh ?? 5)
+  const tankSwitchOpen = computed(() => data.value?.device?.reportedTankSwitchOpen ?? false)
+  const drawerSwitchOpen = computed(() => data.value?.device?.reportedDrawerSwitchOpen ?? false)
+  const hasModem = computed(() => data.value?.device?.hasModem ?? false)
+  const hasSolarPanel = computed(() => data.value?.device?.hasSolarPanel ?? false)
+  const solarPanelWatts = computed(() => data.value?.device?.solarPanelWatts ?? 0)
+  const tankCapacity = computed(() => data.value?.device?.tankCapacity ?? 10)
+  const tankMinLevel = computed(() => data.value?.device?.tankMinLevel ?? 10)
+
+  const batteryIcon = computed(() => {
+    const soc = batterySoC.value
+    if (soc > 75) return 'battery_full'
+    if (soc > 50) return 'battery_5_bar'
+    if (soc > 25) return 'battery_3_bar'
+    return 'battery_0_bar'
+  })
+
+  const timeToEmpty = computed(() => {
+    if (batteryCurrent.value >= 0) return 'Tidak discharging'
+    const hours = (batterySoC.value / 100 * batteryCapacityAh.value * 1000) / -batteryCurrent.value
+    return `~${Math.round(hours * 60)} menit tersisa`
+  })
+
+  const timeToFull = computed(() => {
+    if (batteryCurrent.value <= 0) return 'Tidak charging'
+    const remainingAh = (1 - batterySoC.value / 100) * batteryCapacityAh.value
+    const hours = (remainingAh * 1000) / batteryCurrent.value
+    return `~${Math.round(hours * 60)} menit hingga penuh`
+  })
+
+  watch(currentDeviceId, async (id) => {
+    if (id && isV2.value) {
+      await fetchRecordings(id)
+    }
+  })
+
+  async function fetchRecordings(deviceId: string) {
+    try {
+      const resp = await fetch(`/api/v2/recordings/${encodeURIComponent(deviceId)}`)
+      const json = await resp.json()
+      recordings.value = json.recordings ?? []
+    } catch {
+      recordings.value = []
+    }
+  }
+
   const emptySensorHistory = [
     { value: 0, measuredAt: 0 },
     { value: 0, measuredAt: 1 },
   ]
 
-  const fallbackSensors = [
+  const fallbackSensors = computed(() => [
     { kind: 'soil', label: 'Kelembapan Tanah', unit: '%', accent: 'earth' },
     { kind: 'light', label: 'Intensitas Cahaya', unit: '%', accent: 'sun' },
     { kind: 'temperature', label: 'Suhu', unit: 'C', accent: 'warm' },
     { kind: 'air', label: 'Kelembapan Udara', unit: '%', accent: 'air' },
-    { kind: 'water', label: 'Level Air', unit: '%', accent: 'water' },
-  ] as const
+    { kind: 'water', label: isV2.value ? 'Level Tangki Pupuk' : 'Level Air', unit: '%', accent: 'water' },
+  ] as const)
 
   const { mutate: triggerWater } = useConvexMutation(api.care.triggerWatering)
   const { mutate: triggerLighting } = useConvexMutation(api.care.triggerLighting)
+  const { mutate: triggerFertilizing } = useConvexMutation(api.care.triggerFertilizing)
+  const { mutate: triggerPesticide } = useConvexMutation(api.care.triggerPesticide)
   const { mutate: updateAutomation } = useConvexMutation(api.devices.updateDeviceAutomation)
   const { mutate: toggleSchedule } = useConvexMutation(api.care.toggleCareSchedule)
   const { mutate: saveCareSchedule } = useConvexMutation(api.care.saveCareSchedule)
@@ -134,7 +203,7 @@ export function useDashboard() {
     const sensors = data.value?.sensors ?? []
     if (sensors.length > 0) return sensors
 
-    return fallbackSensors.map((sensor) => ({
+    return fallbackSensors.value.map((sensor) => ({
       _id: `empty-${sensor.kind}`,
       kind: sensor.kind,
       value: 0,
@@ -305,7 +374,33 @@ export function useDashboard() {
     }
   }
 
-  async function handleToggleAutomation(type: 'watering' | 'lighting', enabled: boolean) {
+  async function handleFertilize() {
+    if (!currentDeviceId.value) {
+      toast.error('Pilih perangkat terlebih dahulu')
+      return
+    }
+    try {
+      await triggerFertilizing({ deviceId: currentDeviceId.value })
+      toast.success('Siklus pemupukan dimulai')
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Gagal memicu pemupukan'))
+    }
+  }
+
+  async function handlePesticide() {
+    if (!currentDeviceId.value) {
+      toast.error('Pilih perangkat terlebih dahulu')
+      return
+    }
+    try {
+      await triggerPesticide({ deviceId: currentDeviceId.value })
+      toast.success('Siklus pestisida dimulai')
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Gagal memicu pestisida'))
+    }
+  }
+
+  async function handleToggleAutomation(type: 'watering' | 'lighting' | 'fertilizing' | 'pesticide', enabled: boolean) {
     if (!data.value?.device) {
       toast.error('Pilih perangkat terlebih dahulu')
       return
@@ -317,12 +412,24 @@ export function useDashboard() {
           autoWatering: !enabled,
         })
         toast.success(enabled ? 'Penyiraman otomatis dimatikan' : 'Penyiraman otomatis dinyalakan')
-      } else {
+      } else if (type === 'lighting') {
         await updateAutomation({
           deviceId: data.value.device.deviceId,
           autoLighting: !enabled,
         })
         toast.success(enabled ? 'Pencahayaan otomatis dimatikan' : 'Pencahayaan otomatis dinyalakan')
+      } else if (type === 'fertilizing') {
+        await updateAutomation({
+          deviceId: data.value.device.deviceId,
+          autoFertilizing: !enabled,
+        })
+        toast.success(enabled ? 'Pemupukan otomatis dimatikan' : 'Pemupukan otomatis dinyalakan')
+      } else if (type === 'pesticide') {
+        await updateAutomation({
+          deviceId: data.value.device.deviceId,
+          autoPesticide: !enabled,
+        })
+        toast.success(enabled ? 'Pestisida otomatis dimatikan' : 'Pestisida otomatis dinyalakan')
       }
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, 'Gagal memperbarui otomasi'))
@@ -417,10 +524,18 @@ export function useDashboard() {
 
     // methods
     setPanel, handleSelectDevice, openSelectPlant,
-    handleWater, handleLight, handleToggleAutomation,
+    handleWater, handleLight, handleFertilize, handlePesticide, handleToggleAutomation,
     handleToggleSchedule, handleSaveSchedule, handleDeleteSchedule,
     handleRemoveDevice,
     resetScheduleForm, editSchedule,
     formatPlantHealthLabel,
+
+    // V2
+    isV2, streamUrl, recordings, streamActive, isLiveLoading, fetchRecordings,
+    batterySoC, batteryCurrent, batteryCapacityAh, batteryIcon,
+    timeToEmpty, timeToFull,
+    tankSwitchOpen, drawerSwitchOpen,
+    hasModem, hasSolarPanel, solarPanelWatts,
+    tankCapacity, tankMinLevel,
   }
 }

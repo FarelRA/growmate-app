@@ -144,6 +144,18 @@ async function buildAssistantContext(
           lastFertilized: device.lastFertilized ? formatTimestamp(device.lastFertilized) : null,
           lastPesticideApplied: device.lastPesticideApplied ? formatTimestamp(device.lastPesticideApplied) : null,
           lastSeen: formatTimestamp(device.lastSeen),
+          streamUrl: device.streamUrl,
+          tankCapacity: device.tankCapacity,
+          tankMinLevel: device.tankMinLevel,
+          batterySoC: device.batterySoC,
+          batteryCurrent: device.batteryCurrent,
+          batteryCapacityAh: device.batteryCapacityAh,
+          reportedTankSwitchOpen: device.reportedTankSwitchOpen,
+          reportedDrawerSwitchOpen: device.reportedDrawerSwitchOpen,
+          hasModem: device.hasModem,
+          hasSolarPanel: device.hasSolarPanel,
+          modemImei: device.modemImei,
+          solarPanelWatts: device.solarPanelWatts,
         }
       : null,
     activePlant:

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import MetricLineChart from '@/components/MetricLineChart.vue'
+import WaterGauge from '@/components/WaterGauge.vue'
 
 defineProps<{
   plant: { name: string; species: string; health: string; image?: string | null } | null
-  device: { name: string; deviceId: string; isOnline: boolean; firmwareVersion?: string | null } | null
+  device: { name: string; deviceId: string; isOnline: boolean; firmwareVersion?: string | null; version?: string } | null
   reservoirDays: number
   alerts: { type: string; message: string }[]
   waterSensor: { value: number } | null
@@ -11,11 +12,26 @@ defineProps<{
   displaySensors: { _id: string; kind: string; value: number; unit: string; label: string; status: string; target: string; accent: string; history: { value: number; measuredAt: number }[] }[]
   iconMap: Record<string, string>
   accentMap: Record<string, string>
+  isV2?: boolean
+  batterySoC?: number
+  batteryCurrent?: number
+  batteryIcon?: string
+  timeToEmpty?: string
+  timeToFull?: string
+  tankSwitchOpen?: boolean
+  drawerSwitchOpen?: boolean
+  hasModem?: boolean
+  hasSolarPanel?: boolean
+  solarPanelWatts?: number
+  tankCapacity?: number
+  tankMinLevel?: number
 }>()
 
 defineEmits<{
   water: []
   light: [enabled: boolean]
+  fertilize: []
+  pesticide: []
   selectPlant: [deviceId?: string]
   setPanel: [panel: 'overview' | 'care' | 'devices' | 'history']
 }>()
@@ -103,15 +119,23 @@ function formatPlantHealthLabel(value: string) {
           <div class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <button type="button" class="rounded-[1.5rem] bg-gradient-to-r from-gm-primary to-gm-primary-soft px-4 py-4 text-left text-white" @click="$emit('water')">
               <span class="material-symbols-outlined text-[22px]">water_drop</span>
-              <div class="mt-3 text-sm font-bold">Siram sekarang</div>
+              <div class="mt-3 text-sm font-bold">{{ isV2 ? 'Siram + Pupuk' : 'Siram sekarang' }}</div>
             </button>
-            <button type="button" class="rounded-[1.5rem] bg-[#fff6da] px-4 py-4 text-left text-[#7a5a00]" @click="$emit('light', true)">
+            <button v-if="!isV2" type="button" class="rounded-[1.5rem] bg-[#fff6da] px-4 py-4 text-left text-[#7a5a00]" @click="$emit('light', true)">
               <span class="material-symbols-outlined text-[22px]">light_mode</span>
               <div class="mt-3 text-sm font-bold">Nyalakan lampu</div>
             </button>
-            <button type="button" class="rounded-[1.5rem] bg-[#f3f3f3] px-4 py-4 text-left text-gm-text" @click="$emit('light', false)">
+            <button v-if="!isV2" type="button" class="rounded-[1.5rem] bg-[#f3f3f3] px-4 py-4 text-left text-gm-text" @click="$emit('light', false)">
               <span class="material-symbols-outlined text-[22px]">dark_mode</span>
               <div class="mt-3 text-sm font-bold">Matikan lampu</div>
+            </button>
+            <button v-if="isV2" type="button" class="rounded-[1.5rem] bg-gradient-to-r from-emerald-600 to-emerald-400 px-4 py-4 text-left text-white" @click="$emit('fertilize')">
+              <span class="material-symbols-outlined text-[22px]">spa</span>
+              <div class="mt-3 text-sm font-bold">Beri pupuk</div>
+            </button>
+            <button v-if="isV2" type="button" class="rounded-[1.5rem] bg-gradient-to-r from-amber-600 to-amber-400 px-4 py-4 text-left text-white" @click="$emit('pesticide')">
+              <span class="material-symbols-outlined text-[22px]">bug_report</span>
+              <div class="mt-3 text-sm font-bold">Pestisida</div>
             </button>
             <button type="button" class="rounded-[1.5rem] bg-[#e8f4ff] px-4 py-4 text-left text-[#006493]" @click="$emit('selectPlant')">
               <span class="material-symbols-outlined text-[22px]">edit</span>
@@ -120,7 +144,14 @@ function formatPlantHealthLabel(value: string) {
           </div>
         </article>
 
-        <article class="rounded-[2rem] bg-[#f3f3f3] p-5 shadow-[0_12px_32px_rgba(15,23,42,0.04)]">
+        <WaterGauge
+          v-if="isV2"
+          :level="waterSensor?.value ?? 0"
+          label="Level Tangki Pupuk"
+          :capacity="tankCapacity ?? 10"
+          :min-level="tankMinLevel ?? 10"
+        />
+        <article v-else class="rounded-[2rem] bg-[#f3f3f3] p-5 shadow-[0_12px_32px_rgba(15,23,42,0.04)]">
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-bold uppercase tracking-[0.2em] text-[#006493]">Cadangan air</p>
@@ -179,6 +210,46 @@ function formatPlantHealthLabel(value: string) {
           </div>
           <div v-else class="mt-4 rounded-[1.5rem] bg-[#f3f3f3] p-4 text-sm text-gm-muted">Semua dalam kondisi stabil saat ini.</div>
         </article>
+
+        <template v-if="isV2">
+          <article class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-gm-primary">Baterai</p>
+                <h2 class="mt-2 font-headline text-xl font-black tracking-tight text-gm-text">
+                  <span class="material-symbols-outlined align-middle text-[20px]">{{ batteryIcon }}</span>
+                  {{ batterySoC }}%
+                </h2>
+                <p class="mt-1 text-xs text-gm-muted">
+                  {{ (batteryCurrent ?? 0) > 0 ? `+${batteryCurrent}mA (mengisi)` : `${batteryCurrent}mA (menggunakan baterai)` }}
+                </p>
+              </div>
+            </div>
+            <div class="mt-3 text-xs text-gm-muted">
+              <p>{{ (batteryCurrent ?? 0) > 0 ? timeToFull : timeToEmpty }}</p>
+            </div>
+            <div v-if="hasModem" class="mt-2 flex items-center gap-1 text-xs text-gm-muted">
+              <span class="material-symbols-outlined text-sm">signal_cellular_alt</span> Modem terpasang
+            </div>
+            <div v-if="hasSolarPanel" class="mt-1 flex items-center gap-1 text-xs text-gm-muted">
+              <span class="material-symbols-outlined text-sm">solar_power</span> Panel surya {{ solarPanelWatts }}W
+            </div>
+          </article>
+
+          <article class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
+            <p class="text-xs font-bold uppercase tracking-[0.2em] text-gm-primary">Sakelar</p>
+            <div class="mt-3 space-y-2 text-sm">
+              <div :class="tankSwitchOpen ? 'text-red-500' : 'text-green-600'" class="flex items-center gap-2">
+                <span class="inline-block h-2 w-2 rounded-full" :class="tankSwitchOpen ? 'bg-red-500' : 'bg-green-600'" />
+                <span>{{ tankSwitchOpen ? 'Tutup tangki terbuka' : 'Tutup tangki tertutup' }}</span>
+              </div>
+              <div :class="drawerSwitchOpen ? 'text-red-500' : 'text-green-600'" class="flex items-center gap-2">
+                <span class="inline-block h-2 w-2 rounded-full" :class="drawerSwitchOpen ? 'bg-red-500' : 'bg-green-600'" />
+                <span>{{ drawerSwitchOpen ? 'Laci terbuka' : 'Laci tertutup' }}</span>
+              </div>
+            </div>
+          </article>
+        </template>
       </div>
     </section>
   </section>

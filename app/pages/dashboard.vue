@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useDashboard } from '@/composables/useDashboard'
+import { computed } from 'vue'
 
 definePageMeta({
   requiresAuth: true,
@@ -15,21 +16,42 @@ const {
   scheduleForm, savingSchedule, deletingScheduleId, removingDeviceId,
 
   setPanel, handleSelectDevice, openSelectPlant,
-  handleWater, handleLight, handleToggleAutomation,
+  handleWater, handleLight, handleFertilize, handlePesticide, handleToggleAutomation,
   handleToggleSchedule, handleSaveSchedule, handleDeleteSchedule,
   handleRemoveDevice,
   resetScheduleForm, editSchedule,
+
+  isV2,
+  batterySoC, batteryCurrent, batteryIcon,
+  timeToEmpty, timeToFull,
+  tankSwitchOpen, drawerSwitchOpen,
+  hasModem, hasSolarPanel, solarPanelWatts,
+  tankCapacity, tankMinLevel,
 } = useDashboard()
 
 const router = useRouter()
+
+const deviceVersion = computed(() => data.value?.device?.version ?? 'v1')
+const showStreamTab = computed(() => deviceVersion.value === 'v2')
+
+const displayPanelOptions = computed(() => {
+  if (showStreamTab.value) {
+    const panels = [...panelOptions]
+    if (!panels.some(p => p.key === 'stream')) {
+      panels.push({ key: 'stream', label: 'Stream', icon: 'videocam' })
+    }
+    return panels
+  }
+  return panelOptions
+})
 </script>
 
 <template>
   <div class="space-y-4" v-if="data">
     <section class="rounded-[1.75rem] bg-[#f3f3f3] p-2 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
-      <div class="grid grid-cols-4 gap-2">
+      <div :class="['grid gap-2', showStreamTab ? 'grid-cols-5' : 'grid-cols-4']">
         <button
-          v-for="panel in panelOptions"
+          v-for="panel in displayPanelOptions"
           :key="panel.key"
           type="button"
           class="flex min-w-0 flex-col items-center justify-center rounded-[1.25rem] px-2 py-3 text-center transition-all"
@@ -77,8 +99,23 @@ const router = useRouter()
       :display-sensors="displaySensors"
       :icon-map="iconMap"
       :accent-map="accentMap"
+      :is-v2="isV2"
+      :battery-soc="batterySoC"
+      :battery-current="batteryCurrent"
+      :battery-icon="batteryIcon"
+      :time-to-empty="timeToEmpty"
+      :time-to-full="timeToFull"
+      :tank-switch-open="tankSwitchOpen"
+      :drawer-switch-open="drawerSwitchOpen"
+      :has-modem="hasModem"
+      :has-solar-panel="hasSolarPanel"
+      :solar-panel-watts="solarPanelWatts"
+      :tank-capacity="tankCapacity"
+      :tank-min-level="tankMinLevel"
       @water="handleWater"
       @light="handleLight"
+      @fertilize="handleFertilize"
+      @pesticide="handlePesticide"
       @select-plant="openSelectPlant(data.device?.deviceId)"
       @set-panel="setPanel"
     />
@@ -94,6 +131,8 @@ const router = useRouter()
       @update:schedule-form="scheduleForm = $event"
       @water="handleWater"
       @light="handleLight"
+      @fertilize="handleFertilize"
+      @pesticide="handlePesticide"
       @toggle-automation="handleToggleAutomation"
       @toggle-schedule="handleToggleSchedule"
       @save-schedule="handleSaveSchedule"
@@ -117,6 +156,12 @@ const router = useRouter()
       v-else-if="activePanel === 'history'"
       :history-data="historyData"
       :history-metric-cards="historyMetricCards"
+      :device-version="deviceVersion"
+    />
+
+    <LiveStreamPanel
+      v-else-if="activePanel === 'stream' && showStreamTab"
+      :device-id="data.device?.deviceId ?? ''"
     />
   </div>
 

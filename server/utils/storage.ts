@@ -4,10 +4,13 @@ import {
   HeadBucketCommand,
   CreateBucketCommand,
   PutBucketPolicyCommand,
+  DeleteObjectCommand,
 } from '@aws-sdk/client-s3'
 
 let _client: S3Client | null = null
 const _bucketPromises = new Map<string, Promise<void>>()
+
+export const RECORDINGS_BUCKET = 'recordings'
 
 function getClient(): S3Client {
   if (!_client) {
@@ -67,6 +70,10 @@ export async function ensureBucket(bucket: string): Promise<void> {
   return promise
 }
 
+export function s3Client(): S3Client {
+  return getClient()
+}
+
 export async function uploadFile(
   bucket: string,
   key: string,
@@ -83,4 +90,9 @@ export async function uploadFile(
       ContentType: contentType,
     }),
   )
+}
+
+export async function deleteS3Object(bucket: string, key: string): Promise<void> {
+  const client = getClient()
+  await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
 }

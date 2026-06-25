@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const props = defineProps<{
-  device: { autoWatering: boolean; autoLighting: boolean; lightEnabled: boolean; deviceId: string } | null
+  device: { autoWatering: boolean; autoLighting: boolean; autoFertilizing?: boolean; autoPesticide?: boolean; lightEnabled: boolean; deviceId: string; version?: string } | null
   schedules: { _id: string; title: string; cadenceLabel: string; nextRunLabel: string; enabled: boolean }[]
   scheduleForm: { scheduleId: string | null; title: string; cadenceValue: number; cadenceUnit: 'hours' | 'days'; timeOfDay: string }
   schedulePreview: string
@@ -12,7 +12,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   water: []
   light: [enabled: boolean]
-  toggleAutomation: [type: 'watering' | 'lighting', enabled: boolean]
+  fertilize: []
+  pesticide: []
+  toggleAutomation: [type: 'watering' | 'lighting' | 'fertilizing' | 'pesticide', enabled: boolean]
   toggleSchedule: [scheduleId: string, enabled: boolean]
   saveSchedule: []
   deleteSchedule: [scheduleId: string]
@@ -72,15 +74,61 @@ function updateForm(field: string, value: string | number) {
               <span class="h-5 w-5 rounded-full bg-white transition-transform" :class="device?.autoLighting ? 'translate-x-5' : ''"></span>
             </button>
           </div>
+
+          <template v-if="device?.version === 'v2'">
+            <div class="flex items-center justify-between rounded-[1.5rem] bg-[#f3f3f3] p-4">
+              <div>
+                <div class="text-sm font-bold text-gm-text">Pemupukan otomatis</div>
+                <div class="mt-1 text-xs text-gm-muted">Sistem menjadwalkan pemupukan sesuai ambang kelembapan tanah</div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                :aria-checked="device?.autoFertilizing ?? false"
+                aria-label="Pemupukan otomatis"
+                class="relative flex h-7 w-12 items-center rounded-full px-1 transition-colors"
+                :class="device?.autoFertilizing ? 'bg-gm-primary' : 'bg-[#d7d7d7]'"
+                @click="$emit('toggleAutomation', 'fertilizing', device?.autoFertilizing ?? false)"
+              >
+                <span class="h-5 w-5 rounded-full bg-white transition-transform" :class="device?.autoFertilizing ? 'translate-x-5' : ''"></span>
+              </button>
+            </div>
+
+            <div class="flex items-center justify-between rounded-[1.5rem] bg-[#f3f3f3] p-4">
+              <div>
+                <div class="text-sm font-bold text-gm-text">Pestisida otomatis</div>
+                <div class="mt-1 text-xs text-gm-muted">Sistem mengaplikasikan pestisida saat risiko hama terdeteksi</div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                :aria-checked="device?.autoPesticide ?? false"
+                aria-label="Pestisida otomatis"
+                class="relative flex h-7 w-12 items-center rounded-full px-1 transition-colors"
+                :class="device?.autoPesticide ? 'bg-gm-primary' : 'bg-[#d7d7d7]'"
+                @click="$emit('toggleAutomation', 'pesticide', device?.autoPesticide ?? false)"
+              >
+                <span class="h-5 w-5 rounded-full bg-white transition-transform" :class="device?.autoPesticide ? 'translate-x-5' : ''"></span>
+              </button>
+            </div>
+          </template>
         </div>
 
         <div class="mt-4 grid grid-cols-2 gap-3">
           <button type="button" class="rounded-full bg-gradient-to-r from-gm-primary to-gm-primary-soft px-4 py-3 text-sm font-bold text-white" @click="$emit('water')">
             Siram sekarang
           </button>
-          <button type="button" class="rounded-full bg-[#fff6da] px-4 py-3 text-sm font-bold text-[#7a5a00]" @click="$emit('light', !(device?.lightEnabled ?? false))">
+          <button v-if="device?.version !== 'v2'" type="button" class="rounded-full bg-[#fff6da] px-4 py-3 text-sm font-bold text-[#7a5a00]" @click="$emit('light', !(device?.lightEnabled ?? false))">
             {{ device?.lightEnabled ? 'Matikan lampu' : 'Nyalakan lampu' }}
           </button>
+          <template v-if="device?.version === 'v2'">
+            <button type="button" class="rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 px-4 py-3 text-sm font-bold text-white" @click="$emit('fertilize')">
+              Pupuk sekarang
+            </button>
+            <button type="button" class="rounded-full bg-gradient-to-r from-amber-600 to-amber-400 px-4 py-3 text-sm font-bold text-white" @click="$emit('pesticide')">
+              Pestisida sekarang
+            </button>
+          </template>
         </div>
       </article>
 

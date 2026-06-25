@@ -185,25 +185,39 @@ export interface Alert {
   sensorKind?: SensorKind
 }
 
-const alertRules: Array<{
+function getAlertRules(deviceVersion?: 'v1' | 'v2'): Array<{
   kind: SensorKind
   status: SensorStatus
   type: Alert['type']
   message: string
-}> = [
-  { kind: 'soil', status: 'low', type: 'warning', message: 'Kelembapan tanah rendah - perlu penyiraman' },
-  { kind: 'water', status: 'low', type: 'critical', message: 'Reservoir air rendah - segera isi ulang' },
-  { kind: 'temperature', status: 'high', type: 'warning', message: 'Suhu tinggi - tingkatkan ventilasi' },
-  { kind: 'temperature', status: 'low', type: 'warning', message: 'Suhu rendah - tambahkan pemanas' },
-  { kind: 'light', status: 'low', type: 'warning', message: 'Cahaya rendah - tambahkan pencahayaan' },
-  { kind: 'light', status: 'high', type: 'warning', message: 'Cahaya berlebih - kurangi paparan' },
-  { kind: 'air', status: 'low', type: 'warning', message: 'Kelembapan udara rendah - tingkatkan kelembapan' },
-  { kind: 'air', status: 'high', type: 'warning', message: 'Kelembapan udara tinggi - tingkatkan ventilasi' },
-]
+}> {
+  const rules: ReturnType<typeof getAlertRules> = [
+    { kind: 'soil', status: 'low', type: 'warning', message: 'Kelembapan tanah rendah - perlu penyiraman' },
+    {
+      kind: 'water', status: 'low', type: 'critical',
+      message: deviceVersion === 'v2'
+        ? 'Level tangki pupuk rendah - segera isi ulang'
+        : 'Reservoir air rendah - segera isi ulang',
+    },
+    { kind: 'temperature', status: 'high', type: 'warning', message: 'Suhu tinggi - tingkatkan ventilasi' },
+    { kind: 'temperature', status: 'low', type: 'warning', message: 'Suhu rendah - tambahkan pemanas' },
+    { kind: 'air', status: 'low', type: 'warning', message: 'Kelembapan udara rendah - tingkatkan kelembapan' },
+    { kind: 'air', status: 'high', type: 'warning', message: 'Kelembapan udara tinggi - tingkatkan ventilasi' },
+  ]
+
+  if (deviceVersion !== 'v2') {
+    rules.push(
+      { kind: 'light' as const, status: 'low' as const, type: 'warning' as const, message: 'Cahaya rendah - tambahkan pencahayaan' },
+      { kind: 'light' as const, status: 'high' as const, type: 'warning' as const, message: 'Cahaya berlebih - kurangi paparan' },
+    )
+  }
+
+  return rules
+}
 
 export function generateAlerts(
   sensors: SensorData[],
-  device: { lastSeen: number; autoWatering: boolean } | null,
+  device: { lastSeen: number; autoWatering: boolean; version?: 'v1' | 'v2' } | null,
   profile?: Partial<Record<SensorKind, Partial<SensorRange>>> | null,
 ): Alert[] {
   const alerts: Alert[] = []
@@ -215,10 +229,12 @@ export function generateAlerts(
     })
   }
 
+  const rules = getAlertRules(device?.version)
+
   for (const sensor of sensors) {
     const status = getSensorStatus(sensor.kind, sensor.value, profile)
 
-    for (const rule of alertRules) {
+    for (const rule of rules) {
       if (rule.kind === sensor.kind && rule.status === status) {
         alerts.push({
           type: rule.type,

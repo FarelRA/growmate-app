@@ -15,6 +15,10 @@ const props = defineProps<{
     difficulty: 'easy' | 'medium' | 'advanced'
     wateringThreshold: number
     lightingThreshold: number
+    fertilizingThreshold: number
+    fertilizerCadenceDays: number
+    pesticideCadenceDays: number
+    nutrientNotes: string
     sensorProfile: {
       soil: { min: number; max: number }
       light: { min: number; max: number }
@@ -42,7 +46,7 @@ const emit = defineEmits<{
   editPlantPreset: [preset: any]
   resetPlantPresetForm: []
   handlePlantPresetImageChange: [event: Event]
-  'update:plantPresetForm': [form: { presetId: string | null; key: string; name: string; species: string; growthStage: PlantLifecycleStage; description: string; location: string; category: 'herb' | 'leafy' | 'fruiting' | 'houseplant' | 'flower' | 'microgreen'; difficulty: 'easy' | 'medium' | 'advanced'; wateringThreshold: number; lightingThreshold: number; sensorProfile: { soil: { min: number; max: number }; light: { min: number; max: number }; temperature: { min: number; max: number }; air: { min: number; max: number }; water: { min: number; max: number } }; lifecycleProfile: { seedDormancyDays: number; germinationDays: number; seedlingDevelopmentDays: number; vegetativeGrowthDays: number; floweringReproductionDays: number; maturitySenescenceDays: number } }]
+  'update:plantPresetForm': [form: { presetId: string | null; key: string; name: string; species: string; growthStage: PlantLifecycleStage; description: string; location: string; category: 'herb' | 'leafy' | 'fruiting' | 'houseplant' | 'flower' | 'microgreen'; difficulty: 'easy' | 'medium' | 'advanced'; wateringThreshold: number; lightingThreshold: number; fertilizingThreshold: number; fertilizerCadenceDays: number; pesticideCadenceDays: number; nutrientNotes: string; sensorProfile: { soil: { min: number; max: number }; light: { min: number; max: number }; temperature: { min: number; max: number }; air: { min: number; max: number }; water: { min: number; max: number } }; lifecycleProfile: { seedDormancyDays: number; germinationDays: number; seedlingDevelopmentDays: number; vegetativeGrowthDays: number; floweringReproductionDays: number; maturitySenescenceDays: number } }]
 }>()
 
 const sensorKinds = ['soil', 'light', 'temperature', 'air', 'water'] as const
@@ -69,7 +73,11 @@ const sensorKinds = ['soil', 'light', 'temperature', 'air', 'water'] as const
         <div class="grid gap-3 sm:grid-cols-2">
           <label class="space-y-2"><span class="block text-sm font-semibold text-gm-text">Ambang penyiraman</span><input :value="props.plantPresetForm.wateringThreshold" type="number" class="w-full rounded-2xl bg-[#f7f7f7] px-4 py-3 text-sm outline-none" @input="emit('update:plantPresetForm', { ...props.plantPresetForm, wateringThreshold: Number(($event.target as HTMLInputElement).value) })" /></label>
           <label class="space-y-2"><span class="block text-sm font-semibold text-gm-text">Ambang cahaya</span><input :value="props.plantPresetForm.lightingThreshold" type="number" class="w-full rounded-2xl bg-[#f7f7f7] px-4 py-3 text-sm outline-none" @input="emit('update:plantPresetForm', { ...props.plantPresetForm, lightingThreshold: Number(($event.target as HTMLInputElement).value) })" /></label>
+          <label class="space-y-2"><span class="block text-sm font-semibold text-gm-text">Ambang pupuk</span><input :value="props.plantPresetForm.fertilizingThreshold" type="number" class="w-full rounded-2xl bg-[#f7f7f7] px-4 py-3 text-sm outline-none" @input="emit('update:plantPresetForm', { ...props.plantPresetForm, fertilizingThreshold: Number(($event.target as HTMLInputElement).value) })" /></label>
+          <label class="space-y-2"><span class="block text-sm font-semibold text-gm-text">Interval pupuk (hari)</span><input :value="props.plantPresetForm.fertilizerCadenceDays" type="number" class="w-full rounded-2xl bg-[#f7f7f7] px-4 py-3 text-sm outline-none" @input="emit('update:plantPresetForm', { ...props.plantPresetForm, fertilizerCadenceDays: Number(($event.target as HTMLInputElement).value) })" /></label>
+          <label class="space-y-2"><span class="block text-sm font-semibold text-gm-text">Interval pestisida (hari)</span><input :value="props.plantPresetForm.pesticideCadenceDays" type="number" class="w-full rounded-2xl bg-[#f7f7f7] px-4 py-3 text-sm outline-none" @input="emit('update:plantPresetForm', { ...props.plantPresetForm, pesticideCadenceDays: Number(($event.target as HTMLInputElement).value) })" /></label>
         </div>
+        <label class="space-y-2"><span class="block text-sm font-semibold text-gm-text">Catatan nutrisi</span><textarea :value="props.plantPresetForm.nutrientNotes" rows="2" class="w-full rounded-2xl bg-[#f7f7f7] px-4 py-3 text-sm outline-none" @input="emit('update:plantPresetForm', { ...props.plantPresetForm, nutrientNotes: ($event.target as HTMLInputElement).value })" /></label>
         <details class="rounded-[1.5rem] bg-[#f3f3f3] p-4">
           <summary class="cursor-pointer text-sm font-bold text-gm-text">Profil sensor</summary>
           <div class="mt-4 grid gap-3">

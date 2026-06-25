@@ -6,6 +6,7 @@ import {
   DEFAULT_WATERING_DURATION, DEFAULT_WATERING_COOLDOWN, DEFAULT_LIGHTING_HYSTERESIS,
   DEFAULT_FERTILIZING_THRESHOLD, DEFAULT_FERTILIZING_DURATION, DEFAULT_FERTILIZING_COOLDOWN,
   DEFAULT_PESTICIDE_THRESHOLD, DEFAULT_PESTICIDE_DURATION, DEFAULT_PESTICIDE_COOLDOWN,
+  DEFAULT_TANK_CAPACITY, DEFAULT_TANK_MIN_LEVEL,
 } from '../types'
 import { formatTimestamp, isDeviceOnline } from './generic'
 import { formatPlantStage } from './plants'
@@ -117,6 +118,12 @@ export async function ensureDeviceExists(ctx: MutationCtx, deviceId: string, fir
     queuedCommands: { pump: null, light: null, fertilizer: null, pesticide: null },
     reportedLightEnabled: false,
     reportedPumpEnabled: false,
+    reportedFertilizerEnabled: false,
+    reportedPesticideEnabled: false,
+    reportedTankSwitchOpen: false,
+    reportedDrawerSwitchOpen: false,
+    tankCapacity: DEFAULT_TANK_CAPACITY,
+    tankMinLevel: DEFAULT_TANK_MIN_LEVEL,
     batteryCapacityAh: 5,
     batteryAccumulatedMah: 0,
     batterySoC: 50,

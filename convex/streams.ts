@@ -1,4 +1,4 @@
-import { v } from 'convex/values'
+import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { getDeviceByExternalId, recordGrowEvent } from './helpers'
 
@@ -10,7 +10,7 @@ export const registerStream = mutation({
   handler: async (ctx, args) => {
     const device = await getDeviceByExternalId(ctx, args.deviceId)
     if (!device) {
-      throw new Error('Device not found')
+      throw new ConvexError('Perangkat tidak ditemukan')
     }
 
     const now = Date.now()
@@ -47,7 +47,7 @@ export const recordStreamSegment = mutation({
   handler: async (ctx, args) => {
     const device = await getDeviceByExternalId(ctx, args.deviceId)
     if (!device) {
-      throw new Error('Device not found')
+      throw new ConvexError('Perangkat tidak ditemukan')
     }
 
     const recordingId = await ctx.db.insert('videoRecordings', {

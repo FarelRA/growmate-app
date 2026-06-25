@@ -260,6 +260,7 @@ export const triggerFertilizing = mutation({
     const user = await requireUser(ctx)
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
     if (!device) throw new ConvexError('Perangkat tidak ditemukan')
+    if (device.version !== 'v2') throw new ConvexError('Aksi ini hanya tersedia untuk perangkat V2')
 
     await executeManualFertilizing(ctx, user, device)
     return { success: true }
@@ -272,6 +273,7 @@ export const triggerPesticide = mutation({
     const user = await requireUser(ctx)
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
     if (!device) throw new ConvexError('Perangkat tidak ditemukan')
+    if (device.version !== 'v2') throw new ConvexError('Aksi ini hanya tersedia untuk perangkat V2')
 
     await executeManualPesticide(ctx, user, device)
     return { success: true }

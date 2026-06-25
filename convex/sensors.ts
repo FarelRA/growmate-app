@@ -48,7 +48,7 @@ async function ingestSensorReadings(
     tankSwitchOpen?: boolean
     drawerSwitchOpen?: boolean
     batteryCurrent?: number
-    batteryAccumulatedMah?: number
+    _batteryAccumulatedMah?: number
   },
   firmwareVersion?: string,
 ): Promise<IngestionResult> {

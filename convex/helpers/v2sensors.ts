@@ -1,5 +1,5 @@
 import type { DeviceDoc, PlantDoc } from '../types'
-import { DEFAULT_TANK_MIN_LEVEL } from '../types'
+import { DEFAULT_TANK_MIN_LEVEL, DEFAULT_FERTILIZING_COOLDOWN, DEFAULT_PESTICIDE_COOLDOWN } from '../types'
 
 export interface V2FertilizingDecision {
   shouldFertilize: boolean
@@ -34,7 +34,8 @@ export function evaluateFertilizingRule(
     return { shouldFertilize: false, cooledDown: false, effectiveThreshold, soilValue, tankLevel }
   }
 
-  const cooldownMs = device.fertilizingCooldown * 1000
+  const cooldownSec = device.fertilizingCooldown ?? DEFAULT_FERTILIZING_COOLDOWN
+  const cooldownMs = cooldownSec * 1000
   const cooledDown = !device.lastFertilized || now - device.lastFertilized >= cooldownMs
 
   return { shouldFertilize: true, cooledDown, effectiveThreshold, soilValue, tankLevel }
@@ -59,10 +60,12 @@ export function evaluatePesticideRule(
   const humidity = sensorState.get('air')?.value
   const pestRisk = humidity !== undefined && humidity > 80 ? 70 : 0
 
-  const cooldownMs = device.pesticideCooldown * 1000
+  const cooldownSec = device.pesticideCooldown ?? DEFAULT_PESTICIDE_COOLDOWN
+  const cooldownMs = cooldownSec * 1000
   const cooledDown = !device.lastPesticideApplied || now - device.lastPesticideApplied >= cooldownMs
 
-  const shouldApply = pestRisk >= (device.pesticideThreshold || 50) && cooledDown
+  const threshold = device.pesticideThreshold != null ? device.pesticideThreshold : 50
+  const shouldApply = pestRisk >= threshold && cooledDown
   return { shouldApply, cooledDown, pestRisk }
 }
 

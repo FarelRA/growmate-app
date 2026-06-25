@@ -37,6 +37,10 @@ export function useAdminPlantPresets(activeTab: Ref<AdminTab>) {
     difficulty: 'easy' as 'easy' | 'medium' | 'advanced',
     wateringThreshold: 34,
     lightingThreshold: 30,
+    fertilizingThreshold: 35,
+    fertilizerCadenceDays: 14,
+    pesticideCadenceDays: 30,
+    nutrientNotes: '',
     sensorProfile: { ...defaultPlantSensorProfile } as PlantSensorProfile,
     lifecycleProfile: { ...defaultLifecycleProfile } as LifecycleProfile,
   })
@@ -64,6 +68,10 @@ export function useAdminPlantPresets(activeTab: Ref<AdminTab>) {
       difficulty: 'easy',
       wateringThreshold: 34,
       lightingThreshold: 30,
+      fertilizingThreshold: 35,
+      fertilizerCadenceDays: 14,
+      pesticideCadenceDays: 30,
+      nutrientNotes: '',
       sensorProfile: cloneSensorProfile(),
       lifecycleProfile: { ...defaultLifecycleProfile },
     }
@@ -82,6 +90,10 @@ export function useAdminPlantPresets(activeTab: Ref<AdminTab>) {
     difficulty: 'easy' | 'medium' | 'advanced'
     wateringThreshold: number
     lightingThreshold: number
+    fertilizingThreshold?: number
+    fertilizerCadenceDays?: number
+    pesticideCadenceDays?: number
+    nutrientNotes?: string
     sensorProfile: PlantSensorProfile
     lifecycleProfile: LifecycleProfile
     imageUrl: string | null
@@ -98,6 +110,10 @@ export function useAdminPlantPresets(activeTab: Ref<AdminTab>) {
       difficulty: preset.difficulty,
       wateringThreshold: preset.wateringThreshold,
       lightingThreshold: preset.lightingThreshold,
+      fertilizingThreshold: preset.fertilizingThreshold ?? 35,
+      fertilizerCadenceDays: preset.fertilizerCadenceDays ?? 14,
+      pesticideCadenceDays: preset.pesticideCadenceDays ?? 30,
+      nutrientNotes: preset.nutrientNotes ?? '',
       sensorProfile: cloneSensorProfile(preset.sensorProfile),
       lifecycleProfile: { ...preset.lifecycleProfile },
     }
@@ -121,6 +137,10 @@ export function useAdminPlantPresets(activeTab: Ref<AdminTab>) {
         difficulty: plantPresetForm.value.difficulty,
         wateringThreshold: Number(plantPresetForm.value.wateringThreshold),
         lightingThreshold: Number(plantPresetForm.value.lightingThreshold),
+        fertilizingThreshold: Number(plantPresetForm.value.fertilizingThreshold),
+        fertilizerCadenceDays: Number(plantPresetForm.value.fertilizerCadenceDays),
+        pesticideCadenceDays: Number(plantPresetForm.value.pesticideCadenceDays),
+        nutrientNotes: plantPresetForm.value.nutrientNotes || undefined,
         sensorProfile: {
           soil: { min: Number(plantPresetForm.value.sensorProfile.soil.min), max: Number(plantPresetForm.value.sensorProfile.soil.max) },
           light: { min: Number(plantPresetForm.value.sensorProfile.light.min), max: Number(plantPresetForm.value.sensorProfile.light.max) },

@@ -4,12 +4,19 @@ import type { Doc, Id } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
 import { requireAdmin,
   getDeviceWateringDuration, getDeviceWateringCooldown, getDeviceLightingHysteresis,
+  getDeviceFertilizingDuration, getDeviceFertilizingCooldown,
+  getDevicePesticideDuration, getDevicePesticideCooldown,
   formatTimestamp, isDeviceOnline, getSupportMessages,
   enrichMarketplaceProduct, enrichBlogPost,
   getDeviceByExternalId, getDefaultDeviceName,
   normalizePlantSensorProfile, normalizeLifecycleProfile,
 } from './helpers'
 import { plantSensorProfile, lifecycleProfileValidator } from './schema'
+import {
+  DEFAULT_FERTILIZING_THRESHOLD, DEFAULT_FERTILIZING_DURATION, DEFAULT_FERTILIZING_COOLDOWN,
+  DEFAULT_PESTICIDE_THRESHOLD, DEFAULT_PESTICIDE_DURATION, DEFAULT_PESTICIDE_COOLDOWN,
+  DEFAULT_TANK_CAPACITY, DEFAULT_TANK_MIN_LEVEL,
+} from './types'
 
 function normalizePlantPresetKey(value: string) {
   return value
@@ -99,6 +106,27 @@ async function fetchAdminDevices(ctx: QueryCtx) {
       lastSeen: device.lastSeen,
       lastSeenLabel: formatTimestamp(device.lastSeen),
       isOnline: isDeviceOnline(device.lastSeen),
+      version: device.version ?? 'v1',
+      autoFertilizing: device.autoFertilizing,
+      autoPesticide: device.autoPesticide,
+      fertilizingThreshold: device.fertilizingThreshold,
+      fertilizingDuration: getDeviceFertilizingDuration(device),
+      fertilizingCooldown: getDeviceFertilizingCooldown(device),
+      pesticideThreshold: device.pesticideThreshold,
+      pesticideDuration: getDevicePesticideDuration(device),
+      pesticideCooldown: getDevicePesticideCooldown(device),
+      streamUrl: device.streamUrl,
+      tankCapacity: device.tankCapacity,
+      tankMinLevel: device.tankMinLevel,
+      batteryCapacityAh: device.batteryCapacityAh,
+      batterySoC: device.batterySoC,
+      batteryCurrent: device.batteryCurrent,
+      reportedTankSwitchOpen: device.reportedTankSwitchOpen,
+      reportedDrawerSwitchOpen: device.reportedDrawerSwitchOpen,
+      modemImei: device.modemImei,
+      solarPanelWatts: device.solarPanelWatts,
+      hasModem: device.hasModem,
+      hasSolarPanel: device.hasSolarPanel,
     }
   })
 }
@@ -306,6 +334,7 @@ export const adminSaveDevice = mutation({
     streamUrl: v.optional(v.string()),
     tankCapacity: v.optional(v.number()),
     tankMinLevel: v.optional(v.number()),
+    batteryCapacityAh: v.optional(v.number()),
     hasModem: v.optional(v.boolean()),
     hasSolarPanel: v.optional(v.boolean()),
   },
@@ -345,6 +374,7 @@ export const adminSaveDevice = mutation({
     if (args.streamUrl !== undefined) optional.streamUrl = args.streamUrl
     if (args.tankCapacity !== undefined) optional.tankCapacity = args.tankCapacity
     if (args.tankMinLevel !== undefined) optional.tankMinLevel = args.tankMinLevel
+    if (args.batteryCapacityAh !== undefined) optional.batteryCapacityAh = args.batteryCapacityAh
     if (args.hasModem !== undefined) optional.hasModem = args.hasModem
     if (args.hasSolarPanel !== undefined) optional.hasSolarPanel = args.hasSolarPanel
 
@@ -369,12 +399,14 @@ export const adminSaveDevice = mutation({
       },
       autoFertilizing: false,
       autoPesticide: false,
-      fertilizingThreshold: 35,
-      fertilizingDuration: 10,
-      fertilizingCooldown: 432000,
-      pesticideThreshold: 0,
-      pesticideDuration: 10,
-      pesticideCooldown: 604800,
+      fertilizingThreshold: DEFAULT_FERTILIZING_THRESHOLD,
+      fertilizingDuration: DEFAULT_FERTILIZING_DURATION,
+      fertilizingCooldown: DEFAULT_FERTILIZING_COOLDOWN,
+      pesticideThreshold: DEFAULT_PESTICIDE_THRESHOLD,
+      pesticideDuration: DEFAULT_PESTICIDE_DURATION,
+      pesticideCooldown: DEFAULT_PESTICIDE_COOLDOWN,
+      tankCapacity: DEFAULT_TANK_CAPACITY,
+      tankMinLevel: DEFAULT_TANK_MIN_LEVEL,
       batteryCapacityAh: 5,
       batteryAccumulatedMah: 0,
       batterySoC: 50,

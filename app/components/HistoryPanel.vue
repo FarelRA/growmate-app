@@ -58,7 +58,8 @@ async function playRecording(rec: {
 }) {
   recordingsLoading.value = true
   try {
-    const resp = await fetch(`/api/v2/recordings/${encodeURIComponent(rec.path.split('/')[0])}`)
+    const deviceId = rec.path.split('/')[0] ?? ''
+    const resp = await fetch(`/api/v2/recordings/${encodeURIComponent(deviceId)}`)
     const json = await resp.json()
     const found = json.recordings?.find((r: { _id: string; path: string }) => r._id === rec._id)
     if (found) {

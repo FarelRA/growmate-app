@@ -185,7 +185,9 @@ describe('PastRecordingViewer', () => {
   })
 
   it('shows error when VideoDecoder is not supported', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (window as any).VideoDecoder
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (window as any).EncodedVideoChunk
     const wrapper = mount(PastRecordingViewer, {
       props: { recording: makeRecording() },

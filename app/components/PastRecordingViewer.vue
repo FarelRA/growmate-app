@@ -84,7 +84,7 @@ onMounted(async () => {
       const nextStart = findStart(allBytes, nalStart)
       if (!nextStart) break
       const nalUnit = allBytes.slice(nalStart, nextStart.pos)
-      const nalType = nalUnit[0] & 0x1F
+      const nalType = nalUnit[0]! & 0x1F
 
       if (nalType === 7) {
         spsNal = new Uint8Array(nalUnit)
@@ -131,9 +131,9 @@ onMounted(async () => {
     })
 
     if (spsNal) {
-      const profile = spsNal[1]
-      const constraints = spsNal[2]
-      const level = spsNal[3] & 0x3F
+      const profile = spsNal[1]!
+      const constraints = spsNal[2]!
+      const level = spsNal[3]! & 0x3F
       const codec = `avc1.${profile.toString(16).padStart(2, '0')}${constraints.toString(16).padStart(2, '0')}${level.toString(16).padStart(2, '0')}`
       decoder.configure({ codec, optimizeForLatency: false })
     }
@@ -160,7 +160,7 @@ function playFrame() {
     return
   }
 
-  const frame = frames[currentFrame]
+  const frame = frames[currentFrame]!
   const chunk = new EncodedVideoChunk({
     type: frame.type,
     data: frame.data,

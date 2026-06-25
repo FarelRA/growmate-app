@@ -23,7 +23,7 @@ const webCodecsSupported = typeof VideoDecoder !== 'undefined' && typeof Encoded
 
 function buildWsUrl() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  let url = `${protocol}//${window.location.host}/api/v2/stream/${props.deviceId}/live`
+  const url = `${protocol}//${window.location.host}/api/v2/stream/${props.deviceId}/live`
   return url
 }
 
@@ -82,7 +82,7 @@ function connectWs() {
     const timestamp = tsHigh * 0x100000000 + tsLow
     const nalUnit = new Uint8Array(data, 7)
 
-    const nalType = nalUnit[0] & 0x1F
+    const nalType = nalUnit[0]! & 0x1F
 
     if (nalType === 7) {
       if (decoder && decoder.state === 'unconfigured') {
@@ -147,9 +147,9 @@ function toggleFullscreen() {
 
 function parseAVCCodec(sps: Uint8Array): string {
   if (sps.length < 4) return 'avc1.42E01E'
-  const profile = sps[1]
-  const constraints = sps[2]
-  const level = sps[3] & 0x3F
+  const profile = sps[1]!
+  const constraints = sps[2]!
+  const level = sps[3]! & 0x3F
   return `avc1.${profile.toString(16).padStart(2, '0')}${constraints.toString(16).padStart(2, '0')}${level.toString(16).padStart(2, '0')}`
 }
 
@@ -159,13 +159,13 @@ function buildAVCDescription(sps: Uint8Array, pps: Uint8Array | undefined): Uint
   const buf = new Uint8Array(size)
   let off = 0
   buf[off++] = 0x01
-  buf[off++] = sps[1]
-  buf[off++] = sps[2]
-  buf[off++] = sps[3] & 0x3F
+  buf[off++] = sps[1]!
+  buf[off++] = sps[2]!
+  buf[off++] = sps[3]! & 0x3F
   buf[off++] = 0xFF | 0xFC
   buf[off++] = 0xE0 | 0x01
   buf[off++] = (sps.length >> 8) & 0xFF
-  buf[off++] = sps.length & 0xFF
+  buf[off++] = sps.length! & 0xFF
   buf.set(sps, off); off += sps.length
   buf[off++] = ppsData.length > 0 ? 0x01 : 0x00
   if (ppsData.length > 0) {
@@ -216,7 +216,7 @@ onUnmounted(() => {
     <article class="overflow-hidden rounded-[2rem] bg-black shadow-[0_12px_36px_rgba(15,23,42,0.1)]">
       <div class="relative">
         <canvas
-          :ref="onCanvasReady"
+          :ref="onCanvasReady as any"
           class="w-full"
           :class="{ hidden: !videoReady && !error && !loading }"
         />

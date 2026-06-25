@@ -12,7 +12,6 @@ const assistantMsg: ChatMessage = {
   body: 'Saya baik. **Tanaman** perlu disiram.',
 }
 const streamingMsg: ChatMessage = { _id: '3', role: 'assistant', status: 'streaming' }
-const errorMsg: ChatMessage = { _id: '4', role: 'assistant', status: 'error', body: 'Maaf, terjadi kesalahan.' }
 
 describe('ChatThread', () => {
   it('renders user message with right alignment', () => {

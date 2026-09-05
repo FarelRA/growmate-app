@@ -8,8 +8,8 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 
 const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
-const OPENAI_BASE_URL = env.OPENAI_BASE_URL ?? "https://generativelanguage.googleapis.com/v1beta/openai/";
-const OPENAI_MODEL = env.OPENAI_MODEL ?? "gemini-3-flash-preview";
+const OPENAI_BASE_URL = env.OPENAI_BASE_URL ?? "https://gateway.farel.at.eu.org/v1";
+const OPENAI_MODEL = env.OPENAI_MODEL ?? "gemini/gemini-3.1-flash-lite";
 
 function buildSystemPrompt() {
   return [

@@ -33,7 +33,7 @@
     "@convex-dev/auth": "^0.0.94",
     "@convex-vue/core": "^0.0.4",
     "convex": "^1.41.0",
-    "dompurify": "^3.4.11",
+    "isomorphic-dompurify": "^4.1.0",
     "marked": "^18.0.5",
     "nuxt": "^4.4.8",
     "openai": "^6.44.0",

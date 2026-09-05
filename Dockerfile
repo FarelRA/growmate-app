@@ -1,9 +1,9 @@
-FROM node:lts-alpine AS builder
+FROM --platform=$BUILDPLATFORM oven/bun:1-alpine AS builder
 
 WORKDIR /app
 
 COPY package.json bun.lock ./
-RUN npm install -g bun && bun install --frozen-lockfile
+RUN bun install --frozen-lockfile
 
 COPY . .
 RUN bun run build

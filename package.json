@@ -30,7 +30,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",
     "@aws-sdk/s3-request-presigner": "^3.1124.0",
-    "@convex-dev/auth": "^0.0.94",
+    "@convex-dev/auth": "^0.0.95",
     "@convex-vue/core": "^0.0.4",
     "convex": "^1.45.0",
     "isomorphic-dompurify": "^4.1.0",

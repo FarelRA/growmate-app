@@ -36,7 +36,7 @@
     "isomorphic-dompurify": "^4.1.0",
     "marked": "^18.0.5",
     "nuxt": "^4.4.8",
-    "openai": "^6.44.0",
+    "openai": "^7.10.0",
     "sharp": "^0.35.2",
     "vue": "^3.5.38",
     "vue-sonner": "^2.0.9"

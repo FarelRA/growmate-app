@@ -1,12 +1,17 @@
 <script setup lang="ts">
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type {
+  AdminDeviceListItem,
+  AdminRecentEvent,
+  AdminSupportTicket,
+} from '@/lib/convex-types'
+
 defineProps<{
-  supportQueue: any[]
-  devices: any[]
-  recentEvents: any[]
+  supportQueue: AdminSupportTicket[]
+  devices: AdminDeviceListItem[]
+  recentEvents: AdminRecentEvent[]
 }>()
 defineEmits<{
-  editDevice: [device: any]
+  editDevice: [device: AdminDeviceListItem]
 }>()
 </script>
 

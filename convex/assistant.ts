@@ -10,11 +10,19 @@ import {
   getDeviceWateringCooldown, getDeviceLightingHysteresis,
   getDeviceFertilizingDuration, getDevicePesticideDuration,
   getDeviceFertilizingCooldown, getDevicePesticideCooldown,
-  recordGrowEvent, computePlantProgress,
-  executeManualWatering, executeManualLighting,
-  executeManualFertilizing, executeManualPesticide,
+  computePlantProgress,
 } from './helpers'
-import { formatScheduleSummary, normalizeScheduleCadence, computeNextRunAtFromCadence, formatScheduleCadence } from './care'
+import { formatScheduleSummary } from './care'
+import {
+  toggleScheduleCore,
+  deleteScheduleCore,
+  saveScheduleCore,
+  triggerWateringCore,
+  triggerLightingCore,
+  triggerFertilizingCore,
+  triggerPesticideCore,
+  formatScheduleCadence,
+} from './care'
 import { internal } from './_generated/api'
 
 export function getAssistantMessageLimit(tier?: 'basic' | 'advanced') {
@@ -50,15 +58,22 @@ async function getAssistantUsage(
   tier?: 'basic' | 'advanced',
 ) {
   const startOfToday = getStartOfToday()
-  const recentMessages = await ctx.db
-    .query('assistantMessages')
-    .withIndex('by_createdAt', (q) => q.eq('threadId', threadId))
-    .order('desc')
-    .take(160)
-
-  const usedToday = recentMessages.filter(
-    (message) => message.role === 'user' && message.createdAt >= startOfToday,
-  ).length
+  // Quota limits: basic 20/day, advanced 100/day (see getAssistantMessageLimit).
+  // Indexed count over today's user messages — no take() ceiling, so usage
+  // can never silently undercount when history exceeds the old 160-row cap.
+  let usedToday = 0
+  let cursor: string | null = null
+  while (true) {
+    const page = await ctx.db
+      .query('assistantMessages')
+      .withIndex('by_thread_role_createdAt', (q) =>
+        q.eq('threadId', threadId).eq('role', 'user').gte('createdAt', startOfToday),
+      )
+      .paginate({ cursor, numItems: 100 })
+    usedToday += page.page.length
+    if (page.isDone) break
+    cursor = page.continueCursor
+  }
   const limit = getAssistantMessageLimit(tier)
 
   return {
@@ -364,10 +379,7 @@ export const assistantTriggerWatering = internalMutation({
     const user = await ctx.db.get(args.userId)
     if (!user) throw new ConvexError('Pengguna tidak ditemukan')
 
-    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
-
-    await executeManualWatering(ctx, user, device)
+    const { device } = await triggerWateringCore(ctx, user, args.deviceId)
     return { success: true, deviceName: device.name }
   },
 })
@@ -382,11 +394,8 @@ export const assistantTriggerLighting = internalMutation({
     const user = await ctx.db.get(args.userId)
     if (!user) throw new ConvexError('Pengguna tidak ditemukan')
 
-    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
-
-    await executeManualLighting(ctx, user, device, args.enabled)
-    return { success: true, enabled: args.enabled, deviceName: device.name }
+    const { device, enabled } = await triggerLightingCore(ctx, user, args.deviceId, args.enabled)
+    return { success: true, enabled, deviceName: device.name }
   },
 })
 
@@ -399,10 +408,7 @@ export const assistantTriggerFertilizing = internalMutation({
     const user = await ctx.db.get(args.userId)
     if (!user) throw new ConvexError('Pengguna tidak ditemukan')
 
-    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
-
-    await executeManualFertilizing(ctx, user, device)
+    const { device } = await triggerFertilizingCore(ctx, user, args.deviceId)
     return { success: true, deviceName: device.name }
   },
 })
@@ -416,10 +422,7 @@ export const assistantTriggerPesticide = internalMutation({
     const user = await ctx.db.get(args.userId)
     if (!user) throw new ConvexError('Pengguna tidak ditemukan')
 
-    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
-
-    await executeManualPesticide(ctx, user, device)
+    const { device } = await triggerPesticideCore(ctx, user, args.deviceId)
     return { success: true, deviceName: device.name }
   },
 })
@@ -477,30 +480,8 @@ export const assistantToggleSchedule = internalMutation({
     const user = await ctx.db.get(args.userId)
     if (!user) throw new ConvexError('Pengguna tidak ditemukan')
 
-    const schedule = await ctx.db.get(args.scheduleId)
-    if (!schedule) throw new ConvexError('Jadwal tidak ditemukan')
-
-    const plant = await ctx.db.get(schedule.plantId)
-    if (!plant) throw new ConvexError('Tanaman tidak ditemukan')
-
-    const device = await ctx.db.get(plant.deviceId)
-    if (!device || String(device.userId) !== String(user._id)) throw new ConvexError('Jadwal tidak ditemukan')
-
-    await ctx.db.patch(args.scheduleId, { enabled: args.enabled })
-    await recordGrowEvent(ctx, {
-      deviceId: device._id,
-      plantId: plant._id,
-      userId: user._id,
-      source: 'user',
-      entityType: 'schedule',
-      eventType: 'care_schedule_toggled',
-      title: args.enabled ? 'Jadwal diaktifkan' : 'Jadwal dijeda',
-      detail: `${schedule.title} ${args.enabled ? 'kembali dijalankan' : 'sementara dijeda'}.`,
-      data: { enabled: args.enabled },
-      timestamp: Date.now(),
-    })
-
-    return { success: true, title: schedule.title, enabled: args.enabled }
+    const { title, enabled } = await toggleScheduleCore(ctx, user, args.scheduleId, args.enabled)
+    return { success: true, title, enabled }
   },
 })
 
@@ -513,26 +494,8 @@ export const assistantDeleteSchedule = internalMutation({
     const user = await ctx.db.get(args.userId)
     if (!user) throw new ConvexError('Pengguna tidak ditemukan')
 
-    const schedule = await ctx.db.get(args.scheduleId)
-    if (!schedule) throw new ConvexError('Jadwal tidak ditemukan')
-    const plant = await ctx.db.get(schedule.plantId)
-    if (!plant) throw new ConvexError('Tanaman tidak ditemukan')
-    const device = await ctx.db.get(plant.deviceId)
-    if (!device || String(device.userId) !== String(user._id)) throw new ConvexError('Jadwal tidak ditemukan')
-
-    await ctx.db.delete(args.scheduleId)
-    await recordGrowEvent(ctx, {
-      deviceId: device._id,
-      plantId: plant._id,
-      userId: user._id,
-      source: 'user',
-      entityType: 'schedule',
-      eventType: 'care_schedule_deleted',
-      title: 'Jadwal dihapus',
-      detail: `${schedule.title} telah dihapus dari daftar perawatan berulang.`,
-      timestamp: Date.now(),
-    })
-    return { success: true, title: schedule.title }
+    const { title } = await deleteScheduleCore(ctx, user, args.scheduleId)
+    return { success: true, title }
   },
 })
 
@@ -549,45 +512,8 @@ export const assistantCreateSchedule = internalMutation({
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId)
     if (!user) throw new ConvexError('Pengguna tidak ditemukan')
-    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    if (!device || !device.plantId) throw new ConvexError('Perangkat dengan tanaman aktif tidak ditemukan')
-    const plant = await ctx.db.get(device.plantId)
-    if (!plant || plant.archived) throw new ConvexError('Tanaman tidak ditemukan')
-    const now = Date.now()
-    const title = args.title.trim()
-    if (!title) throw new ConvexError('Judul jadwal wajib diisi')
 
-    const cadence = normalizeScheduleCadence(args)
-    const nextRunAt = computeNextRunAtFromCadence(cadence, now)
-    const scheduleId = await ctx.db.insert('careSchedules', {
-      plantId: plant._id,
-      title,
-      cadenceUnit: cadence.unit,
-      cadenceValue: cadence.value,
-      timeOfDayMinutes: cadence.timeOfDayMinutes ?? undefined,
-      timezoneOffsetMinutes: cadence.timezoneOffsetMinutes,
-      nextRunAt,
-      enabled: true,
-      createdAt: now,
-    })
-
-    await recordGrowEvent(ctx, {
-      deviceId: device._id,
-      plantId: plant._id,
-      userId: user._id,
-      source: 'user',
-      entityType: 'schedule',
-      eventType: 'care_schedule_saved',
-      title: 'Jadwal dibuat',
-      detail: `${title} akan berjalan ${formatScheduleCadence(cadence).toLowerCase()}.`,
-      data: {
-        cadenceValue: cadence.value,
-        cadenceHours: cadence.unit === 'hours' ? cadence.value : cadence.value * 24,
-        cadenceUnit: cadence.unit,
-      },
-      timestamp: now,
-    })
-
+    const { scheduleId, title, cadence } = await saveScheduleCore(ctx, user, args)
     return { success: true, scheduleId, title, cadenceLabel: formatScheduleCadence(cadence) }
   },
 })
@@ -673,6 +599,8 @@ export const sendAssistantMessage = mutation({
   },
 })
 
+export const MAX_AI_RESPONSE_CHARS = 4000
+
 export const insertAIResponse = internalMutation({
   args: {
     assistantMessageId: v.id('assistantMessages'),
@@ -680,8 +608,15 @@ export const insertAIResponse = internalMutation({
     status: v.union(v.literal('streaming'), v.literal('complete'), v.literal('error')),
   },
   handler: async (ctx, args) => {
+    let body = args.body
+    if (body.length > MAX_AI_RESPONSE_CHARS) {
+      console.warn(
+        `[assistant] AI response truncated from ${body.length} to ${MAX_AI_RESPONSE_CHARS} chars`,
+      )
+      body = body.slice(0, MAX_AI_RESPONSE_CHARS)
+    }
     await ctx.db.patch(args.assistantMessageId, {
-      body: args.body,
+      body,
       status: args.status,
     })
     return { success: true }

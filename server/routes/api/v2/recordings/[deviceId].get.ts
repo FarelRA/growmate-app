@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing deviceId' })
   }
 
-  const device = await convex.query(api.devices.getUnclaimedDevice, { deviceId })
+  const device = await convex.query(api.streams.getOwnedDevice, { deviceId })
   if (!device) {
     throw createError({ statusCode: 404, statusMessage: 'Device not found' })
   }

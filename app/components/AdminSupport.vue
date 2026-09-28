@@ -1,8 +1,9 @@
 <script setup lang="ts">
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { AdminSupportTicket } from '@/lib/convex-types'
+
 const props = defineProps<{
-  supportQueue: any[]
-  selectedSupportRequest: any
+  supportQueue: AdminSupportTicket[]
+  selectedSupportRequest: AdminSupportTicket | null
   selectedSupportRequestId: string | null
   supportReplyInput: string
   updatingTicketId: string | null

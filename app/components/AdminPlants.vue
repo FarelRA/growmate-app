@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { AdminPlantPresetItem } from '@/lib/convex-types'
 import type { PlantLifecycleStage } from '@/lib/plants'
 import { getImageUrl } from '@/lib/images'
 const props = defineProps<{
@@ -38,12 +38,12 @@ const props = defineProps<{
   plantPresetImagePreview: string | null
   savingPlantPreset: boolean
   deletingPlantPresetId: string | null
-  plantPresetList: any[]
+  plantPresetList: AdminPlantPresetItem[]
 }>()
 const emit = defineEmits<{
   savePlantPreset: []
   deletePlantPreset: [id: string]
-  editPlantPreset: [preset: any]
+  editPlantPreset: [preset: AdminPlantPresetItem]
   resetPlantPresetForm: []
   handlePlantPresetImageChange: [event: Event]
   'update:plantPresetForm': [form: { presetId: string | null; key: string; name: string; species: string; growthStage: PlantLifecycleStage; description: string; location: string; category: 'herb' | 'leafy' | 'fruiting' | 'houseplant' | 'flower' | 'microgreen'; difficulty: 'easy' | 'medium' | 'advanced'; wateringThreshold: number; lightingThreshold: number; fertilizingThreshold: number; fertilizerCadenceDays: number; pesticideCadenceDays: number; nutrientNotes: string; sensorProfile: { soil: { min: number; max: number }; light: { min: number; max: number }; temperature: { min: number; max: number }; air: { min: number; max: number }; water: { min: number; max: number } }; lifecycleProfile: { seedDormancyDays: number; germinationDays: number; seedlingDevelopmentDays: number; vegetativeGrowthDays: number; floweringReproductionDays: number; maturitySenescenceDays: number } }]
@@ -84,8 +84,8 @@ const sensorKinds = ['soil', 'light', 'temperature', 'air', 'water'] as const
             <div v-for="kind in sensorKinds" :key="kind" class="grid grid-cols-2 gap-2">
               <div class="text-xs font-semibold text-gm-muted uppercase">{{ kind }}</div>
               <div class="grid grid-cols-2 gap-2">
-                <input :value="(props.plantPresetForm.sensorProfile as any)[kind].min" type="number" class="rounded-2xl bg-white px-3 py-2 text-xs outline-none" placeholder="Min" @input="emit('update:plantPresetForm', { ...props.plantPresetForm, sensorProfile: { ...props.plantPresetForm.sensorProfile, [kind]: { ...(props.plantPresetForm.sensorProfile as any)[kind], min: Number(($event.target as HTMLInputElement).value) } } })" />
-                <input :value="(props.plantPresetForm.sensorProfile as any)[kind].max" type="number" class="rounded-2xl bg-white px-3 py-2 text-xs outline-none" placeholder="Max" @input="emit('update:plantPresetForm', { ...props.plantPresetForm, sensorProfile: { ...props.plantPresetForm.sensorProfile, [kind]: { ...(props.plantPresetForm.sensorProfile as any)[kind], max: Number(($event.target as HTMLInputElement).value) } } })" />
+                <input :value="props.plantPresetForm.sensorProfile[kind].min" type="number" class="rounded-2xl bg-white px-3 py-2 text-xs outline-none" placeholder="Min" @input="emit('update:plantPresetForm', { ...props.plantPresetForm, sensorProfile: { ...props.plantPresetForm.sensorProfile, [kind]: { ...props.plantPresetForm.sensorProfile[kind], min: Number(($event.target as HTMLInputElement).value) } } })" />
+                <input :value="props.plantPresetForm.sensorProfile[kind].max" type="number" class="rounded-2xl bg-white px-3 py-2 text-xs outline-none" placeholder="Max" @input="emit('update:plantPresetForm', { ...props.plantPresetForm, sensorProfile: { ...props.plantPresetForm.sensorProfile, [kind]: { ...props.plantPresetForm.sensorProfile[kind], max: Number(($event.target as HTMLInputElement).value) } } })" />
               </div>
             </div>
           </div>

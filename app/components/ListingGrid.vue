@@ -1,10 +1,10 @@
 <script setup lang="ts">
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { CommunityMarketplaceItem, OfficialMarketplaceItem } from '@/lib/convex-types'
 import { getImageUrl } from '@/lib/images'
 defineProps<{
-  featured: { _id: string; imageUrl?: string | null; title: string; description: string; priceLabel: string; shopeeUrl?: string | null } | null
-  filteredOfficial: { _id: string; imageUrl?: string | null; title: string; description: string; priceLabel: string; shopeeUrl?: string | null }[]
-  filteredCommunity: { _id: string; imageUrl?: string | null; title: string; description: string; priceLabel: string; statusLabel: string; quantityAvailable: number; locationLabel?: string | null; sellerName: string; contactThreadId: string | null; status: string }[]
+  featured: OfficialMarketplaceItem | null
+  filteredOfficial: OfficialMarketplaceItem[]
+  filteredCommunity: CommunityMarketplaceItem[]
   searchQuery: string
   selectedCategory: string
   hasWorkingImage: (id: string, imageUrl?: string | null) => boolean
@@ -15,7 +15,7 @@ defineEmits<{
   handleImageError: [id: string]
   'update:searchQuery': [value: string]
   'update:selectedCategory': [value: 'all' | 'official' | 'community']
-  openInquiry: [listing: any]
+  openInquiry: [listing: CommunityMarketplaceItem]
 }>()
 </script>
 

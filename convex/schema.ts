@@ -232,7 +232,8 @@ export default defineSchema({
   })
     .index('by_user', ['userId'])
     .index('by_deviceId', ['deviceId'])
-    .index('by_plant', ['plantId']),
+    .index('by_plant', ['plantId'])
+    .index('by_createdAt', ['createdAt']),
 
   // ============================================
   // SENSORS - Removed: status, target, label, accent, sort (all computed)
@@ -416,7 +417,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index('by_thread', ['threadId'])
-    .index('by_createdAt', ['threadId', 'createdAt']),
+    .index('by_createdAt', ['threadId', 'createdAt'])
+    .index('by_thread_role_createdAt', ['threadId', 'role', 'createdAt']),
 
   // ============================================
   // SUPPORT REQUESTS - Changed: status, priority to enums
@@ -441,7 +443,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index('by_user', ['userId'])
-    .index('by_status', ['status']),
+    .index('by_status', ['status'])
+    .index('by_createdAt', ['createdAt']),
 
   supportMessages: defineTable({
     requestId: v.id('supportRequests'),
@@ -528,7 +531,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index('by_post', ['postId'])
-    .index('by_user', ['userId']),
+    .index('by_user', ['userId'])
+    .index('by_post_createdAt', ['postId', 'createdAt']),
 
   // ============================================
   // POST LIKES - Added: createdAt
@@ -539,7 +543,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index('by_post', ['postId'])
-    .index('by_user_and_post', ['userId', 'postId']),
+    .index('by_user_and_post', ['userId', 'postId'])
+    .index('by_post_createdAt', ['postId', 'createdAt']),
 
   marketplaceThreads: defineTable({
     productId: v.id('products'),

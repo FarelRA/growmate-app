@@ -4,7 +4,7 @@ import { useConvexMutation } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
-import type { Id } from '@/lib/convex-types'
+import type { AdminDeviceListItem, Id } from '@/lib/convex-types'
 
 export type AdminTab = 'overview' | 'devices' | 'support' | 'products' | 'plants' | 'blog' | 'accounts'
 
@@ -71,32 +71,7 @@ export function useAdminDevices(activeTab: Ref<AdminTab>) {
     }
   }
 
-  function editDevice(device: {
-    _id: string
-    deviceId: string
-    name: string
-    firmwareVersion: string
-    autoWatering: boolean
-    autoLighting: boolean
-    wateringThreshold: number
-    wateringDuration: number
-    wateringCooldown: number
-    lightingThreshold: number
-    lightingHysteresis: number
-    version?: 'v1' | 'v2'
-    autoFertilizing?: boolean
-    autoPesticide?: boolean
-    fertilizingThreshold?: number
-    fertilizingDuration?: number
-    fertilizingCooldown?: number
-    pesticideThreshold?: number
-    pesticideDuration?: number
-    pesticideCooldown?: number
-    tankCapacity?: number
-    batteryCapacityAh?: number
-    hasModem?: boolean
-    hasSolarPanel?: boolean
-  }) {
+  function editDevice(device: AdminDeviceListItem) {
     deviceForm.value = {
       existingDeviceId: device._id,
       deviceId: device.deviceId,

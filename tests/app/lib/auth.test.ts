@@ -21,6 +21,7 @@ const { mockAction, mockQuery } = vi.hoisted(() => ({
 vi.mock('convex/browser', () => {
   function ConvexHttpClientMock() {
     this.setAuth = vi.fn()
+    this.clearAuth = vi.fn()
     this.query = mockQuery
     this.action = mockAction
     return this

@@ -31,9 +31,7 @@ const adminNavigation = [
 
 const canInstall = computed(() => installPromptEvent.value !== null)
 const navigation = computed(() => (setupStatus.value?.isAdmin ? adminNavigation : growerNavigation))
-const activePath = computed(() =>
-  route.path === '/devices' || route.path === '/history' ? '/dashboard' : route.path,
-)
+const activePath = computed(() => route.path)
 
 function handleBeforeInstallPrompt(event: Event) {
   event.preventDefault()

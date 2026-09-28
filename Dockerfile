@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM node:lts-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:24-alpine AS builder
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ RUN npm install -g bun && bun install --frozen-lockfile
 COPY . .
 RUN bun run build
 
-FROM node:lts-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 

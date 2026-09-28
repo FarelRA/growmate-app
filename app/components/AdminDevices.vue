@@ -1,5 +1,6 @@
 <script setup lang="ts">
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { AdminDeviceListItem, AdminPlantPresetItem } from '@/lib/convex-types'
+
 const props = defineProps<{
   deviceForm: {
     existingDeviceId: string | null
@@ -29,13 +30,13 @@ const props = defineProps<{
   }
   savingDevice: boolean
   deletingDeviceId: string | null
-  devices: any[]
-  plantPresets: unknown[]
+  devices: AdminDeviceListItem[]
+  plantPresets: AdminPlantPresetItem[]
 }>()
 const emit = defineEmits<{
   saveDevice: []
   deleteDevice: [id: string]
-  editDevice: [device: any]
+  editDevice: [device: AdminDeviceListItem]
   resetDeviceForm: []
   'update:deviceForm': [form: { existingDeviceId: string | null; deviceId: string; name: string; firmwareVersion: string; autoWatering: boolean; autoLighting: boolean; wateringThreshold: number; wateringDuration: number; wateringCooldown: number; lightingThreshold: number; lightingHysteresis: number; version: 'v1' | 'v2'; autoFertilizing: boolean; autoPesticide: boolean; fertilizingThreshold: number; fertilizingDuration: number; fertilizingCooldown: number; pesticideThreshold: number; pesticideDuration: number; pesticideCooldown: number; tankCapacity: number; batteryCapacityAh: number; hasModem: boolean; hasSolarPanel: boolean }]
 }>()

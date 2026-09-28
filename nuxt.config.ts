@@ -67,8 +67,6 @@ export default defineNuxtConfig({
     '/profile': { ssr: false },
     '/admin': { ssr: false },
     '/community': { ssr: false },
-    '/history': { ssr: false },
-    '/devices': { ssr: false },
     '/workspace-marketplace': { ssr: false },
     '/workspace-support': { ssr: false },
     '/claim-device': { ssr: false },

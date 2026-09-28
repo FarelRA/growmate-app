@@ -1,6 +1,7 @@
 import { v, ConvexError } from 'convex/values'
 import { mutation } from './_generated/server'
-import type { CareScheduleDoc, ScheduleCadence, ScheduleCadenceUnit } from './types'
+import type { Id } from './_generated/dataModel'
+import type { MutationCtx, UserDoc, CareScheduleDoc, ScheduleCadence, ScheduleCadenceUnit } from './types'
 import {
   requireUser, recordGrowEvent,
   getSelectedDevice,
@@ -82,34 +83,216 @@ export function formatScheduleSummary(input: {
   }
 }
 
+// ============================================
+// Single validation source for schedules + triggers.
+// Both user mutations (below) and AI internalMutations
+// (assistant.ts) delegate to these cores.
+// ============================================
+
+type CoreUser = Pick<UserDoc, '_id'>
+
+export async function toggleScheduleCore(
+  ctx: MutationCtx,
+  user: CoreUser,
+  scheduleId: Id<'careSchedules'>,
+  enabled: boolean,
+) {
+  const schedule = await ctx.db.get(scheduleId)
+  if (!schedule) throw new ConvexError('Jadwal tidak ditemukan')
+
+  const plant = await ctx.db.get(schedule.plantId)
+  if (!plant) throw new ConvexError('Tanaman tidak ditemukan')
+
+  const device = await ctx.db.get(plant.deviceId)
+  if (!device || device.userId !== user._id) throw new ConvexError('Jadwal tidak ditemukan')
+
+  await ctx.db.patch(scheduleId, { enabled })
+
+  await recordGrowEvent(ctx, {
+    deviceId: device._id,
+    plantId: plant._id,
+    userId: user._id,
+    source: 'user',
+    entityType: 'schedule',
+    eventType: 'care_schedule_toggled',
+    title: enabled ? 'Jadwal diaktifkan' : 'Jadwal dijeda',
+    detail: `${schedule.title} ${enabled ? 'kembali dijalankan' : 'sementara dijeda'}.`,
+    data: { enabled },
+    timestamp: Date.now(),
+  })
+
+  return { title: schedule.title, enabled }
+}
+
+export async function deleteScheduleCore(
+  ctx: MutationCtx,
+  user: CoreUser,
+  scheduleId: Id<'careSchedules'>,
+) {
+  const schedule = await ctx.db.get(scheduleId)
+  if (!schedule) throw new ConvexError('Jadwal tidak ditemukan')
+
+  const plant = await ctx.db.get(schedule.plantId)
+  if (!plant) throw new ConvexError('Tanaman tidak ditemukan')
+
+  const device = await ctx.db.get(plant.deviceId)
+  if (!device || device.userId !== user._id) throw new ConvexError('Jadwal tidak ditemukan')
+
+  await ctx.db.delete(scheduleId)
+
+  await recordGrowEvent(ctx, {
+    deviceId: device._id,
+    plantId: plant._id,
+    userId: user._id,
+    source: 'user',
+    entityType: 'schedule',
+    eventType: 'care_schedule_deleted',
+    title: 'Jadwal dihapus',
+    detail: `${schedule.title} telah dihapus dari daftar perawatan berulang.`,
+    timestamp: Date.now(),
+  })
+
+  return { title: schedule.title }
+}
+
+export async function saveScheduleCore(
+  ctx: MutationCtx,
+  user: CoreUser,
+  args: {
+    scheduleId?: Id<'careSchedules'>
+    deviceId?: string
+    title: string
+    cadenceUnit: 'hours' | 'days'
+    cadenceValue: number
+    timeOfDayMinutes?: number
+    timezoneOffsetMinutes?: number
+  },
+) {
+  const device = await getSelectedDevice(ctx, user._id, args.deviceId)
+  if (!device || !device.plantId) {
+    throw new ConvexError('Perangkat dengan tanaman aktif tidak ditemukan')
+  }
+
+  const plant = await ctx.db.get(device.plantId)
+  if (!plant || plant.archived) throw new ConvexError('Tanaman tidak ditemukan')
+
+  const now = Date.now()
+  const title = args.title.trim()
+  if (!title) throw new ConvexError('Judul jadwal wajib diisi')
+
+  const cadence = normalizeScheduleCadence({
+    cadenceUnit: args.cadenceUnit,
+    cadenceValue: args.cadenceValue,
+    timeOfDayMinutes: args.timeOfDayMinutes,
+    timezoneOffsetMinutes: args.timezoneOffsetMinutes,
+  })
+  const nextRunAt = computeNextRunAtFromCadence(cadence, now)
+  let scheduleId = args.scheduleId
+
+  if (scheduleId) {
+    const existing = await ctx.db.get(scheduleId)
+    if (!existing || String(existing.plantId) !== String(plant._id)) {
+      throw new ConvexError('Jadwal tidak ditemukan')
+    }
+
+    await ctx.db.patch(scheduleId, {
+      title,
+      cadenceUnit: cadence.unit,
+      cadenceValue: cadence.value,
+      timeOfDayMinutes: cadence.timeOfDayMinutes ?? undefined,
+      timezoneOffsetMinutes: cadence.timezoneOffsetMinutes,
+      nextRunAt,
+    })
+  } else {
+    scheduleId = await ctx.db.insert('careSchedules', {
+      plantId: plant._id,
+      title,
+      cadenceUnit: cadence.unit,
+      cadenceValue: cadence.value,
+      timeOfDayMinutes: cadence.timeOfDayMinutes ?? undefined,
+      timezoneOffsetMinutes: cadence.timezoneOffsetMinutes,
+      nextRunAt,
+      enabled: true,
+      createdAt: now,
+    })
+  }
+
+  await recordGrowEvent(ctx, {
+    deviceId: device._id,
+    plantId: plant._id,
+    userId: user._id,
+    source: 'user',
+    entityType: 'schedule',
+    eventType: 'care_schedule_saved',
+    title: args.scheduleId ? 'Jadwal diperbarui' : 'Jadwal dibuat',
+    detail: `${title} akan berjalan ${formatScheduleCadence(cadence).toLowerCase()}.`,
+    data: {
+      cadenceValue: cadence.value,
+      cadenceHours: cadence.unit === 'hours' ? cadence.value : cadence.value * 24,
+      cadenceUnit: cadence.unit,
+    },
+    timestamp: now,
+  })
+
+  return { scheduleId, title, cadence }
+}
+
+export async function triggerWateringCore(
+  ctx: MutationCtx,
+  user: CoreUser,
+  deviceId?: string,
+) {
+  const device = await getSelectedDevice(ctx, user._id, deviceId)
+  if (!device) throw new ConvexError('Perangkat tidak ditemukan')
+
+  await executeManualWatering(ctx, user as UserDoc, device)
+  return { device }
+}
+
+export async function triggerLightingCore(
+  ctx: MutationCtx,
+  user: CoreUser,
+  deviceId: string | undefined,
+  enabled: boolean,
+) {
+  const device = await getSelectedDevice(ctx, user._id, deviceId)
+  if (!device) throw new ConvexError('Perangkat tidak ditemukan')
+
+  await executeManualLighting(ctx, user as UserDoc, device, enabled)
+  return { device, enabled }
+}
+
+export async function triggerFertilizingCore(
+  ctx: MutationCtx,
+  user: CoreUser,
+  deviceId?: string,
+) {
+  const device = await getSelectedDevice(ctx, user._id, deviceId)
+  if (!device) throw new ConvexError('Perangkat tidak ditemukan')
+  if (device.version !== 'v2') throw new ConvexError('Aksi ini hanya tersedia untuk perangkat V2')
+
+  await executeManualFertilizing(ctx, user as UserDoc, device)
+  return { device }
+}
+
+export async function triggerPesticideCore(
+  ctx: MutationCtx,
+  user: CoreUser,
+  deviceId?: string,
+) {
+  const device = await getSelectedDevice(ctx, user._id, deviceId)
+  if (!device) throw new ConvexError('Perangkat tidak ditemukan')
+  if (device.version !== 'v2') throw new ConvexError('Aksi ini hanya tersedia untuk perangkat V2')
+
+  await executeManualPesticide(ctx, user as UserDoc, device)
+  return { device }
+}
+
 export const toggleCareSchedule = mutation({
   args: { scheduleId: v.id('careSchedules'), enabled: v.boolean() },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
-    const schedule = await ctx.db.get(args.scheduleId)
-    if (!schedule) throw new ConvexError('Jadwal tidak ditemukan')
-
-    const plant = await ctx.db.get(schedule.plantId)
-    if (!plant) throw new ConvexError('Tanaman tidak ditemukan')
-
-    const device = await ctx.db.get(plant.deviceId)
-    if (!device || device.userId !== user._id) throw new ConvexError('Jadwal tidak ditemukan')
-
-    await ctx.db.patch(args.scheduleId, { enabled: args.enabled })
-
-    await recordGrowEvent(ctx, {
-      deviceId: device._id,
-      plantId: plant._id,
-      userId: user._id,
-      source: 'user',
-      entityType: 'schedule',
-      eventType: 'care_schedule_toggled',
-      title: args.enabled ? 'Jadwal diaktifkan' : 'Jadwal dijeda',
-      detail: `${schedule.title} ${args.enabled ? 'kembali dijalankan' : 'sementara dijeda'}.`,
-      data: { enabled: args.enabled },
-      timestamp: Date.now(),
-    })
-
+    await toggleScheduleCore(ctx, user, args.scheduleId, args.enabled)
     return { success: true }
   },
 })
@@ -126,72 +309,7 @@ export const saveCareSchedule = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
-    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    if (!device || !device.plantId) {
-      throw new ConvexError('Perangkat dengan tanaman aktif tidak ditemukan')
-    }
-
-    const plant = await ctx.db.get(device.plantId)
-    if (!plant || plant.archived) throw new ConvexError('Tanaman tidak ditemukan')
-
-    const now = Date.now()
-    const title = args.title.trim()
-    if (!title) throw new ConvexError('Judul jadwal wajib diisi')
-
-    const cadence = normalizeScheduleCadence({
-      cadenceUnit: args.cadenceUnit,
-      cadenceValue: args.cadenceValue,
-      timeOfDayMinutes: args.timeOfDayMinutes,
-      timezoneOffsetMinutes: args.timezoneOffsetMinutes,
-    })
-    const nextRunAt = computeNextRunAtFromCadence(cadence, now)
-    let scheduleId = args.scheduleId
-
-    if (scheduleId) {
-      const existing = await ctx.db.get(scheduleId)
-      if (!existing || String(existing.plantId) !== String(plant._id)) {
-        throw new ConvexError('Jadwal tidak ditemukan')
-      }
-
-      await ctx.db.patch(scheduleId, {
-        title,
-        cadenceUnit: cadence.unit,
-        cadenceValue: cadence.value,
-        timeOfDayMinutes: cadence.timeOfDayMinutes ?? undefined,
-        timezoneOffsetMinutes: cadence.timezoneOffsetMinutes,
-        nextRunAt,
-      })
-    } else {
-      scheduleId = await ctx.db.insert('careSchedules', {
-        plantId: plant._id,
-        title,
-        cadenceUnit: cadence.unit,
-        cadenceValue: cadence.value,
-        timeOfDayMinutes: cadence.timeOfDayMinutes ?? undefined,
-        timezoneOffsetMinutes: cadence.timezoneOffsetMinutes,
-        nextRunAt,
-        enabled: true,
-        createdAt: now,
-      })
-    }
-
-    await recordGrowEvent(ctx, {
-      deviceId: device._id,
-      plantId: plant._id,
-      userId: user._id,
-      source: 'user',
-      entityType: 'schedule',
-      eventType: 'care_schedule_saved',
-      title: args.scheduleId ? 'Jadwal diperbarui' : 'Jadwal dibuat',
-      detail: `${title} akan berjalan ${formatScheduleCadence(cadence).toLowerCase()}.`,
-      data: {
-        cadenceValue: cadence.value,
-        cadenceHours: cadence.unit === 'hours' ? cadence.value : cadence.value * 24,
-        cadenceUnit: cadence.unit,
-      },
-      timestamp: now,
-    })
-
+    const { scheduleId } = await saveScheduleCore(ctx, user, args)
     return { success: true, scheduleId }
   },
 })
@@ -200,29 +318,7 @@ export const deleteCareSchedule = mutation({
   args: { scheduleId: v.id('careSchedules') },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
-    const schedule = await ctx.db.get(args.scheduleId)
-    if (!schedule) throw new ConvexError('Jadwal tidak ditemukan')
-
-    const plant = await ctx.db.get(schedule.plantId)
-    if (!plant) throw new ConvexError('Tanaman tidak ditemukan')
-
-    const device = await ctx.db.get(plant.deviceId)
-    if (!device || device.userId !== user._id) throw new ConvexError('Jadwal tidak ditemukan')
-
-    await ctx.db.delete(args.scheduleId)
-
-    await recordGrowEvent(ctx, {
-      deviceId: device._id,
-      plantId: plant._id,
-      userId: user._id,
-      source: 'user',
-      entityType: 'schedule',
-      eventType: 'care_schedule_deleted',
-      title: 'Jadwal dihapus',
-      detail: `${schedule.title} telah dihapus dari daftar perawatan berulang.`,
-      timestamp: Date.now(),
-    })
-
+    await deleteScheduleCore(ctx, user, args.scheduleId)
     return { success: true }
   },
 })
@@ -231,10 +327,7 @@ export const triggerWatering = mutation({
   args: { deviceId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
-    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
-
-    await executeManualWatering(ctx, user, device)
+    await triggerWateringCore(ctx, user, args.deviceId)
     return { success: true }
   },
 })
@@ -246,10 +339,7 @@ export const triggerLighting = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
-    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
-
-    await executeManualLighting(ctx, user, device, args.enabled)
+    await triggerLightingCore(ctx, user, args.deviceId, args.enabled)
     return { success: true, enabled: args.enabled }
   },
 })
@@ -258,11 +348,7 @@ export const triggerFertilizing = mutation({
   args: { deviceId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
-    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
-    if (device.version !== 'v2') throw new ConvexError('Aksi ini hanya tersedia untuk perangkat V2')
-
-    await executeManualFertilizing(ctx, user, device)
+    await triggerFertilizingCore(ctx, user, args.deviceId)
     return { success: true }
   },
 })
@@ -271,11 +357,7 @@ export const triggerPesticide = mutation({
   args: { deviceId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
-    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    if (!device) throw new ConvexError('Perangkat tidak ditemukan')
-    if (device.version !== 'v2') throw new ConvexError('Aksi ini hanya tersedia untuk perangkat V2')
-
-    await executeManualPesticide(ctx, user, device)
+    await triggerPesticideCore(ctx, user, args.deviceId)
     return { success: true }
   },
 })

@@ -4,7 +4,7 @@ import { useConvexMutation } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
-import type { Id } from '@/lib/convex-types'
+import type { AdminOfficialProduct, Id } from '@/lib/convex-types'
 import { uploadImageFile } from '@/lib/uploads'
 import { useImageUpload } from './useImageUpload'
 import type { AdminTab } from './useAdminDevices'
@@ -49,19 +49,7 @@ export function useAdminProducts(activeTab: Ref<AdminTab>) {
     img.clearImage()
   }
 
-  function editProduct(product: {
-    _id: string
-    title: string
-    description: string
-    price: number
-    category: string
-    quantityAvailable: number
-    priceUnit: string
-    featured: boolean
-    status: 'active' | 'reserved' | 'sold' | 'archived'
-    shopeeUrl: string | null
-    imageUrl: string | null
-  }) {
+  function editProduct(product: AdminOfficialProduct) {
     productForm.value = {
       productId: product._id,
       title: product.title,

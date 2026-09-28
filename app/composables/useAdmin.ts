@@ -10,6 +10,10 @@ import { useAdminUsers } from './useAdminUsers'
 import type { AdminTab } from './useAdminDevices'
 
 export function useAdmin() {
+  // Single data path: the 6 granular admin queries below. Do NOT consume
+  // `api.admin.adminConsole` here — it fans out to the same fetchers on the
+  // backend and would double-fetch everything the granular queries load.
+  // (convex/admin.ts itself is owned by another worker; leave it alone.)
   const overviewQuery = useConvexQuery(api.admin.adminOverview, {})
   const supportQuery = useConvexQuery(api.admin.adminSupportTickets, {})
   const productsQuery = useConvexQuery(api.admin.adminProductsList, {})

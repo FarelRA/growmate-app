@@ -127,7 +127,6 @@ export const plants = internalAction({
         key: plant.key,
       });
       if (existing) {
-        console.log(`[seed] Plant "${plant.key}" already exists, skipping`);
         continue;
       }
 
@@ -152,7 +151,6 @@ export const plants = internalAction({
         imageUrl,
       });
 
-      console.log(`[seed] Plant "${plant.key}" seeded`);
     }
   },
 });
@@ -186,7 +184,6 @@ export const products = internalAction({
         { title: product.title },
       );
       if (existing) {
-        console.log(`[seed] Product "${product.title}" already exists, skipping`);
         continue;
       }
 
@@ -209,7 +206,6 @@ export const products = internalAction({
         sellerId: admin._id,
       });
 
-      console.log(`[seed] Product "${product.title}" seeded`);
     }
   },
 });
@@ -242,7 +238,6 @@ export const blog = internalAction({
         title: post.title,
       });
       if (existing) {
-        console.log(`[seed] Blog post "${post.title}" already exists, skipping`);
         continue;
       }
 
@@ -262,7 +257,6 @@ export const blog = internalAction({
         authorId: admin._id,
       });
 
-      console.log(`[seed] Blog post "${post.title}" seeded`);
     }
   },
 });
@@ -285,9 +279,7 @@ export const users = internalAction({
       });
 
       if (result.created) {
-        console.log(`[seed] User ${i} "${u.name}" created`);
       } else {
-        console.log(`[seed] User ${i} "${u.name}" already exists`);
       }
       userIds.push(result._id);
     }
@@ -309,7 +301,6 @@ export const devices = internalAction({
         deviceId: d.deviceId,
       });
       if (existing) {
-        console.log(`[seed] Device ${i} "${d.deviceId}" already exists, skipping`);
         deviceIds.push(existing._id);
         continue;
       }
@@ -339,7 +330,6 @@ export const devices = internalAction({
       });
       deviceIds.push(inserted!._id);
 
-      console.log(`[seed] Device ${i} "${d.name}" seeded`);
     }
 
     return deviceIds;
@@ -369,7 +359,6 @@ export const processClaims = internalAction({
       const device = deviceDocs[i]!;
 
       if (device.userId) {
-        console.log(`[seed] Device ${device.deviceId} already claimed, skipping`);
         continue;
       }
 
@@ -378,7 +367,6 @@ export const processClaims = internalAction({
         userId: userIds[i]!,
       });
 
-      console.log(`[seed] Device ${device.deviceId} claimed by ${usersData[i]!.name}`);
     }
 
     // Refresh device docs after claiming
@@ -390,7 +378,6 @@ export const processClaims = internalAction({
       const device = refreshedDevices[up.deviceIndex]!;
 
       if (!device || !device.userId) {
-        console.log(`[seed] Device ${up.deviceIndex} not claimed, skipping plant`);
         continue;
       }
 
@@ -400,7 +387,6 @@ export const processClaims = internalAction({
       });
 
       if (!catalogEntry) {
-        console.log(`[seed] Plant catalog "${up.catalogKey}" not found, skipping`);
         continue;
       }
 
@@ -463,7 +449,6 @@ export const processClaims = internalAction({
         });
       }
 
-      console.log(`[seed] Plant "${up.name}" created on device ${device.deviceId}`);
     }
   },
 });
@@ -492,7 +477,6 @@ export const community = internalAction({
       const sellerId = userIds[listing.sellerIndex];
 
       if (!sellerId) {
-        console.log(`[seed] Seller index ${listing.sellerIndex} not found`);
         continue;
       }
 
@@ -515,7 +499,6 @@ export const community = internalAction({
         contactPreference: listing.contactPreference,
       });
 
-      console.log(`[seed] Community listing "${listing.title}" seeded`);
     }
 
     // Community posts + comments + likes
@@ -524,7 +507,6 @@ export const community = internalAction({
       const authorId = userIds[post.userIndex];
 
       if (!authorId) {
-        console.log(`[seed] Author index ${post.userIndex} not found`);
         continue;
       }
 
@@ -559,7 +541,7 @@ export const community = internalAction({
             "Saya juga pernah mengalami hal serupa. Ternyata solusinya mudah ya.",
             "Mantap! Hasil panennya kelihatan segar sekali.",
             "Good info! Langsung saya coba tipsnya.",
-            "Baru tahu kalau ada cara semudah ini. Makasih分享nya!",
+            "Baru tahu kalau ada cara semudah ini. Makasih sharingnya!",
             "Keren banget! Semoga saya bisa seperti ini suatu hari.",
             "Aku juga pakai GrowMate dan puas banget hasilnya.",
             "Wah saya baru mau coba, jadi tambah semangat!",
@@ -575,7 +557,6 @@ export const community = internalAction({
       }
 
       if (i % 20 === 0) {
-        console.log(`[seed] Post ${i + 1}/${communityPostsData.length} seeded`);
       }
     }
 

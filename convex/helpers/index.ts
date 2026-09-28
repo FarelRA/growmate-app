@@ -34,6 +34,7 @@ export {
   buildQueuedLightAction,
   buildQueuedFertilizerAction,
   buildQueuedPesticideAction,
+  stagedQueuedCommands,
   getDeviceByExternalId,
   getDefaultDeviceName,
   ensureDeviceExists,
@@ -65,10 +66,7 @@ export {
   getSupportMessages,
 } from './events'
 
-export {
-  enrichMarketplaceProduct,
-  getMarketplaceThreadsForUser,
-} from './marketplace'
+export { enrichMarketplaceProduct, getMarketplaceThreadsForUser } from './marketplace'
 
 export { formatCurrencyIdr } from './generic'
 
@@ -85,13 +83,8 @@ export {
   ACTIVITY_POINTS,
   getActivityPoints,
   addUserActivity,
-  computeUserPlantPoints,
 } from './generic'
 
-export {
-  evaluateFertilizingRule,
-  evaluatePesticideRule,
-  estimateBatterySoC,
-} from './v2sensors'
+export { evaluateFertilizingRule, evaluatePesticideRule, estimateBatterySoC } from './v2sensors'
 
 export { parseStreamUrl } from './streams'

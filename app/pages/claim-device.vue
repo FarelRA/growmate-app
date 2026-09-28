@@ -2,8 +2,8 @@
 import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { useConvexMutation } from '@convex-vue/core'
-import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@/lib/api'
+import { fetchPublicConvexQuery } from '@/composables/usePublicConvexQuery'
 import { setActiveDeviceId } from '@/lib/devices'
 import { getErrorMessage } from '@/lib/errors'
 
@@ -21,7 +21,6 @@ const unclaimedDevice = ref<{ deviceId: string; name: string; firmwareVersion?: 
   null,
 )
 
-const convexClient = new ConvexHttpClient(useRuntimeConfig().public.convexUrl)
 const { mutate: claimDevice } = useConvexMutation(api.users.claimDevice)
 
 const manualLinking = computed(() => route.query.manual === '1')
@@ -49,7 +48,7 @@ async function checkDevice() {
 
   checkingDevice.value = true
   try {
-    const result = await convexClient.query(api.devices.getUnclaimedDevice, { deviceId: trimmed })
+    const result = await fetchPublicConvexQuery(api.devices.getUnclaimedDevice, { deviceId: trimmed })
     unclaimedDevice.value = result
     if (result) {
       toast.success(`Perangkat ditemukan: ${result.name}`)

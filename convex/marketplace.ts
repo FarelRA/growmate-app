@@ -1,6 +1,7 @@
 import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
-import { getCurrentUser, requireUser, enrichMarketplaceProduct, getMarketplaceThreadsForUser, formatCurrencyIdr } from './helpers'
+import { getCurrentUser, requireUser, getMarketplaceThreadsForUser, formatCurrencyIdr } from './helpers'
+import { enrichMarketplaceProduct, enrichMarketplaceProducts } from './helpers/marketplace'
 
 export const marketplace = query({
   args: {},
@@ -52,13 +53,9 @@ export const marketplace = query({
           ]
 
     const [official, community, myListings] = await Promise.all([
-      Promise.all(
-        officialProducts.map((product) => enrichMarketplaceProduct(ctx, product, user?._id)),
-      ),
-      Promise.all(
-        communityProducts.map((product) => enrichMarketplaceProduct(ctx, product, user?._id)),
-      ),
-      Promise.all(userListings.map((product) => enrichMarketplaceProduct(ctx, product, user?._id))),
+      enrichMarketplaceProducts(ctx, officialProducts, user?._id),
+      enrichMarketplaceProducts(ctx, communityProducts, user?._id),
+      enrichMarketplaceProducts(ctx, userListings, user?._id),
     ])
 
     return {
@@ -304,19 +301,28 @@ export const deleteMarketplaceListing = mutation({
       throw new ConvexError('Penawaran tidak ditemukan')
     }
 
-    const threads = await ctx.db
-      .query('marketplaceThreads')
-      .withIndex('by_product', (q) => q.eq('productId', args.productId))
-      .take(64)
-    for (const thread of threads) {
-      const messages = await ctx.db
-        .query('marketplaceMessages')
-        .withIndex('by_thread_and_createdAt', (q) => q.eq('threadId', thread._id))
-        .take(128)
-      for (const message of messages) {
-        await ctx.db.delete(message._id)
+    // Paginated deletes until exhausted — no silent orphans.
+    while (true) {
+      const threads = await ctx.db
+        .query('marketplaceThreads')
+        .withIndex('by_product', (q) => q.eq('productId', args.productId))
+        .take(50)
+      if (threads.length === 0) break
+      for (const thread of threads) {
+        while (true) {
+          const messages = await ctx.db
+            .query('marketplaceMessages')
+            .withIndex('by_thread_and_createdAt', (q) => q.eq('threadId', thread._id))
+            .take(100)
+          if (messages.length === 0) break
+          for (const message of messages) {
+            await ctx.db.delete(message._id)
+          }
+          if (messages.length < 100) break
+        }
+        await ctx.db.delete(thread._id)
       }
-      await ctx.db.delete(thread._id)
+      if (threads.length < 50) break
     }
 
     await ctx.db.delete(args.productId)
@@ -482,14 +488,20 @@ export const markMarketplaceThreadRead = mutation({
       updatedAt: now,
     })
 
-    const messages = await ctx.db
-      .query('marketplaceMessages')
-      .withIndex('by_thread_and_createdAt', (q) => q.eq('threadId', args.threadId))
-      .take(40)
-    for (const message of messages) {
-      if (String(message.senderId) !== String(user._id) && !message.readAt) {
-        await ctx.db.patch(message._id, { readAt: now })
+    // Paginated to cover all messages — no 40-row ceiling.
+    let cursor: string | null = null
+    while (true) {
+      const page = await ctx.db
+        .query('marketplaceMessages')
+        .withIndex('by_thread_and_createdAt', (q) => q.eq('threadId', args.threadId))
+        .paginate({ cursor, numItems: 100 })
+      for (const message of page.page) {
+        if (String(message.senderId) !== String(user._id) && !message.readAt) {
+          await ctx.db.patch(message._id, { readAt: now })
+        }
       }
+      if (page.isDone) break
+      cursor = page.continueCursor
     }
 
     return { success: true }

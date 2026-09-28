@@ -1,38 +1,28 @@
-export type PlantLifecycleStage =
-  | 'seed_dormancy'
-  | 'germination'
-  | 'seedling_development'
-  | 'vegetative_growth'
-  | 'flowering_reproduction'
-  | 'maturity_senescence'
-
-export type LifecycleProfile = {
-  seedDormancyDays: number
-  germinationDays: number
-  seedlingDevelopmentDays: number
-  vegetativeGrowthDays: number
-  floweringReproductionDays: number
-  maturitySenescenceDays: number
-}
-
-export type SensorRange = {
-  min: number
-  max: number
-}
-
-export type PlantSensorProfile = {
-  soil: SensorRange
-  light: SensorRange
-  temperature: SensorRange
-  air: SensorRange
-  water: SensorRange
-}
+// Single source of truth lives in convex/types.ts.
+// This module re-exports shared plant types/defaults and keeps only UI-only
+// labels and the custom-preset default here.
+export type {
+  LifecycleProfile,
+  PlantSensorProfile,
+  PlantStageValue as PlantLifecycleStage,
+  SensorRange,
+} from '../../convex/types'
+export {
+  defaultLifecycleProfile,
+  defaultPlantSensorProfile,
+  DEFAULT_WATERING_THRESHOLD,
+} from '../../convex/types'
+import {
+  defaultLifecycleProfile,
+  defaultPlantSensorProfile,
+  DEFAULT_WATERING_THRESHOLD,
+} from '../../convex/types'
 
 export type PlantPreset = {
   key: string
   name: string
   species: string
-  growthStage: PlantLifecycleStage
+  growthStage: import('../../convex/types').PlantStageValue
   imageUrl: string | null
   description: string
   location: string
@@ -44,25 +34,8 @@ export type PlantPreset = {
   fertilizerCadenceDays?: number
   pesticideCadenceDays?: number
   nutrientNotes?: string
-  sensorProfile?: PlantSensorProfile
-  lifecycleProfile: LifecycleProfile
-}
-
-export const defaultLifecycleProfile: LifecycleProfile = {
-  seedDormancyDays: 7,
-  germinationDays: 10,
-  seedlingDevelopmentDays: 14,
-  vegetativeGrowthDays: 30,
-  floweringReproductionDays: 24,
-  maturitySenescenceDays: 20,
-}
-
-export const defaultPlantSensorProfile: PlantSensorProfile = {
-  soil: { min: 30, max: 80 },
-  light: { min: 30, max: 80 },
-  temperature: { min: 18, max: 28 },
-  air: { min: 40, max: 70 },
-  water: { min: 20, max: 90 },
+  sensorProfile?: import('../../convex/types').PlantSensorProfile
+  lifecycleProfile: import('../../convex/types').LifecycleProfile
 }
 
 export const defaultCustomPlantPreset: Pick<
@@ -70,7 +43,7 @@ export const defaultCustomPlantPreset: Pick<
   'growthStage' | 'wateringThreshold' | 'lightingThreshold' | 'fertilizingThreshold' | 'fertilizerCadenceDays' | 'pesticideCadenceDays' | 'nutrientNotes' | 'sensorProfile' | 'lifecycleProfile'
 > = {
   growthStage: 'seed_dormancy',
-  wateringThreshold: 34,
+  wateringThreshold: DEFAULT_WATERING_THRESHOLD,
   lightingThreshold: 30,
   fertilizingThreshold: 35,
   fertilizerCadenceDays: 14,
@@ -80,7 +53,7 @@ export const defaultCustomPlantPreset: Pick<
   lifecycleProfile: defaultLifecycleProfile,
 }
 
-export const lifecycleStageOptions: Array<{ value: PlantLifecycleStage; label: string }> = [
+export const lifecycleStageOptions: Array<{ value: PlantPreset['growthStage']; label: string }> = [
   { value: 'seed_dormancy', label: 'Dormansi benih' },
   { value: 'germination', label: 'Perkecambahan' },
   { value: 'seedling_development', label: 'Perkembangan bibit' },

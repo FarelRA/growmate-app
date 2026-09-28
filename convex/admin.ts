@@ -1,4 +1,5 @@
 import { v, ConvexError } from 'convex/values'
+import { paginationOptsValidator } from 'convex/server'
 import { mutation, query } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
@@ -43,41 +44,89 @@ async function batchGetPlants(ctx: QueryCtx, ids: (Id<'plants'> | undefined | nu
   return map
 }
 
-async function fetchAdminStats(ctx: QueryCtx) {
-  const [users, devices, plants, communityPosts, allProducts, blogPosts, supportRequests] = await Promise.all([
-    ctx.db.query('users').take(100),
-    ctx.db.query('devices').order('desc').take(40),
-    ctx.db.query('plants').take(100),
-    ctx.db.query('communityPosts').take(100),
-    ctx.db.query('products').take(100),
-    ctx.db.query('blogPosts').withIndex('by_createdAt').order('desc').take(24),
-    ctx.db.query('supportRequests').order('desc').take(30),
-  ])
+async function countAllPaginated(
+  ctx: QueryCtx,
+  table: 'users' | 'devices' | 'plants' | 'communityPosts' | 'products' | 'blogPosts' | 'supportRequests',
+  filter?: (doc: never) => boolean,
+) {
+  let total = 0
+  let cursor: string | null = null
+  while (true) {
+    const page = await ctx.db.query(table as 'users').paginate({ cursor, numItems: 500 }) as unknown as {
+      page: never[]
+      isDone: boolean
+      continueCursor: string
+    }
+    if (filter) {
+      for (const doc of page.page) {
+        if ((filter as (d: never) => boolean)(doc)) total += 1
+      }
+    } else {
+      total += page.page.length
+    }
+    if (page.isDone) break
+    cursor = page.continueCursor
+  }
+  return total
+}
 
-  const activePlants = plants.filter((plant) => !plant.archived)
-  const claimedDevices = devices.filter((device) => Boolean(device.userId))
-  const communityProducts = allProducts.filter((product) => product.type === 'community')
-  const activeOfficialProducts = allProducts.filter(
-    (product) => product.type === 'official' && product.status === 'active',
-  )
+async function fetchAdminStats(ctx: QueryCtx) {
+  const [
+    totalUsers,
+    totalDevices,
+    claimedDevices,
+    totalPlants,
+    activePlants,
+    communityPosts,
+    totalProducts,
+    communityListings,
+    officialProducts,
+    blogPosts,
+    totalTickets,
+    openTickets,
+  ] = await Promise.all([
+    countAllPaginated(ctx, 'users'),
+    countAllPaginated(ctx, 'devices'),
+    countAllPaginated(ctx, 'devices', (d: never) => Boolean((d as { userId?: unknown }).userId)),
+    countAllPaginated(ctx, 'plants'),
+    countAllPaginated(ctx, 'plants', (p: never) => !(p as { archived?: boolean }).archived),
+    countAllPaginated(ctx, 'communityPosts'),
+    countAllPaginated(ctx, 'products'),
+    countAllPaginated(ctx, 'products', (p: never) => (p as { type?: string }).type === 'community'),
+    countAllPaginated(
+      ctx,
+      'products',
+      (p: never) => {
+        const doc = p as { type?: string; status?: string }
+        return doc.type === 'official' && doc.status === 'active'
+      },
+    ),
+    countAllPaginated(ctx, 'blogPosts'),
+    countAllPaginated(ctx, 'supportRequests'),
+    countAllPaginated(ctx, 'supportRequests', (r: never) => {
+      const status = (r as { status?: string }).status
+      return status === 'open' || status === 'in_progress'
+    }),
+  ])
+  void totalPlants
+  void totalProducts
+  void totalTickets
 
   return {
-    totalUsers: users.length,
-    totalDevices: devices.length,
-    claimedDevices: claimedDevices.length,
-    activePlants: activePlants.length,
-    openTickets: supportRequests.filter(
-      (request) => request.status === 'open' || request.status === 'in_progress',
-    ).length,
-    officialProducts: activeOfficialProducts.length,
-    communityListings: communityProducts.length,
-    communityPosts: communityPosts.length,
-    blogPosts: blogPosts.length,
+    totalUsers,
+    totalDevices,
+    claimedDevices,
+    activePlants,
+    openTickets,
+    officialProducts,
+    communityListings,
+    communityPosts,
+    blogPosts,
   }
 }
 
 async function fetchAdminDevices(ctx: QueryCtx) {
-  const devices = await ctx.db.query('devices').order('desc').take(40)
+  const devices = await ctx.db.query('devices').withIndex('by_createdAt').order('desc').take(40)
   const allPlantIds = devices.map((d) => d.plantId)
   const plantMap = await batchGetPlants(ctx, allPlantIds)
 
@@ -132,7 +181,7 @@ async function fetchAdminDevices(ctx: QueryCtx) {
 }
 
 async function fetchAdminSupport(ctx: QueryCtx) {
-  const supportRequests = await ctx.db.query('supportRequests').order('desc').take(30)
+  const supportRequests = await ctx.db.query('supportRequests').withIndex('by_createdAt').order('desc').take(30)
   const allUserIds = [
     ...supportRequests.map((r) => r.userId),
     ...supportRequests.map((r) => r.handledBy),
@@ -278,6 +327,61 @@ export const adminUsersList = query({
   handler: async (ctx) => {
     await requireAdmin(ctx)
     return fetchAdminUsers(ctx)
+  },
+})
+
+// Cursor-paginated admin lists (20/page default). Existing array-returning
+// queries above are kept for backward compatibility with the dashboard.
+export const adminDevicesPaginated = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    const result = await ctx.db
+      .query('devices')
+      .withIndex('by_createdAt')
+      .order('desc')
+      .paginate(args.paginationOpts)
+    const allPlantIds = result.page.map((d) => d.plantId)
+    const plantMap = await batchGetPlants(ctx, allPlantIds)
+    const allUserIds = result.page.map((d) => d.userId)
+    const userMap = await batchGetUsers(ctx, allUserIds)
+    return {
+      ...result,
+      page: result.page.map((device) => ({
+        _id: device._id,
+        deviceId: device.deviceId,
+        name: device.name,
+        ownerName: device.userId ? (userMap.get(String(device.userId))?.name ?? null) : null,
+        ownerEmail: device.userId ? (userMap.get(String(device.userId))?.email ?? null) : null,
+        plantName:
+          device.plantId && !plantMap.get(String(device.plantId))?.archived
+            ? (plantMap.get(String(device.plantId))?.name ?? null)
+            : null,
+        version: device.version ?? 'v1',
+        isClaimed: Boolean(device.userId),
+        lastSeen: device.lastSeen,
+      })),
+    }
+  },
+})
+
+export const adminSupportPaginated = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    return await ctx.db
+      .query('supportRequests')
+      .withIndex('by_createdAt')
+      .order('desc')
+      .paginate(args.paginationOpts)
+  },
+})
+
+export const adminUsersPaginated = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    return await ctx.db.query('users').paginate(args.paginationOpts)
   },
 })
 

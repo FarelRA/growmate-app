@@ -1,8 +1,9 @@
 <script setup lang="ts">
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { CareScheduleItem } from '@/lib/convex-types'
+
 const props = defineProps<{
   device: { autoWatering: boolean; autoLighting: boolean; autoFertilizing?: boolean; autoPesticide?: boolean; lightEnabled: boolean; deviceId: string; version?: string } | null
-  schedules: { _id: string; title: string; cadenceLabel: string; nextRunLabel: string; enabled: boolean }[]
+  schedules: CareScheduleItem[]
   scheduleForm: { scheduleId: string | null; title: string; cadenceValue: number; cadenceUnit: 'hours' | 'days'; timeOfDay: string }
   schedulePreview: string
   savingSchedule: boolean
@@ -19,7 +20,7 @@ const emit = defineEmits<{
   saveSchedule: []
   deleteSchedule: [scheduleId: string]
   resetSchedule: []
-  editSchedule: [schedule: any]
+  editSchedule: [schedule: CareScheduleItem]
   'update:scheduleForm': [value: { scheduleId: string | null; title: string; cadenceValue: number; cadenceUnit: 'hours' | 'days'; timeOfDay: string }]
 }>()
 

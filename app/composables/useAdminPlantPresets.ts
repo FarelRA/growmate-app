@@ -4,10 +4,11 @@ import { useConvexMutation } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
-import type { Id } from '@/lib/convex-types'
+import type { AdminPlantPresetItem, Id } from '@/lib/convex-types'
 import {
   defaultLifecycleProfile,
   defaultPlantSensorProfile,
+  DEFAULT_WATERING_THRESHOLD,
   type LifecycleProfile,
   type PlantSensorProfile,
   type PlantLifecycleStage,
@@ -15,6 +16,20 @@ import {
 import { uploadImageFile } from '@/lib/uploads'
 import { useImageUpload } from './useImageUpload'
 import type { AdminTab } from './useAdminDevices'
+
+/**
+ * Single shared copy of the sensor-profile clone helper. `select-plant.vue`
+ * (via the preset picker) imports this instead of keeping a local duplicate.
+ */
+export function cloneSensorProfile(profile?: Partial<PlantSensorProfile> | null): PlantSensorProfile {
+  return {
+    soil: { ...defaultPlantSensorProfile.soil, ...profile?.soil },
+    light: { ...defaultPlantSensorProfile.light, ...profile?.light },
+    temperature: { ...defaultPlantSensorProfile.temperature, ...profile?.temperature },
+    air: { ...defaultPlantSensorProfile.air, ...profile?.air },
+    water: { ...defaultPlantSensorProfile.water, ...profile?.water },
+  }
+}
 
 export function useAdminPlantPresets(activeTab: Ref<AdminTab>) {
   const { mutate: savePlantPreset } = useConvexMutation(api.admin.adminSavePlantPreset)
@@ -35,7 +50,7 @@ export function useAdminPlantPresets(activeTab: Ref<AdminTab>) {
     location: '',
     category: 'herb' as 'herb' | 'leafy' | 'fruiting' | 'houseplant' | 'flower' | 'microgreen',
     difficulty: 'easy' as 'easy' | 'medium' | 'advanced',
-    wateringThreshold: 34,
+    wateringThreshold: DEFAULT_WATERING_THRESHOLD,
     lightingThreshold: 30,
     fertilizingThreshold: 35,
     fertilizerCadenceDays: 14,
@@ -44,16 +59,6 @@ export function useAdminPlantPresets(activeTab: Ref<AdminTab>) {
     sensorProfile: { ...defaultPlantSensorProfile } as PlantSensorProfile,
     lifecycleProfile: { ...defaultLifecycleProfile } as LifecycleProfile,
   })
-
-  function cloneSensorProfile(profile?: Partial<PlantSensorProfile> | null): PlantSensorProfile {
-    return {
-      soil: { ...defaultPlantSensorProfile.soil, ...profile?.soil },
-      light: { ...defaultPlantSensorProfile.light, ...profile?.light },
-      temperature: { ...defaultPlantSensorProfile.temperature, ...profile?.temperature },
-      air: { ...defaultPlantSensorProfile.air, ...profile?.air },
-      water: { ...defaultPlantSensorProfile.water, ...profile?.water },
-    }
-  }
 
   function resetPlantPresetForm() {
     plantPresetForm.value = {
@@ -66,7 +71,7 @@ export function useAdminPlantPresets(activeTab: Ref<AdminTab>) {
       location: '',
       category: 'herb',
       difficulty: 'easy',
-      wateringThreshold: 34,
+      wateringThreshold: DEFAULT_WATERING_THRESHOLD,
       lightingThreshold: 30,
       fertilizingThreshold: 35,
       fertilizerCadenceDays: 14,
@@ -78,26 +83,7 @@ export function useAdminPlantPresets(activeTab: Ref<AdminTab>) {
     img.clearImage()
   }
 
-  function editPlantPreset(preset: {
-    _id: string
-    key: string
-    name: string
-    species: string
-    growthStage: PlantLifecycleStage
-    description: string
-    location: string
-    category: 'herb' | 'leafy' | 'fruiting' | 'houseplant' | 'flower' | 'microgreen'
-    difficulty: 'easy' | 'medium' | 'advanced'
-    wateringThreshold: number
-    lightingThreshold: number
-    fertilizingThreshold?: number
-    fertilizerCadenceDays?: number
-    pesticideCadenceDays?: number
-    nutrientNotes?: string
-    sensorProfile: PlantSensorProfile
-    lifecycleProfile: LifecycleProfile
-    imageUrl: string | null
-  }) {
+  function editPlantPreset(preset: AdminPlantPresetItem) {
     plantPresetForm.value = {
       presetId: preset._id,
       key: preset.key,

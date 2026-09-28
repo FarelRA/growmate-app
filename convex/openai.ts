@@ -202,6 +202,139 @@ async function executeTool(ctx: ActionCtx, args: {
   }
 }
 
+const sensorRangeValidator = v.object({ min: v.number(), max: v.number() });
+const sensorProfileValidator = v.object({
+  soil: sensorRangeValidator,
+  light: sensorRangeValidator,
+  temperature: sensorRangeValidator,
+  air: sensorRangeValidator,
+  water: sensorRangeValidator,
+});
+const lifecycleProfileValidatorLocal = v.object({
+  seedDormancyDays: v.number(),
+  germinationDays: v.number(),
+  seedlingDevelopmentDays: v.number(),
+  vegetativeGrowthDays: v.number(),
+  floweringReproductionDays: v.number(),
+  maturitySenescenceDays: v.number(),
+});
+const plantProgressValidator = v.object({
+  currentStage: v.string(),
+  currentStageLabel: v.string(),
+  elapsedDays: v.number(),
+  progressDays: v.number(),
+  totalDays: v.number(),
+  percent: v.number(),
+  stages: v.array(
+    v.object({
+      key: v.string(),
+      label: v.string(),
+      duration: v.number(),
+      startDay: v.number(),
+      endDay: v.number(),
+      complete: v.boolean(),
+      active: v.boolean(),
+    }),
+  ),
+});
+const assistantContextValidator = v.object({
+  user: v.object({ name: v.string(), tier: v.optional(v.string()) }),
+  activeDevice: v.union(
+    v.null(),
+    v.object({
+      name: v.string(),
+      deviceId: v.string(),
+      version: v.optional(v.string()),
+      autoWatering: v.optional(v.boolean()),
+      autoLighting: v.optional(v.boolean()),
+      wateringThreshold: v.optional(v.number()),
+      wateringDuration: v.optional(v.number()),
+      wateringCooldown: v.optional(v.number()),
+      lightingThreshold: v.optional(v.number()),
+      lightingHysteresis: v.optional(v.number()),
+      lightEnabled: v.optional(v.boolean()),
+      autoFertilizing: v.optional(v.boolean()),
+      autoPesticide: v.optional(v.boolean()),
+      fertilizingThreshold: v.optional(v.number()),
+      fertilizingDuration: v.optional(v.number()),
+      fertilizingCooldown: v.optional(v.number()),
+      pesticideThreshold: v.optional(v.number()),
+      pesticideDuration: v.optional(v.number()),
+      pesticideCooldown: v.optional(v.number()),
+      lastFertilized: v.optional(v.union(v.string(), v.null())),
+      lastPesticideApplied: v.optional(v.union(v.string(), v.null())),
+      lastSeen: v.optional(v.string()),
+      streamUrl: v.optional(v.string()),
+      tankCapacity: v.optional(v.number()),
+      tankMinLevel: v.optional(v.number()),
+      batterySoC: v.optional(v.number()),
+      batteryCurrent: v.optional(v.number()),
+      batteryCapacityAh: v.optional(v.number()),
+      reportedTankSwitchOpen: v.optional(v.boolean()),
+      reportedDrawerSwitchOpen: v.optional(v.boolean()),
+      hasModem: v.optional(v.boolean()),
+      hasSolarPanel: v.optional(v.boolean()),
+      modemImei: v.optional(v.string()),
+      solarPanelWatts: v.optional(v.number()),
+    }),
+  ),
+  activePlant: v.union(
+    v.null(),
+    v.object({
+      name: v.string(),
+      species: v.string(),
+      health: v.optional(v.string()),
+      growthStage: v.optional(v.string()),
+      location: v.optional(v.string()),
+      wateringThreshold: v.optional(v.number()),
+      lightingThreshold: v.optional(v.number()),
+      sensorProfile: v.optional(v.union(sensorProfileValidator, v.null())),
+      progress: v.optional(plantProgressValidator),
+      lifecycleProfile: v.optional(lifecycleProfileValidatorLocal),
+    }),
+  ),
+  sensors: v.array(
+    v.object({
+      kind: v.string(),
+      label: v.optional(v.string()),
+      value: v.number(),
+      unit: v.optional(v.string()),
+      status: v.optional(v.string()),
+      target: v.optional(v.string()),
+    }),
+  ),
+  schedules: v.array(
+    v.object({
+      title: v.string(),
+      enabled: v.optional(v.boolean()),
+      nextRunAt: v.optional(v.string()),
+      lastRunAt: v.optional(v.union(v.string(), v.null())),
+      cadenceUnit: v.optional(v.string()),
+      cadenceValue: v.optional(v.number()),
+      timeOfDayMinutes: v.optional(v.union(v.number(), v.null())),
+      cadenceLabel: v.optional(v.string()),
+      timeLabel: v.optional(v.union(v.string(), v.null())),
+    }),
+  ),
+  recentEvents: v.array(
+    v.object({
+      title: v.optional(v.string()),
+      detail: v.optional(v.string()),
+      time: v.optional(v.string()),
+    }),
+  ),
+  automationLogs: v.array(
+    v.object({
+      action: v.optional(v.string()),
+      soilValue: v.optional(v.number()),
+      lightValue: v.optional(v.number()),
+      threshold: v.optional(v.number()),
+      duration: v.optional(v.number()),
+      time: v.optional(v.string()),
+    }),
+  ),
+});
+
 export const generateAIResponse = internalAction({
   args: {
     threadId: v.id("assistantThreads"),
@@ -213,7 +346,7 @@ export const generateAIResponse = internalAction({
       body: v.string(),
       createdAt: v.number(),
     })),
-    context: v.any(),
+    context: assistantContextValidator,
   },
   handler: async (ctx, args) => {
     const apiKey = env.OPENAI_API_KEY;

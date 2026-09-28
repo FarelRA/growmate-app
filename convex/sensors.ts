@@ -1,15 +1,19 @@
-import { v } from 'convex/values'
+import { v, ConvexError } from 'convex/values'
 import { mutation, type MutationCtx } from './_generated/server'
 import type { DeviceDoc, PlantDoc, SensorDoc, SensorKind } from './types'
 import {
   ensureDeviceExists, getQueuedDeviceCommands, buildDeviceCommandList, buildQueuedPumpAction,
   buildQueuedLightAction, buildQueuedFertilizerAction, buildQueuedPesticideAction,
+  stagedQueuedCommands,
   normalizeRawSensorValue, recordGrowEvent, recordPlantImage,
   recordAutomationEvent, getDeviceByExternalId,
 } from './helpers'
 import {
   evaluateFertilizingRule, evaluatePesticideRule, estimateBatterySoC,
 } from './helpers/v2sensors'
+import { shouldSkipSensorRecordedEvent } from './helpers/events'
+
+export const MAX_SENSORS_PER_POST = 8
 
 type DeviceUpdateValue = boolean | number | string | Record<string, unknown> | null | undefined
 
@@ -56,6 +60,16 @@ async function ingestSensorReadings(
     .query('sensors')
     .withIndex('by_device', (q) => q.eq('deviceId', device._id))
     .collect()
+
+  const recentSensorEvents: {
+    eventType: string
+    timestamp: number
+    data?: Record<string, string | number | boolean>
+  }[] = await ctx.db
+    .query('growEvents')
+    .withIndex('by_device_and_timestamp', (q) => q.eq('deviceId', device._id))
+    .order('desc')
+    .take(100)
 
   const sensorState = new Map<string, { value: number; unit: string }>()
   const existingSensorByKind = new Map<string, SensorDoc>()
@@ -161,7 +175,11 @@ async function ingestSensorReadings(
     const previousValue = existingSensor?.value
     const shouldRecordSensorEvent =
       previousValue === undefined || Math.abs(previousValue - value) >= 5
-    if (shouldRecordSensorEvent) {
+    if (
+      shouldRecordSensorEvent &&
+      activePlant &&
+      !shouldSkipSensorRecordedEvent(recentSensorEvents, sensorUpdate.kind, now)
+    ) {
       await recordGrowEvent(ctx, {
         deviceId: device._id,
         plantId: activePlant?._id,
@@ -176,6 +194,15 @@ async function ingestSensorReadings(
           previousValue: previousValue ?? 'none',
         },
         timestamp: now,
+      })
+      recentSensorEvents.push({
+        eventType: 'sensor_recorded',
+        timestamp: now,
+        data: {
+          kind: sensorUpdate.kind,
+          value,
+          previousValue: previousValue ?? 'none',
+        },
       })
     }
 
@@ -238,38 +265,64 @@ function evaluateLightingRule(
   return { shouldActivate, nextLightEnabled, effectiveThreshold, lightValue }
 }
 
-export const ingestSensorData = mutation({
-  args: {
-    deviceId: v.string(),
-    firmwareVersion: v.optional(v.string()),
-    currentState: v.optional(
-      v.object({
-        pumpEnabled: v.boolean(),
-        lightEnabled: v.boolean(),
-        fertilizerEnabled: v.optional(v.boolean()),
-        pesticideEnabled: v.optional(v.boolean()),
-        tankSwitchOpen: v.optional(v.boolean()),
-        drawerSwitchOpen: v.optional(v.boolean()),
-        batteryCurrent: v.optional(v.number()),
-        batteryAccumulatedMah: v.optional(v.number()),
-      }),
-    ),
-    sensors: v.array(
-      v.object({
-        kind: v.union(
-          v.literal('soil'),
-          v.literal('light'),
-          v.literal('temperature'),
-          v.literal('air'),
-          v.literal('water'),
-        ),
-        value: v.number(),
-        unit: v.string(),
-        raw: v.optional(v.number()),
-      }),
-    ),
-  },
-  handler: async (ctx, args) => {
+const ingestSensorDataArgs = {
+  deviceId: v.string(),
+  firmwareVersion: v.optional(v.string()),
+  currentState: v.optional(
+    v.object({
+      pumpEnabled: v.boolean(),
+      lightEnabled: v.boolean(),
+      fertilizerEnabled: v.optional(v.boolean()),
+      pesticideEnabled: v.optional(v.boolean()),
+      tankSwitchOpen: v.optional(v.boolean()),
+      drawerSwitchOpen: v.optional(v.boolean()),
+      batteryCurrent: v.optional(v.number()),
+      batteryAccumulatedMah: v.optional(v.number()),
+    }),
+  ),
+  sensors: v.array(
+    v.object({
+      kind: v.union(
+        v.literal('soil'),
+        v.literal('light'),
+        v.literal('temperature'),
+        v.literal('air'),
+        v.literal('water'),
+      ),
+      value: v.number(),
+      unit: v.string(),
+      raw: v.optional(v.number()),
+    }),
+  ),
+}
+
+type IngestSensorDataArgs = {
+  deviceId: string
+  firmwareVersion?: string
+  currentState?: {
+    pumpEnabled: boolean
+    lightEnabled: boolean
+    fertilizerEnabled?: boolean
+    pesticideEnabled?: boolean
+    tankSwitchOpen?: boolean
+    drawerSwitchOpen?: boolean
+    batteryCurrent?: number
+    batteryAccumulatedMah?: number
+  }
+  sensors: { kind: SensorKind; value: number; unit: string; raw?: number }[]
+}
+
+function assertSensorCap(sensors: unknown[]) {
+  if (sensors.length > MAX_SENSORS_PER_POST) {
+    throw new ConvexError(`Maksimal ${MAX_SENSORS_PER_POST} sensor per permintaan`)
+  }
+}
+
+async function performIngest(
+  ctx: MutationCtx,
+  args: IngestSensorDataArgs,
+  opts: { ack: boolean },
+) {
     const device = await ensureDeviceExists(ctx, args.deviceId, args.firmwareVersion)
     const plant: PlantDoc | null = device.plantId ? await ctx.db.get(device.plantId) as PlantDoc | null : null
     const activePlant = plant && !plant.archived ? plant : null
@@ -282,7 +335,10 @@ export const ingestSensorData = mutation({
     const watering = evaluateWateringRule(device, activePlant, sensorState, now)
     if (watering.shouldWater && watering.cooledDown) {
       deviceUpdates.lastWatered = now
-      Object.assign(deviceUpdates, buildQueuedPumpAction(device, device.wateringDuration))
+      Object.assign(
+        deviceUpdates,
+        buildQueuedPumpAction(device, device.wateringDuration, stagedQueuedCommands(deviceUpdates, device)),
+      )
 
       if (activePlant) {
         await recordAutomationEvent(ctx, {
@@ -329,8 +385,14 @@ export const ingestSensorData = mutation({
       const fertilizing = evaluateFertilizingRule(device, activePlant, sensorState, now)
       if (fertilizing.shouldFertilize && fertilizing.cooledDown) {
         deviceUpdates.lastFertilized = now
-        Object.assign(deviceUpdates, buildQueuedFertilizerAction(device, device.fertilizingDuration))
-        Object.assign(deviceUpdates, buildQueuedPumpAction(device, device.fertilizingDuration))
+        Object.assign(
+          deviceUpdates,
+          buildQueuedFertilizerAction(device, device.fertilizingDuration, stagedQueuedCommands(deviceUpdates, device)),
+        )
+        Object.assign(
+          deviceUpdates,
+          buildQueuedPumpAction(device, device.fertilizingDuration, stagedQueuedCommands(deviceUpdates, device)),
+        )
 
         if (activePlant) {
           await recordAutomationEvent(ctx, {
@@ -372,8 +434,14 @@ export const ingestSensorData = mutation({
       const pesticide = evaluatePesticideRule(device, activePlant, sensorState, now)
       if (pesticide.shouldApply && pesticide.cooledDown) {
         deviceUpdates.lastPesticideApplied = now
-        Object.assign(deviceUpdates, buildQueuedPesticideAction(device, device.pesticideDuration))
-        Object.assign(deviceUpdates, buildQueuedPumpAction(device, device.pesticideDuration))
+        Object.assign(
+          deviceUpdates,
+          buildQueuedPesticideAction(device, device.pesticideDuration, stagedQueuedCommands(deviceUpdates, device)),
+        )
+        Object.assign(
+          deviceUpdates,
+          buildQueuedPumpAction(device, device.pesticideDuration, stagedQueuedCommands(deviceUpdates, device)),
+        )
 
         if (activePlant) {
           await recordAutomationEvent(ctx, {
@@ -418,7 +486,10 @@ export const ingestSensorData = mutation({
       if (lighting.shouldActivate) {
         deviceUpdates.lightEnabled = lighting.nextLightEnabled
         deviceUpdates.lastLightChange = now
-        Object.assign(deviceUpdates, buildQueuedLightAction(device, lighting.nextLightEnabled))
+        Object.assign(
+          deviceUpdates,
+          buildQueuedLightAction(device, lighting.nextLightEnabled, stagedQueuedCommands(deviceUpdates, device)),
+        )
 
         if (activePlant) {
           await recordAutomationEvent(ctx, {
@@ -462,7 +533,29 @@ export const ingestSensorData = mutation({
       queuedCommands: nextQueuedCommands,
     })
 
+    if (opts.ack && commands.length > 0) {
+      await ctx.db.patch(device._id, {
+        queuedCommands: { pump: null, light: null, fertilizer: null, pesticide: null },
+        updatedAt: Date.now(),
+      })
+    }
+
     return { success: true, updated, commands }
+}
+
+export const ingestSensorData = mutation({
+  args: ingestSensorDataArgs,
+  handler: async (ctx, args) => {
+    assertSensorCap(args.sensors)
+    return await performIngest(ctx, args, { ack: false })
+  },
+})
+
+export const ingestAndAckSensorData = mutation({
+  args: ingestSensorDataArgs,
+  handler: async (ctx, args) => {
+    assertSensorCap(args.sensors)
+    return await performIngest(ctx, args, { ack: true })
   },
 })
 

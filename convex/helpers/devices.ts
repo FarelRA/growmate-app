@@ -56,24 +56,41 @@ export function buildDeviceCommandList(device: DeviceDoc) {
   )
 }
 
-export function buildQueuedPumpAction(device: DeviceDoc, durationSeconds: number) {
-  const queuedCommands = getQueuedDeviceCommands(device)
+export function buildQueuedPumpAction(
+  device: DeviceDoc,
+  durationSeconds: number,
+  base: DeviceQueuedCommands = getQueuedDeviceCommands(device),
+) {
   return {
     queuedCommands: {
-      ...queuedCommands,
+      ...base,
       pump: { kind: 'pump' as const, durationMs: durationSeconds * 1000 },
     },
   }
 }
 
-export function buildQueuedLightAction(device: DeviceDoc, enabled: boolean) {
-  const queuedCommands = getQueuedDeviceCommands(device)
+export function buildQueuedLightAction(
+  device: DeviceDoc,
+  enabled: boolean,
+  base: DeviceQueuedCommands = getQueuedDeviceCommands(device),
+) {
   return {
     queuedCommands: {
-      ...queuedCommands,
+      ...base,
       light: { kind: 'light' as const, enabled },
     },
   }
+}
+
+// Staged accumulator for multi-action sites: each buildQueued*Action spreads
+// its base, so building two actions from the same stale device snapshot and
+// Object.assign-ing both wipes the first. Thread this as the base instead.
+export function stagedQueuedCommands(
+  updates: Record<string, unknown>,
+  device: DeviceDoc,
+): DeviceQueuedCommands {
+  return (updates.queuedCommands as DeviceQueuedCommands | undefined)
+    ?? getQueuedDeviceCommands(device)
 }
 
 export async function getDeviceByExternalId(ctx: Ctx, deviceId: string) {
@@ -255,6 +272,36 @@ export async function buildDeviceSummary(ctx: Ctx, device: DeviceDoc) {
   }
 }
 
+export async function formatDeviceDetail(ctx: Ctx, device: DeviceDoc) {
+  return {
+    ...(await buildDeviceSummary(ctx, device)),
+    version: device.version ?? 'v1',
+    autoFertilizing: device.autoFertilizing,
+    autoPesticide: device.autoPesticide,
+    fertilizingThreshold: device.fertilizingThreshold,
+    fertilizingDuration: device.fertilizingDuration,
+    fertilizingCooldown: device.fertilizingCooldown,
+    pesticideThreshold: device.pesticideThreshold,
+    pesticideDuration: device.pesticideDuration,
+    pesticideCooldown: device.pesticideCooldown,
+    lastFertilized: device.lastFertilized,
+    lastPesticideApplied: device.lastPesticideApplied,
+    streamUrl: device.streamUrl,
+    tankCapacity: device.tankCapacity,
+    tankMinLevel: device.tankMinLevel,
+    batterySoC: device.batterySoC,
+    batteryCurrent: device.batteryCurrent,
+    batteryCapacityAh: device.batteryCapacityAh,
+    batteryLastFullCharge: device.batteryLastFullCharge,
+    reportedTankSwitchOpen: device.reportedTankSwitchOpen,
+    reportedDrawerSwitchOpen: device.reportedDrawerSwitchOpen,
+    hasModem: device.hasModem,
+    hasSolarPanel: device.hasSolarPanel,
+    modemImei: device.modemImei,
+    solarPanelWatts: device.solarPanelWatts,
+  }
+}
+
 export async function executeManualWatering(
   ctx: MutationCtx,
   user: { _id: Id<'users'>; name?: string },
@@ -269,9 +316,13 @@ export async function executeManualWatering(
     updatedAt: now,
   }
 
-  // V2 devices also queue fertilizer during manual watering
+  // V2 devices also queue fertilizer during manual watering (thread the
+  // staged pump entry as base so it isn't wiped).
   if (device.version === 'v2') {
-    Object.assign(updates, buildQueuedFertilizerAction(device, durationSeconds))
+    Object.assign(
+      updates,
+      buildQueuedFertilizerAction(device, durationSeconds, stagedQueuedCommands(updates, device)),
+    )
   }
 
   await ctx.db.patch(device._id, updates)
@@ -313,21 +364,27 @@ export async function executeManualWatering(
 // V2 HELPERS
 // ============================================
 
-export function buildQueuedFertilizerAction(device: DeviceDoc, durationSeconds: number) {
-  const queuedCommands = getQueuedDeviceCommands(device)
+export function buildQueuedFertilizerAction(
+  device: DeviceDoc,
+  durationSeconds: number,
+  base: DeviceQueuedCommands = getQueuedDeviceCommands(device),
+) {
   return {
     queuedCommands: {
-      ...queuedCommands,
+      ...base,
       fertilizer: { kind: 'fertilizer' as const, durationMs: durationSeconds * 1000 },
     },
   }
 }
 
-export function buildQueuedPesticideAction(device: DeviceDoc, durationSeconds: number) {
-  const queuedCommands = getQueuedDeviceCommands(device)
+export function buildQueuedPesticideAction(
+  device: DeviceDoc,
+  durationSeconds: number,
+  base: DeviceQueuedCommands = getQueuedDeviceCommands(device),
+) {
   return {
     queuedCommands: {
-      ...queuedCommands,
+      ...base,
       pesticide: { kind: 'pesticide' as const, durationMs: durationSeconds * 1000 },
     },
   }
@@ -366,9 +423,16 @@ export async function executeManualFertilizing(
   const plant = device.plantId ? await ctx.db.get(device.plantId) : null
   const durationSeconds = getDeviceFertilizingDuration(device)
 
-  await ctx.db.patch(device._id, {
+  const fertilizingUpdates: Record<string, unknown> = {
     ...buildQueuedFertilizerAction(device, durationSeconds),
-    ...buildQueuedPumpAction(device, durationSeconds),
+  }
+  Object.assign(
+    fertilizingUpdates,
+    buildQueuedPumpAction(device, durationSeconds, stagedQueuedCommands(fertilizingUpdates, device)),
+  )
+
+  await ctx.db.patch(device._id, {
+    ...fertilizingUpdates,
     updatedAt: now,
   })
 
@@ -405,9 +469,16 @@ export async function executeManualPesticide(
   const plant = device.plantId ? await ctx.db.get(device.plantId) : null
   const durationSeconds = getDevicePesticideDuration(device)
 
-  await ctx.db.patch(device._id, {
+  const pesticideUpdates: Record<string, unknown> = {
     ...buildQueuedPesticideAction(device, durationSeconds),
-    ...buildQueuedPumpAction(device, durationSeconds),
+  }
+  Object.assign(
+    pesticideUpdates,
+    buildQueuedPumpAction(device, durationSeconds, stagedQueuedCommands(pesticideUpdates, device)),
+  )
+
+  await ctx.db.patch(device._id, {
+    ...pesticideUpdates,
     updatedAt: now,
   })
 

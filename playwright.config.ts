@@ -19,9 +19,10 @@ export default defineConfig({
   },
 
   webServer: {
-    command: 'node .output/server/index.mjs',
+    // Build first so `test:e2e` works on a fresh clone without a prior `.output` dir.
+    command: 'bun run build && node .output/server/index.mjs',
     port: 3000,
     reuseExistingServer: true,
-    timeout: 30_000,
+    timeout: 300_000,
   },
 })

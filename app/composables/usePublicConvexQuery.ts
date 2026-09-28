@@ -1,32 +1,33 @@
-import { ConvexHttpClient } from 'convex/browser'
+import type { FunctionReference } from 'convex/server'
+import { runSharedConvexQuery } from '@/lib/auth'
 
 type PublicConvexKey = string
 
-let convexClient: ConvexHttpClient | null = null
-
-function getConvexClient() {
-  if (!convexClient) {
-    const convexUrl = useRuntimeConfig().public.convexUrl
-    if (!convexUrl) {
-      throw new Error('NUXT_PUBLIC_CONVEX_URL is not configured')
-    }
-    convexClient = new ConvexHttpClient(convexUrl)
-  }
-  return convexClient
-}
-
+/**
+ * Documented public-query helper wrapping the shared Convex HTTP client.
+ *
+ * This is the only sanctioned way to run one-off (SSR-friendly) Convex
+ * queries outside the @convex-vue/core plugin: it delegates to
+ * {@link runSharedConvexQuery}, so the current JWT is attached when present
+ * (harmless for truly public queries, required for authenticated ones) and
+ * token-refresh retry applies here exactly as on every other non-plugin
+ * path. Do not construct `new ConvexHttpClient(...)` at call sites.
+ */
 export async function fetchPublicConvexQuery<TArgs extends Record<string, unknown>, TResult>(
-  query: unknown,
+  query: FunctionReference<'query', 'public', TArgs, TResult>,
   args: TArgs,
 ) {
-  const client = getConvexClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return await client.query(query as any, args as any) as unknown as TResult
+  // Widen to the base args record so the rest-args tuple resolves; TResult
+  // is preserved exactly from the query reference.
+  return runSharedConvexQuery(
+    query as FunctionReference<'query', 'public', Record<string, unknown>, TResult>,
+    args,
+  )
 }
 
 export function usePublicConvexQuery<TArgs extends Record<string, unknown>, TResult>(
   key: PublicConvexKey,
-  query: unknown,
+  query: FunctionReference<'query', 'public', TArgs, TResult>,
   args: TArgs,
 ) {
   return useAsyncData(key, () => fetchPublicConvexQuery<TArgs, TResult>(query, args), {

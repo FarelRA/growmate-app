@@ -1,5 +1,6 @@
 <script setup lang="ts">
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { CommunityMarketplaceItem, ListingDraftItem } from '@/lib/convex-types'
+
 type DraftForm = { draftId: string | null; title: string; description: string; category: string; quantity: number; quantityUnit: string; price: number; priceUnit: string; locationLabel: string; contactPreference: 'chat' | 'pickup' | 'delivery' }
 
 const props = defineProps<{
@@ -11,8 +12,8 @@ const props = defineProps<{
   updatingListingId: string | null
   deletingListingId: string | null
   editingListingId: string | null
-  listingDrafts: { _id: string; title: string; quantityLabel: string; priceLabel: string; locationLabel: string; status: string }[]
-  myListings: { _id: string; title: string; quantityLabel: string; priceLabel: string; statusLabel: string }[]
+  listingDrafts: ListingDraftItem[]
+  myListings: CommunityMarketplaceItem[]
 }>()
 
 const emit = defineEmits<{
@@ -22,8 +23,8 @@ const emit = defineEmits<{
   deleteDraft: [draftId: string]
   deleteListing: [productId: string]
   resetForm: []
-  editDraft: [draft: any]
-  editListing: [listing: any]
+  editDraft: [draft: ListingDraftItem]
+  editListing: [listing: CommunityMarketplaceItem]
   imageChange: [event: Event]
   'update:draftForm': [value: DraftForm]
 }>()

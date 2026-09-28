@@ -1,6 +1,34 @@
 import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
-import { getDeviceByExternalId, recordGrowEvent } from './helpers'
+import { getDeviceByExternalId, getCurrentUser, recordGrowEvent } from './helpers'
+
+export const DEFAULT_RECORDINGS_LIMIT = 50
+export const MAX_RECORDINGS_LIMIT = 100
+
+export function clampRecordingsLimit(requested?: number): number {
+  const fallback = Number.isFinite(requested as number)
+    ? (requested as number)
+    : DEFAULT_RECORDINGS_LIMIT
+  return Math.min(Math.max(Math.floor(fallback), 0), MAX_RECORDINGS_LIMIT)
+}
+
+export const getOwnedDevice = query({
+  args: { deviceId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx)
+    if (!user) return null
+
+    const device = await getDeviceByExternalId(ctx, args.deviceId)
+    if (!device || !device.userId || String(device.userId) !== String(user._id)) {
+      return null
+    }
+
+    return {
+      deviceId: device.deviceId,
+      name: device.name,
+    }
+  },
+})
 
 export const registerStream = mutation({
   args: {
@@ -64,15 +92,6 @@ export const recordStreamSegment = mutation({
   },
 })
 
-export const getStreamUrl = query({
-  args: { deviceId: v.string() },
-  handler: async (ctx, args) => {
-    const device = await getDeviceByExternalId(ctx, args.deviceId)
-    if (!device) return null
-    return device.streamUrl ?? null
-  },
-})
-
 export const listRecordings = query({
   args: { deviceId: v.string(), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
@@ -83,7 +102,7 @@ export const listRecordings = query({
       .query('videoRecordings')
       .withIndex('by_device', (q) => q.eq('deviceId', device._id))
       .order('desc')
-      .take(args.limit ?? 20)
+      .take(clampRecordingsLimit(args.limit))
 
     return recordings.map((r) => ({
       _id: r._id,

@@ -121,6 +121,14 @@ export const lifecycleStages = [
 
 export const sensorKinds: SensorKind[] = ['soil', 'light', 'temperature', 'air', 'water']
 
+export const defaultPlantSensorProfile: PlantSensorProfile = {
+  soil: { min: 30, max: 80 },
+  light: { min: 30, max: 80 },
+  temperature: { min: 18, max: 28 },
+  air: { min: 40, max: 70 },
+  water: { min: 20, max: 90 },
+}
+
 export const DEFAULT_WATERING_THRESHOLD = 35
 export const DEFAULT_LIGHTING_THRESHOLD = 40
 export const DEFAULT_WATERING_DURATION = 8

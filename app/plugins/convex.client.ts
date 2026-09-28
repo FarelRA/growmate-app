@@ -1,4 +1,3 @@
-import type { Plugin } from 'vue'
 import { createConvexVue } from '@convex-vue/core'
 import { authState, getAuthToken, initAuthState } from '@/lib/auth'
 import { initActiveDeviceState } from '@/lib/devices'
@@ -19,11 +18,8 @@ export default defineNuxtPlugin((nuxtApp) => {
       isAuthenticated: authState.isAuthenticated,
       isLoading: authState.isLoading,
       installNavigationGuard: false,
-      needsAuth: (to: { meta?: { requiresAuth?: boolean } }) => Boolean(to.meta?.requiresAuth),
-      redirectTo: () => ({ path: '/login' }),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any,
+    },
   })
 
-  nuxtApp.vueApp.use(convexPlugin as unknown as Plugin)
+  nuxtApp.vueApp.use(convexPlugin)
 })

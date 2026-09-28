@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { api } from '@/lib/api'
@@ -14,8 +14,9 @@ import {
   type PlantSensorProfile,
   type PlantLifecycleStage,
 } from '@/lib/plants'
-import { readSelectedImage, uploadImageFile } from '@/lib/uploads'
-import { usePlantSearch } from '@/composables/usePlantSearch'
+import { uploadImageFile } from '@/lib/uploads'
+import { cloneSensorProfile } from '@/composables/useAdminPlantPresets'
+import { useImageUpload } from '@/composables/useImageUpload'
 
 definePageMeta({
   requiresAuth: true,
@@ -34,12 +35,7 @@ const lightingThreshold = ref(defaultCustomPlantPreset.lightingThreshold)
 const sensorProfile = ref<PlantSensorProfile>({ ...defaultPlantSensorProfile })
 const lifecycleProfile = ref<LifecycleProfile>({ ...defaultCustomPlantPreset.lifecycleProfile })
 const saving = ref(false)
-const imageFile = ref<File | null>(null)
-const imagePreviewBlobUrl = ref<string | null>(null)
-
-onBeforeUnmount(() => {
-  if (imagePreviewBlobUrl.value) URL.revokeObjectURL(imagePreviewBlobUrl.value)
-})
+const upload = useImageUpload()
 
 const { data: setupStatus } = useConvexQuery(api.users.checkSetupStatus, {})
 const { data: devices } = useConvexQuery(api.devices.userDevices, {})
@@ -49,13 +45,18 @@ const { mutate: assignPlantToDevice } = useConvexMutation(api.devices.assignPlan
 
 const presets = computed<PlantPreset[]>(() => plantLibrary.value ?? [])
 
-const {
-  selectedPresetKey,
-  librarySearch,
-  categoryFilter,
-  filteredPresets,
-  selectedPreset,
-} = usePlantSearch(presets)
+function applyPreset(preset: PlantPreset) {
+  plantName.value = preset.name
+  plantSpecies.value = preset.species
+  growthStage.value = preset.growthStage
+  location.value = preset.location
+  upload.clearImage()
+  imagePreview.value = preset.imageUrl
+  wateringThreshold.value = preset.wateringThreshold
+  lightingThreshold.value = preset.lightingThreshold
+  sensorProfile.value = cloneSensorProfile(preset.sensorProfile ?? defaultPlantSensorProfile)
+  lifecycleProfile.value = { ...preset.lifecycleProfile }
+}
 
 const targetDeviceId = computed(() => {
   const fromQuery = typeof route.query.deviceId === 'string' ? route.query.deviceId : null
@@ -80,42 +81,11 @@ const totalLifecycleDays = computed(() =>
   Object.values(lifecycleProfile.value).reduce((sum, value) => sum + value, 0),
 )
 
-function cloneSensorProfile(profile?: Partial<PlantSensorProfile> | null): PlantSensorProfile {
-  return {
-    soil: { ...defaultPlantSensorProfile.soil, ...profile?.soil },
-    light: { ...defaultPlantSensorProfile.light, ...profile?.light },
-    temperature: { ...defaultPlantSensorProfile.temperature, ...profile?.temperature },
-    air: { ...defaultPlantSensorProfile.air, ...profile?.air },
-    water: { ...defaultPlantSensorProfile.water, ...profile?.water },
-  }
-}
-
-watch(
-  selectedPreset,
-  (preset) => {
-    if (!preset) return
-
-    plantName.value = preset.name
-    plantSpecies.value = preset.species
-    growthStage.value = preset.growthStage
-    location.value = preset.location
-    imagePreview.value = preset.imageUrl
-    imageFile.value = null
-    wateringThreshold.value = preset.wateringThreshold
-    lightingThreshold.value = preset.lightingThreshold
-    sensorProfile.value = cloneSensorProfile(preset.sensorProfile ?? defaultPlantSensorProfile)
-    lifecycleProfile.value = { ...preset.lifecycleProfile }
-  },
-  { immediate: true },
-)
-
 function handleImageChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0] ?? null
-  imageFile.value = file
-  if (imagePreviewBlobUrl.value) URL.revokeObjectURL(imagePreviewBlobUrl.value)
-  imagePreviewBlobUrl.value = readSelectedImage(file)
-  imagePreview.value = imagePreviewBlobUrl.value ?? imagePreview.value
+  upload.handleImageChange(event)
+  if (upload.blobUrl.value) {
+    imagePreview.value = upload.blobUrl.value
+  }
 }
 
 async function handleAssignPlant() {
@@ -132,8 +102,8 @@ async function handleAssignPlant() {
 
   saving.value = true
   try {
-    const imageUrl = imageFile.value
-      ? await uploadImageFile(imageFile.value)
+    const imageUrl = upload.file.value
+      ? await uploadImageFile(upload.file.value)
       : undefined
 
     await assignPlantToDevice({
@@ -230,16 +200,7 @@ async function handleAssignPlant() {
       </section>
 
       <section class="grid gap-8 xl:grid-cols-[1.15fr_0.85fr]">
-        <PlantCatalogGrid
-          :presets="presets"
-          :filtered-presets="filteredPresets"
-          :selected-preset-key="selectedPresetKey"
-          :category-filter="categoryFilter"
-          :library-search="librarySearch"
-          @update:selected-preset-key="selectedPresetKey = $event"
-          @update:category-filter="categoryFilter = $event"
-          @update:library-search="librarySearch = $event"
-        />
+        <PlantPresetPicker :presets="presets" @select="applyPreset" />
 
         <div class="space-y-6 rounded-[2rem] bg-white p-8 shadow-[0_20px_80px_rgba(16,24,40,0.06)]">
           <div>

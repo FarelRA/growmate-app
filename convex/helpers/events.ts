@@ -1,6 +1,34 @@
+import { ConvexError } from 'convex/values'
 import type { Ctx, MutationCtx, GrowEventSource, GrowEventEntity, GrowEventType } from '../types'
 import type { Id } from '../_generated/dataModel'
 import { formatTimestamp, getRelativeTime } from './generic'
+
+export const SENSOR_EVENT_COOLDOWN_MS = 5 * 60 * 1000
+
+const DEVICE_ONLY_EVENT_TYPES: ReadonlySet<GrowEventType> = new Set([
+  'device_claimed',
+  'device_unclaimed',
+  'stream_registered',
+  'automation_settings_updated',
+])
+
+export function isDeviceOnlyEventType(eventType: GrowEventType): boolean {
+  return DEVICE_ONLY_EVENT_TYPES.has(eventType)
+}
+
+export function shouldSkipSensorRecordedEvent(
+  recentEvents: { eventType: string; timestamp: number; data?: Record<string, string | number | boolean> }[],
+  kind: string,
+  now: number,
+  cooldownMs: number = SENSOR_EVENT_COOLDOWN_MS,
+): boolean {
+  return recentEvents.some(
+    (event) =>
+      event.eventType === 'sensor_recorded' &&
+      event.timestamp > now - cooldownMs &&
+      event.data?.kind === kind,
+  )
+}
 
 export async function recordGrowEvent(
   ctx: MutationCtx,
@@ -17,6 +45,12 @@ export async function recordGrowEvent(
     timestamp: number
   },
 ) {
+  if (!args.deviceId) {
+    throw new ConvexError('deviceId diperlukan untuk mencatat grow event')
+  }
+  if (!args.plantId && !isDeviceOnlyEventType(args.eventType)) {
+    throw new ConvexError(`plantId diperlukan untuk event ${args.eventType}`)
+  }
   await ctx.db.insert('growEvents', args)
 }
 
@@ -30,6 +64,15 @@ export async function recordPlantImage(
     capturedAt: number
   },
 ) {
+  if (!args.deviceId) {
+    throw new ConvexError('deviceId diperlukan untuk mencatat gambar tanaman')
+  }
+  if (!args.imageUrl || !args.imageUrl.trim()) {
+    throw new ConvexError('imageUrl diperlukan untuk mencatat gambar tanaman')
+  }
+  if (!Number.isFinite(args.capturedAt)) {
+    throw new ConvexError('capturedAt harus berupa timestamp yang valid')
+  }
   await ctx.db.insert('plantImages', args)
 }
 

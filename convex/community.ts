@@ -7,44 +7,78 @@ import {
   addUserActivity,
 } from './helpers'
 
-async function getCommunityPostView(ctx: Ctx, post: CommunityPostDoc, viewerId?: Id<'users'>) {
-  const [likes, comments, postUser] = await Promise.all([
-    ctx.db
+const COMMUNITY_COMMENT_PAGE = 20
+const COMMUNITY_COMMENT_SHOWN = 6
+
+async function countPostLikes(ctx: Ctx, postId: Id<'communityPosts'>) {
+  let total = 0
+  let cursor: string | null = null
+  while (true) {
+    const page = await ctx.db
       .query('postLikes')
-      .withIndex('by_post', (q) => q.eq('postId', post._id))
-      .collect(),
-    ctx.db
+      .withIndex('by_post', (q) => q.eq('postId', postId))
+      .paginate({ cursor, numItems: 100 })
+    total += page.page.length
+    if (page.isDone) break
+    cursor = page.continueCursor
+  }
+  return total
+}
+
+async function countPostComments(ctx: Ctx, postId: Id<'communityPosts'>) {
+  let total = 0
+  let cursor: string | null = null
+  while (true) {
+    const page = await ctx.db
       .query('postComments')
-      .withIndex('by_post', (q) => q.eq('postId', post._id))
-      .collect(),
+      .withIndex('by_post', (q) => q.eq('postId', postId))
+      .paginate({ cursor, numItems: 100 })
+    total += page.page.length
+    if (page.isDone) break
+    cursor = page.continueCursor
+  }
+  return total
+}
+
+async function getCommunityPostView(ctx: Ctx, post: CommunityPostDoc, viewerId?: Id<'users'>) {
+  const [likeCount, commentCount, postUser, viewerLike] = await Promise.all([
+    countPostLikes(ctx, post._id),
+    countPostComments(ctx, post._id),
     ctx.db.get(post.userId),
+    viewerId
+      ? ctx.db
+          .query('postLikes')
+          .withIndex('by_user_and_post', (q) => q.eq('userId', viewerId).eq('postId', post._id))
+          .first()
+      : Promise.resolve(null),
   ])
-  const uniqueIds = [...new Set(comments.map((c) => c.userId))] as Id<'users'>[]
+  // Latest comments page (20) via indexed read, show newest 6 in chronological order.
+  const latestComments = await ctx.db
+    .query('postComments')
+    .withIndex('by_post_createdAt', (q) => q.eq('postId', post._id))
+    .order('desc')
+    .take(COMMUNITY_COMMENT_PAGE)
+  const shownComments = latestComments
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .slice(-COMMUNITY_COMMENT_SHOWN)
+  const uniqueIds = [...new Set(shownComments.map((c) => c.userId))] as Id<'users'>[]
   const commentUsers = new Map<string, Doc<'users'> | null>()
-  await Promise.all(
-    uniqueIds.map(async (id) => {
-      commentUsers.set(String(id), (await ctx.db.get(id)) ?? null)
-    }),
-  )
+  const userDocs = await Promise.all(uniqueIds.map((id) => ctx.db.get(id)))
+  uniqueIds.forEach((id, i) => commentUsers.set(String(id), userDocs[i] ?? null))
 
   return {
     ...post,
     imageUrl: post.imageUrl ?? null,
     user: postUser,
-    likeCount: likes.length,
-    commentCount: comments.length,
-    viewerHasLiked: viewerId
-      ? likes.some((like) => String(like.userId) === String(viewerId))
-      : false,
+    likeCount,
+    commentCount,
+    viewerHasLiked: Boolean(viewerLike),
     timestamp: getRelativeTime(post.createdAt),
-    comments: comments
-      .sort((a, b) => a.createdAt - b.createdAt)
-      .slice(-6)
-      .map((comment) => ({
-        ...comment,
-        user: commentUsers.get(String(comment.userId)),
-        createdAtLabel: getRelativeTime(comment.createdAt),
-      })),
+    comments: shownComments.map((comment) => ({
+      ...comment,
+      user: commentUsers.get(String(comment.userId)),
+      createdAtLabel: getRelativeTime(comment.createdAt),
+    })),
   }
 }
 
@@ -185,23 +219,29 @@ export const deletePost = mutation({
       throw new ConvexError('Postingan tidak ditemukan')
     }
 
-    const [likes, comments] = await Promise.all([
-      ctx.db
+    // Paginated deletes until exhausted — no silent orphans.
+    while (true) {
+      const likes = await ctx.db
         .query('postLikes')
         .withIndex('by_post', (q) => q.eq('postId', args.postId))
-        .collect(),
-      ctx.db
-        .query('postComments')
-        .withIndex('by_post', (q) => q.eq('postId', args.postId))
-        .collect(),
-    ])
-
-    for (const like of likes) {
-      await ctx.db.delete(like._id)
+        .take(100)
+      if (likes.length === 0) break
+      for (const like of likes) {
+        await ctx.db.delete(like._id)
+      }
+      if (likes.length < 100) break
     }
 
-    for (const comment of comments) {
-      await ctx.db.delete(comment._id)
+    while (true) {
+      const comments = await ctx.db
+        .query('postComments')
+        .withIndex('by_post', (q) => q.eq('postId', args.postId))
+        .take(100)
+      if (comments.length === 0) break
+      for (const comment of comments) {
+        await ctx.db.delete(comment._id)
+      }
+      if (comments.length < 100) break
     }
 
     await ctx.db.delete(args.postId)

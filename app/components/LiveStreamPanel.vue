@@ -216,7 +216,7 @@ onUnmounted(() => {
     <article class="overflow-hidden rounded-[2rem] bg-black shadow-[0_12px_36px_rgba(15,23,42,0.1)]">
       <div class="relative">
         <canvas
-          :ref="onCanvasReady as any"
+          :ref="(el) => onCanvasReady(el as HTMLCanvasElement | null)"
           class="w-full"
           :class="{ hidden: !videoReady && !error && !loading }"
         />

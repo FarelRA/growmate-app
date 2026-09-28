@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { AdminOfficialProduct } from '@/lib/convex-types'
 import { getImageUrl } from '@/lib/images'
 const props = defineProps<{
   productForm: {
@@ -18,12 +18,12 @@ const props = defineProps<{
   savingProduct: boolean
   deletingProductId: string | null
   updatingProductId: string | null
-  productList: any[]
+  productList: AdminOfficialProduct[]
 }>()
 const emit = defineEmits<{
   saveProduct: []
   deleteProduct: [id: string]
-  editProduct: [product: any]
+  editProduct: [product: AdminOfficialProduct]
   resetProductForm: []
   handleProductImageChange: [event: Event]
   updateProductStatus: [productId: string, status: 'active' | 'reserved' | 'sold' | 'archived']

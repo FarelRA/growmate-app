@@ -1,7 +1,6 @@
-import type { QueryCtx, MutationCtx, SensorKind } from '../types'
+import type { MutationCtx, SensorKind } from '../types'
 import type { Id } from '../_generated/dataModel'
-import { ADC_RAW_MAX, ADC_RAW_MIN, plantStagePoints } from '../types'
-import type { PlantStageValue } from '../types'
+import { ADC_RAW_MAX, ADC_RAW_MIN } from '../types'
 
 export function formatTimestamp(timestamp: number): string {
   return new Date(timestamp).toLocaleTimeString('id-ID', {
@@ -104,26 +103,6 @@ export async function addUserActivity(
       updatedAt: args.createdAt,
     })
   }
-}
-
-export async function computeUserPlantPoints(ctx: QueryCtx, userId: Id<'users'>) {
-  const devices = await ctx.db
-    .query('devices')
-    .withIndex('by_user', (q) => q.eq('userId', userId))
-    .take(32)
-  let total = 0
-
-  for (const device of devices) {
-    const plants = await ctx.db
-      .query('plants')
-      .withIndex('by_device', (q) => q.eq('deviceId', device._id))
-      .take(32)
-    for (const plant of plants) {
-      total += plantStagePoints[plant.growthStage as PlantStageValue] ?? 0
-    }
-  }
-
-  return total
 }
 
 export function formatCurrencyIdr(value: number) {

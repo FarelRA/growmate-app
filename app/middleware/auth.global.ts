@@ -1,8 +1,37 @@
+import { watch } from 'vue'
 import { authState, fetchSetupStatus, initAuthState } from '@/lib/auth'
 import { getSetupRoute } from '@/lib/setup'
 
 function routePath(target: ReturnType<typeof getSetupRoute>) {
   return typeof target === 'string' ? target : (target.path ?? '/')
+}
+
+/**
+ * Wait until the client auth state has resolved. Protected pages must never
+ * render while `isLoading` is true: navigation is held here (Nuxt shows its
+ * pending state) and only continues — to the page or to a redirect — once
+ * auth is known.
+ */
+function waitForAuthReady(timeoutMs = 5000) {
+  if (!authState.isLoading.value) {
+    return Promise.resolve()
+  }
+  return new Promise<void>((resolve) => {
+    const stop = watch(
+      () => authState.isLoading.value,
+      (loading) => {
+        if (!loading) {
+          clearTimeout(timer)
+          stop()
+          resolve()
+        }
+      },
+    )
+    const timer = setTimeout(() => {
+      stop()
+      resolve()
+    }, timeoutMs)
+  })
 }
 
 export default defineNuxtRouteMiddleware(async (to) => {
@@ -11,6 +40,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   initAuthState()
+
+  await waitForAuthReady()
 
   if (to.meta.public) {
     if (!authState.isLoading.value && authState.isAuthenticated.value) {
@@ -30,7 +61,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   if (authState.isLoading.value) {
-    return
+    return navigateTo('/login', { replace: true })
   }
 
   if (!authState.isAuthenticated.value) {

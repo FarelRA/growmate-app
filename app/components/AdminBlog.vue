@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { AdminBlogPostItem } from '@/lib/convex-types'
 import { getImageUrl } from '@/lib/images'
 const props = defineProps<{
   blogPostForm: {
@@ -13,13 +13,13 @@ const props = defineProps<{
   blogImagePreview: string | null
   savingBlogPost: boolean
   deletingBlogPostId: string | null
-  blogPostList: any[]
+  blogPostList: AdminBlogPostItem[]
   renderedBlogPreview: string
 }>()
 const emit = defineEmits<{
   saveBlogPost: []
   deleteBlogPost: [id: string]
-  editBlogPost: [post: any]
+  editBlogPost: [post: AdminBlogPostItem]
   resetBlogPostForm: []
   handleBlogImageChange: [event: Event]
   'update:blogPostForm': [form: { postId: string | null; title: string; excerpt: string; body: string; published: boolean; featured: boolean }]

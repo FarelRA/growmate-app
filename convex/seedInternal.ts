@@ -1,5 +1,6 @@
 import { v, type GenericId } from "convex/values";
 import { internalMutation, internalQuery, internalAction } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import { plantSensorProfile, lifecycleProfileValidator } from "./schema";
 import { api, internal } from "./_generated/api";
 
@@ -148,7 +149,20 @@ export const insertBlogPost = internalMutation({
 export const listAllDevices = internalQuery({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("devices").order("desc").collect();
+    // Batched paginated read to avoid a single unbounded collect().
+    const all: Array<Doc<'devices'>> = []
+    let cursor: string | null = null
+    while (true) {
+      const page = await ctx.db
+        .query('devices')
+        .withIndex('by_createdAt')
+        .order('desc')
+        .paginate({ cursor, numItems: 100 })
+      for (const d of page.page) all.push(d)
+      if (page.isDone) break
+      cursor = page.continueCursor
+    }
+    return all
   },
 });
 

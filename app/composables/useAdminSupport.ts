@@ -4,14 +4,9 @@ import { useConvexMutation } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
-import type { Id } from '@/lib/convex-types'
+import type { AdminSupportTicket, Id } from '@/lib/convex-types'
 
-interface SupportRequest {
-  _id: string
-  [key: string]: unknown
-}
-
-export function useAdminSupport(supportRequests: Ref<SupportRequest[]>) {
+export function useAdminSupport(supportRequests: Ref<AdminSupportTicket[]>) {
   const { mutate: updateSupportRequest } = useConvexMutation(api.support.adminUpdateSupportRequest)
   const { mutate: sendSupportMessage } = useConvexMutation(api.support.sendSupportMessage)
 
@@ -22,15 +17,15 @@ export function useAdminSupport(supportRequests: Ref<SupportRequest[]>) {
 
   const supportQueue = computed(() => supportRequests.value)
   const selectedSupportRequest = computed(() =>
-    supportQueue.value.find((r: SupportRequest) => r._id === selectedSupportRequestId.value) ?? supportQueue.value[0] ?? null,
+    supportQueue.value.find((r) => r._id === selectedSupportRequestId.value) ?? supportQueue.value[0] ?? null,
   )
 
-  watch(supportQueue, (requests: SupportRequest[]) => {
+  watch(supportQueue, (requests) => {
     if (!requests.length) {
       selectedSupportRequestId.value = null
       return
     }
-    if (!selectedSupportRequestId.value || !requests.some((r: SupportRequest) => r._id === selectedSupportRequestId.value)) {
+    if (!selectedSupportRequestId.value || !requests.some((r) => r._id === selectedSupportRequestId.value)) {
       selectedSupportRequestId.value = requests[0]?._id ?? null
     }
   }, { immediate: true })

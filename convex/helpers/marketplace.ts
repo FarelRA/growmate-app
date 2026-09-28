@@ -16,29 +16,56 @@ function formatMarketplaceStatus(status: 'active' | 'reserved' | 'sold' | 'archi
 }
 
 export async function enrichMarketplaceProduct(ctx: Ctx, product: ProductDoc, viewerId?: Id<'users'>) {
-  const seller = await ctx.db.get(product.sellerId)
-  const imageUrl = product.imageUrl ?? null
-  const thread =
-    viewerId && product.type === 'community'
-      ? await ctx.db
+  const enriched = await enrichMarketplaceProducts(ctx, [product], viewerId)
+  return enriched[0]!
+}
+
+export async function enrichMarketplaceProducts(
+  ctx: Ctx,
+  products: ProductDoc[],
+  viewerId?: Id<'users'>,
+) {
+  // Batch seller gets: collect unique sellerIds, fetch once, then map.
+  const sellerIds = [...new Set(products.map((p) => String(p.sellerId)))]
+  const sellerDocs = await Promise.all(
+    sellerIds.map((id) => ctx.db.get(id as Id<'users'>)),
+  )
+  const sellerMap = new Map(sellerIds.map((id, i) => [id, sellerDocs[i] ?? null]))
+
+  // Batch thread lookups: collect-then-map, no await-in-loop.
+  let threadMap = new Map<string, { _id: unknown }>()
+  if (viewerId) {
+    const communityProducts = products.filter((p) => p.type === 'community')
+    const threadDocs = await Promise.all(
+      communityProducts.map((p) =>
+        ctx.db
           .query('marketplaceThreads')
           .withIndex('by_product_and_buyer', (q) =>
-            q.eq('productId', product._id).eq('buyerId', viewerId),
+            q.eq('productId', p._id).eq('buyerId', viewerId),
           )
-          .first()
-      : null
-
-  return {
-    ...product,
-    sellerName: seller?.name ?? 'Penjual tidak diketahui',
-    sellerAvatar: seller?.avatar ?? 'GM',
-    sellerId: seller?._id,
-    imageUrl,
-    priceLabel: `${formatCurrencyIdr(product.price)} / ${product.priceUnit}`,
-    quantityLabel: `${product.quantityAvailable} ${product.quantityUnit ?? 'item'}`,
-    statusLabel: formatMarketplaceStatus(product.status),
-    contactThreadId: thread?._id ?? null,
+          .first(),
+      ),
+    )
+    threadMap = new Map(
+      communityProducts.map((p, i) => [String(p._id), threadDocs[i] as unknown as { _id: unknown }]),
+    )
   }
+
+  return products.map((product) => {
+    const seller = sellerMap.get(String(product.sellerId))
+    const thread = threadMap.get(String(product._id))
+    return {
+      ...product,
+      sellerName: seller?.name ?? 'Penjual tidak diketahui',
+      sellerAvatar: seller?.avatar ?? 'GM',
+      sellerId: seller?._id,
+      imageUrl: product.imageUrl ?? null,
+      priceLabel: `${formatCurrencyIdr(product.price)} / ${product.priceUnit}`,
+      quantityLabel: `${product.quantityAvailable} ${product.quantityUnit ?? 'item'}`,
+      statusLabel: formatMarketplaceStatus(product.status),
+      contactThreadId: (thread?._id as never) ?? null,
+    }
+  })
 }
 
 export async function getMarketplaceThreadsForUser(ctx: Ctx, userId: Id<'users'>) {
@@ -82,8 +109,18 @@ export async function getMarketplaceThreadsForUser(ctx: Ctx, userId: Id<'users'>
       : Promise.resolve(new Map()),
   ])
 
-  return await Promise.all(
-    uniqueThreads.map(async (thread) => {
+  // Batch message reads: collect all pages first, then map (no await-in-loop).
+  const messagesList = await Promise.all(
+    uniqueThreads.map((thread) =>
+      ctx.db
+        .query('marketplaceMessages')
+        .withIndex('by_thread_and_createdAt', (q) => q.eq('threadId', thread._id))
+        .order('desc')
+        .take(16),
+    ),
+  )
+
+  return uniqueThreads.map((thread, index) => {
       const productTitle = thread.productTitle ?? productMap.get(String(thread.productId))?.title ?? 'Listing tidak diketahui'
       const productImage = thread.productImage ?? productMap.get(String(thread.productId))?.imageUrl
       const productStatus = thread.productStatus ?? productMap.get(String(thread.productId))?.status ?? 'archived'
@@ -93,11 +130,7 @@ export async function getMarketplaceThreadsForUser(ctx: Ctx, userId: Id<'users'>
       const sellerName = thread.sellerName ?? sellerMap.get(String(thread.sellerId))?.name ?? 'Penjual'
       const sellerAvatar = sellerMap.get(String(thread.sellerId))?.avatar ?? 'SL'
 
-      const messages = await ctx.db
-        .query('marketplaceMessages')
-        .withIndex('by_thread_and_createdAt', (q) => q.eq('threadId', thread._id))
-        .order('desc')
-        .take(16)
+      const messages = messagesList[index] ?? []
 
       return {
         ...thread,
@@ -115,6 +148,5 @@ export async function getMarketplaceThreadsForUser(ctx: Ctx, userId: Id<'users'>
           mine: String(message.senderId) === String(userId),
         })),
       }
-    }),
-  )
+    })
 }

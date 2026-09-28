@@ -9,6 +9,7 @@ vi.mock('~~/convex/_generated/api', () => ({
   api: {
     sensors: {
       ingestSensorData: 'ingestSensorData',
+      ingestAndAckSensorData: 'ingestAndAckSensorData',
       clearDeviceCommands: 'clearDeviceCommands',
     },
   },
@@ -211,16 +212,14 @@ describe('POST /api/v2/sensors', () => {
   })
 
   describe('command processing', () => {
-    it('clears commands after successful ingestion', async () => {
+    it('ingests and acks commands atomically in a single mutation', async () => {
       vi.resetModules()
       process.env.DEVICE_API_KEY = 'test-key'
-      mockMutation
-        .mockResolvedValueOnce({
-          success: true,
-          updated: 5,
-          commands: [{ kind: 'pump', durationMs: 8000 }],
-        })
-        .mockResolvedValueOnce({ success: true })
+      mockMutation.mockResolvedValueOnce({
+        success: true,
+        updated: 5,
+        commands: [{ kind: 'pump', durationMs: 8000 }],
+      })
 
       const handler = (await import(SRC)).default
       const event = mockEvent()
@@ -237,7 +236,11 @@ describe('POST /api/v2/sensors', () => {
 
       const result = await handler(event)
       expect(result.commands).toEqual([{ kind: 'pump', durationMs: 8000 }])
-      expect(mockMutation).toHaveBeenCalledTimes(2)
+      expect(mockMutation).toHaveBeenCalledTimes(1)
+      expect(mockMutation).toHaveBeenCalledWith(
+        'ingestAndAckSensorData',
+        expect.objectContaining({ deviceId: 'test' }),
+      )
     })
 
     it('handles empty commands array', async () => {

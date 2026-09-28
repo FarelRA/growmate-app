@@ -3,13 +3,19 @@ import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
 import { api } from '@/lib/api'
 import { getImageUrl } from '@/lib/images'
-import { activeDeviceId, setActiveDeviceId, syncActiveDevice } from '@/lib/devices'
 import { getErrorMessage } from '@/lib/errors'
-import type { Id } from '@/lib/convex-types'
+import { useDeviceSelection } from '@/composables/useDeviceSelection'
+import { useSchedules } from '@/composables/useSchedules'
+import { useRecordings } from '@/composables/useRecordings'
 
 export type DashboardPanel = 'overview' | 'care' | 'devices' | 'history' | 'stream'
-type ScheduleCadenceUnit = 'hours' | 'days'
 
+/**
+ * Dashboard facade: panel routing, device data subscriptions, derived
+ * display state, and manual care actions. Selection/sync lives in
+ * `useDeviceSelection`, schedule state/handlers in `useSchedules`, and V2
+ * recordings loading in `useRecordings`.
+ */
 export function useDashboard() {
   const route = useRoute()
   const router = useRouter()
@@ -41,16 +47,8 @@ export function useDashboard() {
     return value === 'overview' || value === 'care' || value === 'devices' || value === 'history' || value === 'stream'
   }
 
-  const { data: devices } = useConvexQuery(api.devices.userDevices, {})
-
-  watch(
-    devices,
-    (deviceList) => {
-      if (!deviceList) return
-      syncActiveDevice(deviceList)
-    },
-    { immediate: true },
-  )
+  const { devices, currentDeviceId, handleSelectDevice, handleDeviceUnregistered } =
+    useDeviceSelection()
 
   const activePanel = computed<DashboardPanel>(() => {
     const panel = typeof route.query.panel === 'string' ? route.query.panel : null
@@ -67,10 +65,6 @@ export function useDashboard() {
     })
   }
 
-  const currentDeviceId = computed(
-    () => activeDeviceId.value || devices.value?.[0]?.deviceId || undefined,
-  )
-
   const { data } = useConvexQuery(
     api.devices.dashboard,
     computed(() => ({ deviceId: currentDeviceId.value })),
@@ -85,19 +79,30 @@ export function useDashboard() {
 
   const isV2 = computed(() => data.value?.device?.version === 'v2')
 
+  const {
+    recordings,
+    recordingsError,
+    recordingsLoading,
+    recordingsRetryCount,
+    fetchRecordings,
+    retryRecordings,
+  } = useRecordings(currentDeviceId, isV2)
+
+  const {
+    scheduleForm,
+    savingSchedule,
+    deletingScheduleId,
+    schedulePreview,
+    resetScheduleForm,
+    editSchedule,
+    handleToggleSchedule,
+    handleSaveSchedule,
+    handleDeleteSchedule,
+  } = useSchedules(currentDeviceId)
+
   const streamUrl = computed(() =>
     isV2.value ? `/api/v2/stream/${currentDeviceId.value}/live` : null,
   )
-
-  const recordings = ref<{
-    _id: string
-    fileName: string
-    path: string
-    size: number
-    durationMs?: number
-    capturedAt: number
-    capturedAtLabel: string
-  }[]>([])
 
   const streamActive = ref(false)
   const isLiveLoading = ref(false)
@@ -134,22 +139,6 @@ export function useDashboard() {
     return `~${Math.round(hours * 60)} menit hingga penuh`
   })
 
-  watch(currentDeviceId, async (id) => {
-    if (id && isV2.value) {
-      await fetchRecordings(id)
-    }
-  })
-
-  async function fetchRecordings(deviceId: string) {
-    try {
-      const resp = await fetch(`/api/v2/recordings/${encodeURIComponent(deviceId)}`)
-      const json = await resp.json()
-      recordings.value = json.recordings ?? []
-    } catch {
-      recordings.value = []
-    }
-  }
-
   const emptySensorHistory = [
     { value: 0, measuredAt: 0 },
     { value: 0, measuredAt: 1 },
@@ -168,20 +157,8 @@ export function useDashboard() {
   const { mutate: triggerFertilizing } = useConvexMutation(api.care.triggerFertilizing)
   const { mutate: triggerPesticide } = useConvexMutation(api.care.triggerPesticide)
   const { mutate: updateAutomation } = useConvexMutation(api.devices.updateDeviceAutomation)
-  const { mutate: toggleSchedule } = useConvexMutation(api.care.toggleCareSchedule)
-  const { mutate: saveCareSchedule } = useConvexMutation(api.care.saveCareSchedule)
-  const { mutate: deleteCareSchedule } = useConvexMutation(api.care.deleteCareSchedule)
   const { mutate: removeDevice } = useConvexMutation(api.devices.removeDevice)
 
-  const scheduleForm = ref({
-    scheduleId: null as string | null,
-    title: '',
-    cadenceValue: 1,
-    cadenceUnit: 'days' as ScheduleCadenceUnit,
-    timeOfDay: '08:00',
-  })
-  const savingSchedule = ref(false)
-  const deletingScheduleId = ref<string | null>(null)
   const removingDeviceId = ref<string | null>(null)
 
   const waterSensor = computed(
@@ -214,19 +191,6 @@ export function useDashboard() {
       accent: sensor.accent,
       history: emptySensorHistory,
     }))
-  })
-
-  const schedulePreview = computed(() => {
-    const cadenceValue = Math.max(1, Number(scheduleForm.value.cadenceValue) || 1)
-    if (scheduleForm.value.cadenceUnit === 'hours') {
-      return cadenceValue === 1
-        ? 'Berjalan setiap jam setelah Anda menandainya selesai.'
-        : `Berjalan setiap ${cadenceValue} jam setelah Anda menandainya selesai.`
-    }
-    const timeLabel = formatClockLabel(scheduleForm.value.timeOfDay)
-    return cadenceValue === 1
-      ? `Berjalan setiap hari pukul ${timeLabel}.`
-      : `Berjalan setiap ${cadenceValue} hari pukul ${timeLabel}.`
   })
 
   const historyMetricCards = computed(() => {
@@ -264,11 +228,6 @@ export function useDashboard() {
     })
   })
 
-  function handleSelectDevice(deviceId: string) {
-    setActiveDeviceId(deviceId)
-    toast.success('Perangkat aktif diperbarui')
-  }
-
   function openSelectPlant(deviceId?: string) {
     void router.push({
       path: '/select-plant',
@@ -278,30 +237,6 @@ export function useDashboard() {
         panel: activePanel.value,
       },
     })
-  }
-
-  function formatTimeInput(minutes: number | null | undefined) {
-    const normalized = Math.max(0, Math.min(23 * 60 + 59, Math.round(minutes ?? 8 * 60)))
-    const hours = Math.floor(normalized / 60)
-    const mins = normalized % 60
-    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
-  }
-
-  function parseTimeInput(value: string) {
-    const parts = value.split(':').map((part) => Number(part))
-    const hours = parts[0] ?? NaN
-    const minutes = parts[1] ?? NaN
-    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
-      return 8 * 60
-    }
-    return Math.max(0, Math.min(23 * 60 + 59, hours * 60 + minutes))
-  }
-
-  function formatClockLabel(value: string) {
-    const totalMinutes = parseTimeInput(value)
-    const hours24 = Math.floor(totalMinutes / 60)
-    const minutes = totalMinutes % 60
-    return `${String(hours24).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
   }
 
   function formatPlantHealthLabel(value: string) {
@@ -316,26 +251,6 @@ export function useDashboard() {
         return 'kurang stabil'
       default:
         return value
-    }
-  }
-
-  function resetScheduleForm() {
-    scheduleForm.value = {
-      scheduleId: null,
-      title: '',
-      cadenceValue: 1,
-      cadenceUnit: 'days',
-      timeOfDay: '08:00',
-    }
-  }
-
-  function editSchedule(schedule: { _id: string; title: string; cadenceValue: number; cadenceUnit: string; timeOfDayMinutes: number | null }) {
-    scheduleForm.value = {
-      scheduleId: schedule._id,
-      title: schedule.title,
-      cadenceValue: schedule.cadenceValue,
-      cadenceUnit: schedule.cadenceUnit as ScheduleCadenceUnit,
-      timeOfDay: formatTimeInput(schedule.timeOfDayMinutes),
     }
   }
 
@@ -436,61 +351,6 @@ export function useDashboard() {
     }
   }
 
-  async function handleToggleSchedule(scheduleId: string, enabled: boolean) {
-    try {
-      await toggleSchedule({ scheduleId: scheduleId as Id<'careSchedules'>, enabled: !enabled })
-      toast.success(enabled ? 'Jadwal dijeda' : 'Jadwal diaktifkan')
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error, 'Gagal memperbarui jadwal'))
-    }
-  }
-
-  async function handleSaveSchedule() {
-    if (!currentDeviceId.value) {
-      toast.error('Pilih perangkat terlebih dahulu')
-      return
-    }
-    savingSchedule.value = true
-    try {
-      await saveCareSchedule({
-        scheduleId: scheduleForm.value.scheduleId
-          ? (scheduleForm.value.scheduleId as Id<'careSchedules'>)
-          : undefined,
-        deviceId: currentDeviceId.value,
-        title: scheduleForm.value.title,
-        cadenceValue: Math.max(1, Number(scheduleForm.value.cadenceValue) || 1),
-        cadenceUnit: scheduleForm.value.cadenceUnit,
-        timeOfDayMinutes:
-          scheduleForm.value.cadenceUnit === 'days'
-            ? parseTimeInput(scheduleForm.value.timeOfDay)
-            : undefined,
-        timezoneOffsetMinutes:
-          scheduleForm.value.cadenceUnit === 'days' ? -new Date().getTimezoneOffset() : undefined,
-      })
-      toast.success(scheduleForm.value.scheduleId ? 'Jadwal diperbarui' : 'Jadwal dibuat')
-      resetScheduleForm()
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error, 'Gagal menyimpan jadwal'))
-    } finally {
-      savingSchedule.value = false
-    }
-  }
-
-  async function handleDeleteSchedule(scheduleId: string) {
-    deletingScheduleId.value = scheduleId
-    try {
-      await deleteCareSchedule({ scheduleId: scheduleId as Id<'careSchedules'> })
-      if (scheduleForm.value.scheduleId === scheduleId) {
-        resetScheduleForm()
-      }
-      toast.success('Jadwal dihapus')
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error, 'Gagal menghapus jadwal'))
-    } finally {
-      deletingScheduleId.value = null
-    }
-  }
-
   async function handleRemoveDevice(deviceId: string, name: string) {
     if (
       !window.confirm(
@@ -502,9 +362,7 @@ export function useDashboard() {
     removingDeviceId.value = deviceId
     try {
       await removeDevice({ deviceId })
-      if (activeDeviceId.value === deviceId) {
-        setActiveDeviceId(null)
-      }
+      handleDeviceUnregistered(deviceId)
       toast.success('Perangkat dihapus dari akun Anda')
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, 'Gagal menghapus perangkat'))
@@ -531,7 +389,8 @@ export function useDashboard() {
     formatPlantHealthLabel,
 
     // V2
-    isV2, streamUrl, recordings, streamActive, isLiveLoading, fetchRecordings,
+    isV2, streamUrl, recordings, recordingsError, recordingsLoading, recordingsRetryCount,
+    streamActive, isLiveLoading, fetchRecordings, retryRecordings,
     batterySoC, batteryCurrent, batteryCapacityAh, batteryIcon,
     timeToEmpty, timeToFull,
     tankSwitchOpen, drawerSwitchOpen,

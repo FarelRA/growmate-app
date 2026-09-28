@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { ConvexHttpClient } from 'convex/browser'
 import { ConvexError } from 'convex/values'
+import type { FunctionReference, FunctionReturnType, OptionalRestArgs } from 'convex/server'
 import { api } from '@/lib/api'
 
 const JWT_STORAGE_KEY = '__convexAuthJWT'
@@ -59,6 +60,9 @@ function storeTokens(tokens: { token: string; refreshToken?: string } | null) {
     isAuthenticated.value = false
     removeStoredValue(JWT_STORAGE_KEY)
     removeStoredValue(REFRESH_TOKEN_STORAGE_KEY)
+    if (sharedConvexClient) {
+      sharedConvexClient.clearAuth()
+    }
     return
   }
 
@@ -71,11 +75,76 @@ function storeTokens(tokens: { token: string; refreshToken?: string } | null) {
   }
 }
 
-function createClient(authToken?: string) {
-  const client = new ConvexHttpClient(getConvexUrl())
-  if (authToken) {
-    client.setAuth(authToken)
+/**
+ * Single shared Convex HTTP client construction point for all imperative
+ * (non-reactive) Convex calls.
+ *
+ * The reactive subscriptions go through the @convex-vue/core plugin
+ * (app/plugins/convex.client.ts). Every other direct client use — auth
+ * actions, setup-status checks, public queries, device claiming — must go
+ * through {@link getSharedConvexClient} or {@link runSharedConvexQuery}
+ * below instead of `new ConvexHttpClient(...)`, so token handling stays in
+ * one place.
+ *
+ * On the server a fresh client is returned per call: the HTTP client is
+ * stateful (auth token), so it must never be shared across SSR requests.
+ */
+let sharedConvexClient: ConvexHttpClient | null = null
+
+export function getSharedConvexClient(): ConvexHttpClient {
+  if (import.meta.server) {
+    return new ConvexHttpClient(getConvexUrl())
   }
+  if (!sharedConvexClient) {
+    sharedConvexClient = new ConvexHttpClient(getConvexUrl())
+  }
+  return sharedConvexClient
+}
+
+/** Reset the client-side singleton (used by tests for isolation). */
+export function __resetSharedConvexClientForTests() {
+  sharedConvexClient = null
+}
+
+function applyAuthToken(client: ConvexHttpClient, tokenValue: string | null) {
+  if (tokenValue) {
+    client.setAuth(tokenValue)
+  } else {
+    client.clearAuth()
+  }
+}
+
+function isAuthError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return /expired|invalid token|unauthorized|unauthenticated|not authenticated|jwt/i.test(message)
+}
+
+/**
+ * Run a query through the shared client with the current JWT attached.
+ * If the call fails with an authentication error, the token is force-
+ * refreshed once (via {@link getAuthToken}) and the query is retried.
+ * This is what keeps token-refresh working on every non-plugin path.
+ */
+export async function runSharedConvexQuery<Query extends FunctionReference<'query'>>(
+  query: Query,
+  ...args: OptionalRestArgs<Query>
+): Promise<FunctionReturnType<Query>> {
+  const client = getSharedConvexClient()
+  applyAuthToken(client, await getAuthToken())
+  try {
+    return await client.query(query, ...args)
+  } catch (error: unknown) {
+    if (!isAuthError(error)) {
+      throw error
+    }
+    applyAuthToken(client, await getAuthToken({ forceRefreshToken: true }))
+    return await client.query(query, ...args)
+  }
+}
+
+function createClient(authToken?: string) {
+  const client = getSharedConvexClient()
+  applyAuthToken(client, authToken ?? token.value)
   return client
 }
 

@@ -5,7 +5,7 @@ import { toast } from 'vue-sonner'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
 import { renderMarkdown } from '@/lib/markdown'
-import type { Id } from '@/lib/convex-types'
+import type { AdminBlogPostItem, Id } from '@/lib/convex-types'
 import { uploadImageFile } from '@/lib/uploads'
 import { useImageUpload } from './useImageUpload'
 import type { AdminTab } from './useAdminDevices'
@@ -42,15 +42,7 @@ export function useAdminBlog(activeTab: Ref<AdminTab>) {
     img.clearImage()
   }
 
-  function editBlogPost(post: {
-    _id: string
-    title: string
-    excerpt: string
-    body: string
-    published: boolean
-    featured: boolean
-    imageUrl: string | null
-  }) {
+  function editBlogPost(post: AdminBlogPostItem) {
     blogPostForm.value = {
       postId: post._id,
       title: post.title,

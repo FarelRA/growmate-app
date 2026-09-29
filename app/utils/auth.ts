@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { ConvexHttpClient } from 'convex/browser'
 import { ConvexError } from 'convex/values'
 import type { FunctionReference, FunctionReturnType, OptionalRestArgs } from 'convex/server'
-import { api } from '@/lib/api'
+import { api } from '~~/convex/_generated/api'
 
 const JWT_STORAGE_KEY = '__convexAuthJWT'
 const REFRESH_TOKEN_STORAGE_KEY = '__convexAuthRefreshToken'

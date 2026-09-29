@@ -1,6 +1,6 @@
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '~~/convex/_generated/api'
-import { GROWMATE_SITE_URL } from '~~/app/lib/seo'
+import { GROWMATE_SITE_URL } from '~~/shared/utils/seo'
 
 function escapeXml(value: string) {
   return value

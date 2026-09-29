@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { useConvexQuery } from '@convex-vue/core'
-import { api } from '@/lib/api'
+import { api } from '~~/convex/_generated/api'
 import { useAdminDevices } from './useAdminDevices'
 import { useAdminProducts } from './useAdminProducts'
 import { useAdminPlantPresets } from './useAdminPlantPresets'

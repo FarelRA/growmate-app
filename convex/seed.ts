@@ -1,5 +1,25 @@
 "use node";
 
+/**
+ * Seed entry point (public CLI surface).
+ *
+ * This file is the ONLY seed module invoked from package.json scripts:
+ *   - `convex run seed:admin`    -> {@link admin}
+ *   - `convex run seed:plants`   -> {@link plants}
+ *   - `convex run seed:products` -> {@link products}
+ *   - `convex run seed:blog`     -> {@link blog}
+ *   (`convex:seed:all` runs those four sequentially; see package.json.)
+ *
+ * The exported names above MUST keep working, so do not rename them.
+ *
+ * DB-level helpers (internal queries/mutations/actions) live in
+ * `./seedInternal` and are called via `internal.seedInternal.*`.
+ * The split is intentional: this file runs on Node.js (`"use node"` for
+ * Buffer/MinIO uploads) while `seedInternal.ts` must stay a plain Convex
+ * module because `internalQuery`/`internalMutation` cannot be defined in a
+ * `"use node"` file. Do not fold one into the other.
+ */
+
 import { internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import plantsData from "./seedData/plants";

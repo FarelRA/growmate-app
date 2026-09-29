@@ -2,11 +2,11 @@
 import { onBeforeUnmount, ref } from 'vue'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
-import { api } from '@/lib/api'
-import { getErrorMessage } from '@/lib/errors'
-import { getImageUrl } from '@/lib/images'
-import { readSelectedImage, uploadImageFile } from '@/lib/uploads'
-import type { Id } from '@/lib/convex-types'
+import { api } from '~~/convex/_generated/api'
+import { getErrorMessage } from '~~/shared/utils/errors'
+import { getImageUrl } from '@/utils/images'
+import { readSelectedImage, uploadImageFile } from '@/utils/uploads'
+import type { Id } from '@/utils/convex-types'
 
 definePageMeta({
   requiresAuth: true,

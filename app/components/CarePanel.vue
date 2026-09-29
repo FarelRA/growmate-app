@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CareScheduleItem } from '@/lib/convex-types'
+import type { CareScheduleItem } from '@/utils/convex-types'
 
 const props = defineProps<{
   device: { autoWatering: boolean; autoLighting: boolean; autoFertilizing?: boolean; autoPesticide?: boolean; lightEnabled: boolean; deviceId: string; version?: string } | null

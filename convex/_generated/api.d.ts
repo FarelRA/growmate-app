@@ -8,7 +8,7 @@
  * @module
  */
 
-import type * as CustomPassword from "../CustomPassword.js";
+import type * as customPassword from "../customPassword.js";
 import type * as admin from "../admin.js";
 import type * as assistant from "../assistant.js";
 import type * as auth from "../auth.js";
@@ -23,7 +23,6 @@ import type * as helpers_blog from "../helpers/blog.js";
 import type * as helpers_devices from "../helpers/devices.js";
 import type * as helpers_events from "../helpers/events.js";
 import type * as helpers_generic from "../helpers/generic.js";
-import type * as helpers_index from "../helpers/index.js";
 import type * as helpers_marketplace from "../helpers/marketplace.js";
 import type * as helpers_plants from "../helpers/plants.js";
 import type * as helpers_sensors from "../helpers/sensors.js";
@@ -60,7 +59,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  CustomPassword: typeof CustomPassword;
+  customPassword: typeof customPassword;
   admin: typeof admin;
   assistant: typeof assistant;
   auth: typeof auth;
@@ -75,7 +74,6 @@ declare const fullApi: ApiFromModules<{
   "helpers/devices": typeof helpers_devices;
   "helpers/events": typeof helpers_events;
   "helpers/generic": typeof helpers_generic;
-  "helpers/index": typeof helpers_index;
   "helpers/marketplace": typeof helpers_marketplace;
   "helpers/plants": typeof helpers_plants;
   "helpers/sensors": typeof helpers_sensors;

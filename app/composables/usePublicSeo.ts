@@ -5,7 +5,7 @@ import {
   GROWMATE_SITE_NAME,
   GROWMATE_SITE_URL,
   toAbsoluteUrl,
-} from '@/lib/seo'
+} from '~~/shared/utils/seo'
 
 type JsonLd = Record<string, unknown>
 

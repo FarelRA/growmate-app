@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('../../../app/lib/api', () => ({
+vi.mock('~~/convex/_generated/api', () => ({
   api: {
     auth: {
       signIn: 'auth:signIn',
@@ -38,7 +38,7 @@ import {
   fetchSetupStatus,
   getAuthToken,
   AuthNotReadyError,
-} from '../../../app/lib/auth'
+} from '../../../app/utils/auth'
 
 describe('auth module', () => {
   beforeEach(() => {

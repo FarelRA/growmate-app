@@ -26,7 +26,7 @@ vi.mock('~~/server/utils/storage', () => ({
   uploadFile: mockUploadFile,
 }))
 
-import uploadHandler from '../../../../../server/routes/api/v1/upload.post'
+import uploadHandler from '../../../../server/api/v1/upload.post'
 
 function mockEvent() {
   return { headers: new Headers() } as unknown as Parameters<typeof uploadHandler>[0]

@@ -1,7 +1,8 @@
 import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
-import { getCurrentUser, requireUser, getMarketplaceThreadsForUser, formatCurrencyIdr } from './helpers'
-import { enrichMarketplaceProduct, enrichMarketplaceProducts } from './helpers/marketplace'
+import { getCurrentUser, requireUser } from './helpers/auth'
+import { formatCurrencyIdr } from './helpers/generic'
+import { enrichMarketplaceProduct, enrichMarketplaceProducts, getMarketplaceThreadsForUser } from './helpers/marketplace'
 
 export const marketplace = query({
   args: {},

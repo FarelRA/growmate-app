@@ -26,7 +26,7 @@ vi.mock('~~/server/utils/storage', () => ({
   uploadFile: mockUploadFile,
 }))
 
-const SRC = '../../../../../server/routes/api/v1/camera.post'
+const SRC = '../../../../server/api/v1/camera.post'
 
 function mockEvent() {
   return { headers: new Headers() }

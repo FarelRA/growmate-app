@@ -2,9 +2,9 @@
 import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
-import { api } from '@/lib/api'
-import { activeDeviceId, setActiveDeviceId, syncActiveDevice } from '@/lib/devices'
-import { getErrorMessage } from '@/lib/errors'
+import { api } from '~~/convex/_generated/api'
+import { activeDeviceId, setActiveDeviceId, syncActiveDevice } from '@/composables/useActiveDevice'
+import { getErrorMessage } from '~~/shared/utils/errors'
 import {
   defaultCustomPlantPreset,
   defaultPlantSensorProfile,
@@ -14,7 +14,7 @@ import {
   type PlantSensorProfile,
   type PlantLifecycleStage,
 } from '@/lib/plants'
-import { uploadImageFile } from '@/lib/uploads'
+import { uploadImageFile } from '@/utils/uploads'
 import { cloneSensorProfile } from '@/composables/useAdminPlantPresets'
 import { useImageUpload } from '@/composables/useImageUpload'
 

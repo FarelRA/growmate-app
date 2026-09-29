@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { api } from '@/lib/api'
-import { createBreadcrumbSchema } from '@/lib/seo'
+import { api } from '~~/convex/_generated/api'
+import { createBreadcrumbSchema } from '~~/shared/utils/seo'
 
 interface Product {
   _id: string

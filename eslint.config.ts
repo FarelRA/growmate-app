@@ -21,7 +21,7 @@ export default defineConfigWithVueTs(
   vueTsConfigs.recommended,
 
   {
-    files: ['app/pages/**/*.vue'],
+    files: ['app/pages/**/*.vue', 'app/error.vue'],
     rules: {
       'vue/multi-word-component-names': 'off',
     },

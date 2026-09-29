@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ListingGrid from '../../../app/components/ListingGrid.vue'
 
-vi.mock('@/lib/images', () => ({
+vi.mock('@/utils/images', () => ({
   getImageUrl: (url: string | null, size: number) => url ? `${url}?w=${size}` : null,
 }))
 

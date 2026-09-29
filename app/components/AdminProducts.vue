@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { AdminOfficialProduct } from '@/lib/convex-types'
-import { getImageUrl } from '@/lib/images'
+import type { AdminOfficialProduct } from '@/utils/convex-types'
+import { getImageUrl } from '@/utils/images'
 const props = defineProps<{
   productForm: {
     productId: string | null

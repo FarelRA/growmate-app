@@ -2,12 +2,13 @@ import { v, ConvexError } from 'convex/values'
 import { mutation } from './_generated/server'
 import type { Id } from './_generated/dataModel'
 import type { MutationCtx, UserDoc, CareScheduleDoc, ScheduleCadence, ScheduleCadenceUnit } from './types'
+import { requireUser } from './helpers/auth'
+import { recordGrowEvent } from './helpers/events'
 import {
-  requireUser, recordGrowEvent,
   getSelectedDevice,
   executeManualWatering, executeManualLighting,
   executeManualFertilizing, executeManualPesticide,
-} from './helpers'
+} from './helpers/devices'
 
 function clampScheduleTimeOfDayMinutes(value?: number | null) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 8 * 60

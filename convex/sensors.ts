@@ -4,10 +4,10 @@ import type { DeviceDoc, PlantDoc, SensorDoc, SensorKind } from './types'
 import {
   ensureDeviceExists, getQueuedDeviceCommands, buildDeviceCommandList, buildQueuedPumpAction,
   buildQueuedLightAction, buildQueuedFertilizerAction, buildQueuedPesticideAction,
-  stagedQueuedCommands,
-  normalizeRawSensorValue, recordGrowEvent, recordPlantImage,
-  recordAutomationEvent, getDeviceByExternalId,
-} from './helpers'
+  stagedQueuedCommands, getDeviceByExternalId,
+} from './helpers/devices'
+import { normalizeRawSensorValue } from './helpers/generic'
+import { recordGrowEvent, recordPlantImage, recordAutomationEvent } from './helpers/events'
 import {
   evaluateFertilizingRule, evaluatePesticideRule, estimateBatterySoC,
 } from './helpers/v2sensors'

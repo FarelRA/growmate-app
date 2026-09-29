@@ -2,9 +2,9 @@ import { computed, ref, watch } from 'vue'
 import type { Ref } from 'vue'
 import { useConvexMutation } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
-import { api } from '@/lib/api'
-import { getErrorMessage } from '@/lib/errors'
-import type { AdminSupportTicket, Id } from '@/lib/convex-types'
+import { api } from '~~/convex/_generated/api'
+import { getErrorMessage } from '~~/shared/utils/errors'
+import type { AdminSupportTicket, Id } from '@/utils/convex-types'
 
 export function useAdminSupport(supportRequests: Ref<AdminSupportTicket[]>) {
   const { mutate: updateSupportRequest } = useConvexMutation(api.support.adminUpdateSupportRequest)

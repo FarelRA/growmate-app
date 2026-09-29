@@ -1,8 +1,8 @@
 import { computed, watch } from 'vue'
 import { useConvexQuery } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
-import { api } from '@/lib/api'
-import { activeDeviceId, setActiveDeviceId, syncActiveDevice } from '@/lib/devices'
+import { api } from '~~/convex/_generated/api'
+import { activeDeviceId, setActiveDeviceId, syncActiveDevice } from '@/composables/useActiveDevice'
 
 /**
  * Single-writer owner of the active-device selection.

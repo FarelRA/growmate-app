@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import HistoryPanel from '../../../app/components/HistoryPanel.vue'
 
-vi.mock('@/lib/images', () => ({
+vi.mock('@/utils/images', () => ({
   getImageUrl: vi.fn(() => '/mock-image.jpg'),
 }))
 

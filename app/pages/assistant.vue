@@ -2,10 +2,10 @@
 import { computed, ref, watch } from 'vue'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
-import { api } from '@/lib/api'
-import { activeDeviceId, setActiveDeviceId, syncActiveDevice } from '@/lib/devices'
-import { getErrorMessage } from '@/lib/errors'
-import { formatTierLabel } from '@/lib/glossary'
+import { api } from '~~/convex/_generated/api'
+import { activeDeviceId, setActiveDeviceId, syncActiveDevice } from '@/composables/useActiveDevice'
+import { getErrorMessage } from '~~/shared/utils/errors'
+import { formatTierLabel } from '~~/shared/utils/glossary'
 import type { ChatMessage } from '@/components/ChatThread.vue'
 
 definePageMeta({

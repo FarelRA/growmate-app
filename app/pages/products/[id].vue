@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { api } from '@/lib/api'
-import { getImageUrl } from '@/lib/images'
-import { createBreadcrumbSchema, toAbsoluteUrl, toMetaDescription } from '@/lib/seo'
+import { api } from '~~/convex/_generated/api'
+import { getImageUrl } from '@/utils/images'
+import { createBreadcrumbSchema, toAbsoluteUrl, toMetaDescription } from '~~/shared/utils/seo'
 
 definePageMeta({ public: true })
 

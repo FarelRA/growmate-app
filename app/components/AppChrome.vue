@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
-import { api } from '@/lib/api'
-import { growmateTerms } from '@/lib/glossary'
-import type { Id } from '@/lib/convex-types'
+import { api } from '~~/convex/_generated/api'
+import { growmateTerms } from '~~/shared/utils/glossary'
+import type { Id } from '@/utils/convex-types'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>

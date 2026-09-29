@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getImageUrl } from '@/lib/images'
+import { getImageUrl } from '@/utils/images'
 import MetricLineChart from '@/components/MetricLineChart.vue'
 import PastRecordingViewer from '@/components/PastRecordingViewer.vue'
 import { ref } from 'vue'

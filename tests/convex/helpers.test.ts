@@ -11,29 +11,35 @@ import {
   getSensorSort,
   computePlantHealth,
   computePlantHealthScore,
+  generateAlerts,
+} from '../../convex/helpers/sensors'
+import {
   isDeviceOnline,
-  computeWaterReservoirDays,
   formatTimestamp,
   getRelativeTime,
-  generateAlerts,
   getActivityPoints,
   clampPercent,
   normalizeRawSensorValue,
+  formatEventValue,
+  getAutomationModeLabel,
+} from '../../convex/helpers/generic'
+import {
+  computeWaterReservoirDays,
   getDeviceWateringDuration,
   getDeviceWateringCooldown,
   getDeviceLightingHysteresis,
-  formatEventValue,
-  getAutomationModeLabel,
-  normalizeLifecycleProfile,
-  formatPlantStage,
-  computePlantProgress,
-  getHealthComputationGuide,
   getQueuedDeviceCommands,
   buildDeviceCommandList,
   buildQueuedPumpAction,
   buildQueuedLightAction,
   getDefaultDeviceName,
-} from '../../convex/helpers'
+} from '../../convex/helpers/devices'
+import {
+  normalizeLifecycleProfile,
+  formatPlantStage,
+  computePlantProgress,
+  getHealthComputationGuide,
+} from '../../convex/helpers/plants'
 import {
   ADC_RAW_MAX,
   defaultLifecycleProfile,

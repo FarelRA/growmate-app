@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { api } from '@/lib/api'
-import { getImageUrl } from '@/lib/images'
-import { createBreadcrumbSchema, createOrganizationSchema, createWebSiteSchema } from '@/lib/seo'
+import { api } from '~~/convex/_generated/api'
+import { getImageUrl } from '@/utils/images'
+import { createBreadcrumbSchema, createOrganizationSchema, createWebSiteSchema } from '~~/shared/utils/seo'
 
 definePageMeta({
   public: true,

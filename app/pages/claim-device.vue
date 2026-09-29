@@ -2,10 +2,10 @@
 import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { useConvexMutation } from '@convex-vue/core'
-import { api } from '@/lib/api'
+import { api } from '~~/convex/_generated/api'
 import { fetchPublicConvexQuery } from '@/composables/usePublicConvexQuery'
-import { setActiveDeviceId } from '@/lib/devices'
-import { getErrorMessage } from '@/lib/errors'
+import { setActiveDeviceId } from '@/composables/useActiveDevice'
+import { getErrorMessage } from '~~/shared/utils/errors'
 
 definePageMeta({
   requiresAuth: true,

@@ -1,6 +1,6 @@
 import { watch } from 'vue'
-import { authState, fetchSetupStatus, initAuthState } from '@/lib/auth'
-import { getSetupRoute } from '@/lib/setup'
+import { authState, fetchSetupStatus, initAuthState } from '@/utils/auth'
+import { getSetupRoute } from '~~/shared/utils/setup'
 
 function routePath(target: ReturnType<typeof getSetupRoute>) {
   return typeof target === 'string' ? target : (target.path ?? '/')

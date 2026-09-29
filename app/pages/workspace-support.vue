@@ -2,9 +2,9 @@
 import { computed, ref, watch } from 'vue'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
-import { api } from '@/lib/api'
-import { getErrorMessage } from '@/lib/errors'
-import type { Id } from '@/lib/convex-types'
+import { api } from '~~/convex/_generated/api'
+import { getErrorMessage } from '~~/shared/utils/errors'
+import type { Id } from '@/utils/convex-types'
 
 definePageMeta({
   requiresAuth: true,

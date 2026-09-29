@@ -1,6 +1,6 @@
 import { createConvexVue } from '@convex-vue/core'
-import { authState, getAuthToken, initAuthState } from '@/lib/auth'
-import { initActiveDeviceState } from '@/lib/devices'
+import { authState, getAuthToken, initAuthState } from '@/utils/auth'
+import { initActiveDeviceState } from '@/composables/useActiveDevice'
 
 export default defineNuxtPlugin((nuxtApp) => {
   initAuthState()

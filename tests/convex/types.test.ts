@@ -13,7 +13,7 @@ import {
   ADC_RAW_MIN,
   ADC_RAW_MAX,
 } from '../../convex/types'
-import { ACTIVITY_POINTS } from '../../convex/helpers'
+import { ACTIVITY_POINTS } from '../../convex/helpers/generic'
 import type { SensorKind, PlantStageValue } from '../../convex/types'
 
 describe('constants', () => {

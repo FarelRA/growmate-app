@@ -3,7 +3,7 @@ import type {
   AdminDeviceListItem,
   AdminRecentEvent,
   AdminSupportTicket,
-} from '@/lib/convex-types'
+} from '@/utils/convex-types'
 
 defineProps<{
   supportQueue: AdminSupportTicket[]

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { AdminPlantPresetItem } from '@/lib/convex-types'
+import type { AdminPlantPresetItem } from '@/utils/convex-types'
 import type { PlantLifecycleStage } from '@/lib/plants'
-import { getImageUrl } from '@/lib/images'
+import { getImageUrl } from '@/utils/images'
 const props = defineProps<{
   plantPresetForm: {
     presetId: string | null

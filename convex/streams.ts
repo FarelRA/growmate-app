@@ -1,6 +1,8 @@
 import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
-import { getDeviceByExternalId, getCurrentUser, recordGrowEvent } from './helpers'
+import { getCurrentUser } from './helpers/auth'
+import { getDeviceByExternalId } from './helpers/devices'
+import { recordGrowEvent } from './helpers/events'
 
 export const DEFAULT_RECORDINGS_LIMIT = 50
 export const MAX_RECORDINGS_LIMIT = 100

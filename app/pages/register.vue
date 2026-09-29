@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { toast } from 'vue-sonner'
-import { fetchSetupStatus, signInWithPassword } from '@/lib/auth'
-import { getErrorMessage } from '@/lib/errors'
-import { getSetupRoute } from '@/lib/setup'
+import { fetchSetupStatus, signInWithPassword } from '@/utils/auth'
+import { getErrorMessage } from '~~/shared/utils/errors'
+import { getSetupRoute } from '~~/shared/utils/setup'
 
 definePageMeta({
   public: true,

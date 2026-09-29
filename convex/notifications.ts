@@ -1,6 +1,7 @@
 import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
-import { getCurrentUser, requireUser, formatTimestamp, getRelativeTime } from './helpers'
+import { getCurrentUser, requireUser } from './helpers/auth'
+import { formatTimestamp, getRelativeTime } from './helpers/generic'
 
 export const headerNotifications = query({
   args: {},

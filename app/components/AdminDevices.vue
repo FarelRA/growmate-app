@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AdminDeviceListItem, AdminPlantPresetItem } from '@/lib/convex-types'
+import type { AdminDeviceListItem, AdminPlantPresetItem } from '@/utils/convex-types'
 
 const props = defineProps<{
   deviceForm: {

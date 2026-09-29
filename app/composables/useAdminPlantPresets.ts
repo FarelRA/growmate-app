@@ -2,9 +2,9 @@ import { ref } from 'vue'
 import type { Ref } from 'vue'
 import { useConvexMutation } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
-import { api } from '@/lib/api'
-import { getErrorMessage } from '@/lib/errors'
-import type { AdminPlantPresetItem, Id } from '@/lib/convex-types'
+import { api } from '~~/convex/_generated/api'
+import { getErrorMessage } from '~~/shared/utils/errors'
+import type { AdminPlantPresetItem, Id } from '@/utils/convex-types'
 import {
   defaultLifecycleProfile,
   defaultPlantSensorProfile,
@@ -13,7 +13,7 @@ import {
   type PlantSensorProfile,
   type PlantLifecycleStage,
 } from '@/lib/plants'
-import { uploadImageFile } from '@/lib/uploads'
+import { uploadImageFile } from '@/utils/uploads'
 import { useImageUpload } from './useImageUpload'
 import type { AdminTab } from './useAdminDevices'
 

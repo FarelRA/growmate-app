@@ -2,10 +2,10 @@
 import { computed, ref, watch } from 'vue'
 import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
-import { signOutCurrentUser } from '@/lib/auth'
-import { api } from '@/lib/api'
-import { getErrorMessage } from '@/lib/errors'
-import { formatRoleLabel, formatTierLabel } from '@/lib/glossary'
+import { signOutCurrentUser } from '@/utils/auth'
+import { api } from '~~/convex/_generated/api'
+import { getErrorMessage } from '~~/shared/utils/errors'
+import { formatRoleLabel, formatTierLabel } from '~~/shared/utils/glossary'
 
 definePageMeta({
   requiresAuth: true,

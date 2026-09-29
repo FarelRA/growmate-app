@@ -2,16 +2,20 @@ import { v, ConvexError } from 'convex/values'
 import { query, mutation, internalMutation } from './_generated/server'
 import type { Id } from './_generated/dataModel'
 import type { Ctx, UserDoc, DeviceDoc, PlantDoc, SensorDoc, CareScheduleDoc, SensorKind } from './types'
+import { getCurrentUser, requireUser } from './helpers/auth'
 import {
-  getCurrentUser, requireUser, getSelectedDevice, getRecentGrowEvents, getRecentAutomationLogs,
-  getSupportMessages, buildDeviceSummary, buildPlantView, formatTimestamp,
-  normalizePlantSensorProfile, getSensorStatus, getSensorLabel, getSensorTarget,
-  getSensorRange, computePlantHealth, formatPlantStage, getDeviceWateringDuration,
-  getDeviceWateringCooldown, getDeviceLightingHysteresis,
+  getSelectedDevice, buildDeviceSummary,
+  getDeviceWateringDuration, getDeviceWateringCooldown, getDeviceLightingHysteresis,
   getDeviceFertilizingDuration, getDevicePesticideDuration,
   getDeviceFertilizingCooldown, getDevicePesticideCooldown,
-  computePlantProgress,
-} from './helpers'
+} from './helpers/devices'
+import { getRecentGrowEvents, getRecentAutomationLogs, getSupportMessages } from './helpers/events'
+import { buildPlantView, formatPlantStage, computePlantProgress } from './helpers/plants'
+import {
+  normalizePlantSensorProfile, getSensorStatus, getSensorLabel, getSensorTarget,
+  getSensorRange, computePlantHealth,
+} from './helpers/sensors'
+import { formatTimestamp } from './helpers/generic'
 import { formatScheduleSummary } from './care'
 import {
   toggleScheduleCore,

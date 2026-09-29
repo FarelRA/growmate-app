@@ -1,6 +1,8 @@
 import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
-import { requireUser, requireAdmin, formatTimestamp, getSupportMessages } from './helpers'
+import { requireUser, requireAdmin } from './helpers/auth'
+import { formatTimestamp } from './helpers/generic'
+import { getSupportMessages } from './helpers/events'
 
 export const supportInbox = query({
   args: {},

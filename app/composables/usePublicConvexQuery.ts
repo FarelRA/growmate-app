@@ -1,5 +1,5 @@
 import type { FunctionReference } from 'convex/server'
-import { runSharedConvexQuery } from '@/lib/auth'
+import { runSharedConvexQuery } from '@/utils/auth'
 
 type PublicConvexKey = string
 

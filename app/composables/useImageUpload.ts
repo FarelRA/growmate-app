@@ -1,5 +1,5 @@
 import { onBeforeUnmount, ref } from 'vue'
-import { readSelectedImage } from '@/lib/uploads'
+import { readSelectedImage } from '@/utils/uploads'
 
 export function useImageUpload() {
   const file = ref<File | null>(null)

@@ -1,6 +1,6 @@
 import { ref, watch } from 'vue'
 import type { Ref } from 'vue'
-import { getErrorMessage } from '@/lib/errors'
+import { getErrorMessage } from '~~/shared/utils/errors'
 
 export interface DeviceRecording {
   _id: string

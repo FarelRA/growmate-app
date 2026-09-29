@@ -95,15 +95,17 @@ convex/           # Convex backend
   auth.ts         # Auth configuration
   *.ts            # Feature modules (plants, devices, sensors, blog, etc.)
 server/           # Nitro server layer
-  routes/api/v1/  # REST endpoints (camera, sensors, upload)
+  api/v1/, api/v2/ # REST endpoints (camera, sensors, upload, stream)
   utils/          # Server utilities (Convex client, images, storage, sitemap)
-tests/            # Tests
-  app/            # Component and lib tests
+shared/           # Cross-context pure code (auto-imported app + server)
+  utils/          # seo, errors, images, glossary, setup
+  types/          # shared TypeScript types
+tests/            # Tests (mirrors source tree)
+  app/            # Component, composable, and util tests
   convex/         # Helper and type tests
   server/         # API route and utility tests
   e2e/            # Playwright E2E tests
 public/           # Static assets (icons, favicon)
-stores/           # Pinia stores (reserved)
 ```
 
 ## Scripts

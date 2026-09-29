@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const SRC = '../../../../../server/routes/api/v2/sensors.post'
+const SRC = '../../../../server/api/v2/sensors.post'
 
 const mockMutation = vi.hoisted(() => vi.fn())
 

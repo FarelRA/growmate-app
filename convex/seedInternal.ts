@@ -1,3 +1,13 @@
+/**
+ * Seed DB helpers (internal functions only).
+ *
+ * Companion to `./seed`, which is the public CLI entry point
+ * (`convex run seed:admin|plants|products|blog`). Everything exported here
+ * is an `internalQuery`/`internalMutation`/`internalAction` invoked from
+ * `seed.ts` via `internal.seedInternal.*` — never run directly from the CLI.
+ * Kept as a separate file because `"use node"` (required by `seed.ts` for
+ * Buffer/MinIO uploads) forbids `internalQuery`/`internalMutation`.
+ */
 import { v, type GenericId } from "convex/values";
 import { internalMutation, internalQuery, internalAction } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";

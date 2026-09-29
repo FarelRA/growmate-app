@@ -1,8 +1,7 @@
 import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
-import {
-  requireAdmin, enrichBlogPost,
-} from './helpers'
+import { requireAdmin } from './helpers/auth'
+import { enrichBlogPost } from './helpers/blog'
 
 export const publicBlog = query({
   args: {},

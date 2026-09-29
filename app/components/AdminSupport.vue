@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AdminSupportTicket } from '@/lib/convex-types'
+import type { AdminSupportTicket } from '@/utils/convex-types'
 
 const props = defineProps<{
   supportQueue: AdminSupportTicket[]

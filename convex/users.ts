@@ -1,11 +1,9 @@
 import { v, ConvexError } from 'convex/values'
 import { mutation, query, internalMutation, internalQuery } from './_generated/server'
 import type { DeviceDoc } from './types'
-import {
-  getCurrentUser, requireUser,
-  recordGrowEvent,
-  getUserDevices,
-} from './helpers'
+import { getCurrentUser, requireUser } from './helpers/auth'
+import { recordGrowEvent } from './helpers/events'
+import { getUserDevices } from './helpers/devices'
 
 function normalizeHandle(name: string) {
   return name

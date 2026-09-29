@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { growmateTerms } from '@/lib/glossary'
+import { growmateTerms } from '~~/shared/utils/glossary'
 
 const route = useRoute()
 

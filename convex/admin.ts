@@ -3,15 +3,19 @@ import { paginationOptsValidator } from 'convex/server'
 import { mutation, query } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
-import { requireAdmin,
+import { requireAdmin } from './helpers/auth'
+import {
   getDeviceWateringDuration, getDeviceWateringCooldown, getDeviceLightingHysteresis,
   getDeviceFertilizingDuration, getDeviceFertilizingCooldown,
   getDevicePesticideDuration, getDevicePesticideCooldown,
-  formatTimestamp, isDeviceOnline, getSupportMessages,
-  enrichMarketplaceProduct, enrichBlogPost,
   getDeviceByExternalId, getDefaultDeviceName,
-  normalizePlantSensorProfile, normalizeLifecycleProfile,
-} from './helpers'
+} from './helpers/devices'
+import { normalizePlantSensorProfile } from './helpers/sensors'
+import { normalizeLifecycleProfile } from './helpers/plants'
+import { getSupportMessages } from './helpers/events'
+import { enrichMarketplaceProduct } from './helpers/marketplace'
+import { enrichBlogPost } from './helpers/blog'
+import { formatTimestamp, isDeviceOnline } from './helpers/generic'
 import { plantSensorProfile, lifecycleProfileValidator } from './schema'
 import {
   DEFAULT_FERTILIZING_THRESHOLD, DEFAULT_FERTILIZING_DURATION, DEFAULT_FERTILIZING_COOLDOWN,

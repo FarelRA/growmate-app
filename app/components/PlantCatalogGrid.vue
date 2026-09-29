@@ -2,7 +2,7 @@
 import type { PlantPreset } from '@/lib/plants'
 import type { PlantCategory } from '@/composables/usePlantSearch'
 import { lifecycleStageOptions } from '@/lib/plants'
-import { getImageUrl } from '@/lib/images'
+import { getImageUrl } from '@/utils/images'
 
 defineProps<{
   presets: PlantPreset[]

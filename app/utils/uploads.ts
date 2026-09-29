@@ -1,4 +1,4 @@
-import { getAuthToken } from '@/lib/auth'
+import { getAuthToken } from '@/utils/auth'
 
 export async function uploadImageFile(file: File) {
   const token = await getAuthToken()

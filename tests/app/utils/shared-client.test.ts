@@ -17,7 +17,7 @@ vi.mock('convex/browser', () => {
   return { ConvexHttpClient: ConvexHttpClientMock }
 })
 
-vi.mock('../../../app/lib/api', () => ({
+vi.mock('~~/convex/_generated/api', () => ({
   api: {
     auth: { signIn: 'auth:signIn', signOut: 'auth:signOut' },
     users: { checkSetupStatus: 'users:checkSetupStatus' },
@@ -31,7 +31,7 @@ import {
   getSharedConvexClient,
   initAuthState,
   runSharedConvexQuery,
-} from '../../../app/lib/auth'
+} from '../../../app/utils/auth'
 
 describe('shared convex client', () => {
   beforeEach(() => {

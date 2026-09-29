@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { createBreadcrumbSchema } from '@/lib/seo'
+import { createBreadcrumbSchema } from '~~/shared/utils/seo'
 
 definePageMeta({ public: true })
 

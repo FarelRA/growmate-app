@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CommunityMarketplaceItem, ListingDraftItem } from '@/lib/convex-types'
+import type { CommunityMarketplaceItem, ListingDraftItem } from '@/utils/convex-types'
 
 type DraftForm = { draftId: string | null; title: string; description: string; category: string; quantity: number; quantityUnit: string; price: number; priceUnit: string; locationLabel: string; contactPreference: 'chat' | 'pickup' | 'delivery' }
 

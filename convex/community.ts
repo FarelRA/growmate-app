@@ -2,10 +2,8 @@ import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
 import type { Ctx, CommunityPostDoc } from './types'
-import {
-  getCurrentUser, requireUser, getRelativeTime,
-  addUserActivity,
-} from './helpers'
+import { getCurrentUser, requireUser } from './helpers/auth'
+import { getRelativeTime, addUserActivity } from './helpers/generic'
 
 const COMMUNITY_COMMENT_PAGE = 20
 const COMMUNITY_COMMENT_SHOWN = 6

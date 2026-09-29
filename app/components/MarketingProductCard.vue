@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { getImageUrl } from '@/lib/images'
+import { getImageUrl } from '@/utils/images'
 
 const props = defineProps<{
   product: {

@@ -1,17 +1,24 @@
 import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import type { DeviceDoc, PlantStageValue, DeviceAutomationKey, SensorKind } from './types'
+import { getCurrentUser, requireUser } from './helpers/auth'
+import { recordGrowEvent, recordPlantImage, getRecentGrowEvents, getRecentAutomationLogs } from './helpers/events'
 import {
-  getCurrentUser, requireUser, recordGrowEvent, recordPlantImage,
-  addUserActivity,
-  getRecentGrowEvents, getRecentAutomationLogs, getPlantImageHistory,
-  getSensorHistory, getUserDevices, requireOwnedDevice, getSelectedDevice, archivePlant,
-  buildDeviceSummary, buildPlantView, normalizeLifecycleProfile, normalizePlantSensorProfile,
-  computePlantProgress, getDeviceByExternalId,
-  formatPlantStage, getAutomationModeLabel, formatEventValue, getHealthComputationGuide,
-  computePlantHealth, computeWaterReservoirDays, getSensorStatus, getSensorTarget,
-  getSensorLabel, getSensorAccent, getSensorSort, generateAlerts, formatTimestamp, getRelativeTime,
-} from './helpers'
+  addUserActivity, getAutomationModeLabel, formatEventValue, formatTimestamp, getRelativeTime,
+} from './helpers/generic'
+import {
+  getSensorHistory, getPlantImageHistory, normalizePlantSensorProfile,
+  computePlantHealth, getSensorStatus, getSensorTarget,
+  getSensorLabel, getSensorAccent, getSensorSort, generateAlerts,
+} from './helpers/sensors'
+import {
+  getUserDevices, requireOwnedDevice, getSelectedDevice, archivePlant,
+  buildDeviceSummary, getDeviceByExternalId, computeWaterReservoirDays,
+} from './helpers/devices'
+import {
+  buildPlantView, normalizeLifecycleProfile,
+  computePlantProgress, formatPlantStage, getHealthComputationGuide,
+} from './helpers/plants'
 import { plantSensorProfile, lifecycleProfileValidator } from './schema'
 import { formatDeviceDetail } from './helpers/devices'
 import { formatScheduleSummary } from './care'

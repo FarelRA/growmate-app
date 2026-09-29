@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { CommunityMarketplaceItem, OfficialMarketplaceItem } from '@/lib/convex-types'
-import { getImageUrl } from '@/lib/images'
+import type { CommunityMarketplaceItem, OfficialMarketplaceItem } from '@/utils/convex-types'
+import { getImageUrl } from '@/utils/images'
 defineProps<{
   featured: OfficialMarketplaceItem | null
   filteredOfficial: OfficialMarketplaceItem[]

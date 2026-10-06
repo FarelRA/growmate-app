@@ -1,8 +1,31 @@
 import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
+import type { Id } from './_generated/dataModel'
+import type { MutationCtx } from './types'
 import { requireUser, requireAdmin } from './helpers/auth'
 import { formatTimestamp } from './helpers/generic'
 import { getSupportMessages } from './helpers/events'
+import { SUPPORT_MESSAGES_PER_TICKET_CAP, overflowBeyondCap } from './crons'
+
+// Hard retention cap: 200 messages/ticket, trim oldest. No grandfathering.
+export async function trimSupportTicketToCap(
+  ctx: MutationCtx,
+  requestId: Id<'supportRequests'>,
+) {
+  while (true) {
+    const newestFirst = await ctx.db
+      .query('supportMessages')
+      .withIndex('by_request_and_createdAt', (q) => q.eq('requestId', requestId))
+      .order('desc')
+      .take(500)
+    const overflow = overflowBeyondCap(newestFirst, SUPPORT_MESSAGES_PER_TICKET_CAP)
+    if (overflow.length === 0) break
+    for (const message of overflow) {
+      await ctx.db.delete(message._id)
+    }
+    if (newestFirst.length < 500) break
+  }
+}
 
 export const supportInbox = query({
   args: {},
@@ -114,6 +137,8 @@ export const sendSupportMessage = mutation({
       createdAt: now,
     })
 
+    await trimSupportTicketToCap(ctx, args.requestId)
+
     await ctx.db.patch(args.requestId, {
       updatedAt: now,
       status: isAdmin ? 'in_progress' : request.status === 'closed' ? 'open' : request.status,
@@ -162,6 +187,8 @@ export const closeSupportRequest = mutation({
       body: 'Tiket ditutup oleh pengguna.',
       createdAt: now,
     })
+
+    await trimSupportTicketToCap(ctx, args.requestId)
 
     if (request.handledBy) {
       await ctx.db.insert('notifications', {

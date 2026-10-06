@@ -34,7 +34,7 @@ describe('ensureBucket', () => {
     mockSend.mockResolvedValueOnce(undefined)
 
     const { ensureBucket } = await import('../../../../server/utils/storage')
-    await ensureBucket('test-bucket')
+    await ensureBucket('test-bucket', { publicRead: true })
 
     expect(S3ClientMock).toHaveBeenCalledTimes(1)
     expect(S3ClientMock).toHaveBeenCalledWith({
@@ -50,7 +50,7 @@ describe('ensureBucket', () => {
     mockSend.mockResolvedValueOnce(undefined)
 
     const { ensureBucket } = await import('../../../../server/utils/storage')
-    await ensureBucket('existing-bucket')
+    await ensureBucket('existing-bucket', { publicRead: true })
 
     expect(mockSend).toHaveBeenCalledTimes(1)
   })
@@ -59,8 +59,8 @@ describe('ensureBucket', () => {
     mockSend.mockResolvedValueOnce(undefined)
 
     const { ensureBucket } = await import('../../../../server/utils/storage')
-    await ensureBucket('same-bucket')
-    await ensureBucket('same-bucket')
+    await ensureBucket('same-bucket', { publicRead: true })
+    await ensureBucket('same-bucket', { publicRead: true })
 
     expect(mockSend).toHaveBeenCalledTimes(1)
   })
@@ -69,7 +69,7 @@ describe('ensureBucket', () => {
     mockSend.mockRejectedValueOnce(new Error('Network error'))
 
     const { ensureBucket } = await import('../../../../server/utils/storage')
-    await expect(ensureBucket('faulty-bucket')).rejects.toThrow('Network error')
+    await expect(ensureBucket('faulty-bucket', { publicRead: true })).rejects.toThrow('Network error')
     expect(S3ClientMock).toHaveBeenCalledTimes(1)
   })
 
@@ -81,7 +81,7 @@ describe('ensureBucket', () => {
     mockSend.mockResolvedValueOnce(undefined)
 
     const { ensureBucket } = await import('../../../../server/utils/storage')
-    await ensureBucket('env-bucket')
+    await ensureBucket('env-bucket', { publicRead: true })
 
     expect(S3ClientMock).toHaveBeenCalledWith({
       endpoint: 'https://storage.example.com',
@@ -98,7 +98,9 @@ describe('uploadFile', () => {
     mockSend.mockResolvedValueOnce(undefined)
 
     const { uploadFile } = await import('../../../../server/utils/storage')
-    await uploadFile('bucket', 'key/file.webp', Buffer.from('data'), 'image/webp')
+    await uploadFile('bucket', 'key/file.webp', Buffer.from('data'), 'image/webp', {
+      publicRead: true,
+    })
 
     expect(mockSend).toHaveBeenCalledTimes(2)
   })
@@ -110,7 +112,9 @@ describe('uploadFile', () => {
     mockSend.mockResolvedValueOnce(undefined)
 
     const { uploadFile } = await import('../../../../server/utils/storage')
-    await uploadFile('new-bucket', 'path/img.webp', Buffer.from('img'), 'image/webp')
+    await uploadFile('new-bucket', 'path/img.webp', Buffer.from('img'), 'image/webp', {
+      publicRead: true,
+    })
 
     expect(mockSend).toHaveBeenCalledTimes(4)
   })
@@ -121,7 +125,7 @@ describe('uploadFile', () => {
 
     const { uploadFile } = await import('../../../../server/utils/storage')
     await expect(
-      uploadFile('bucket', 'key', Buffer.from('data'), 'text/plain'),
+      uploadFile('bucket', 'key', Buffer.from('data'), 'text/plain', { publicRead: true }),
     ).rejects.toThrow('Upload failed')
   })
 })

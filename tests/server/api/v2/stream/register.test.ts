@@ -27,7 +27,7 @@ vi.mock('~~/server/utils/streamManager', () => ({
 }))
 
 const mockParseStreamUrl = vi.hoisted(() => vi.fn())
-vi.mock('~~/convex/helpers/streams', () => ({
+vi.mock('~~/shared/utils/streamUrl', () => ({
   parseStreamUrl: mockParseStreamUrl,
 }))
 
@@ -96,6 +96,7 @@ describe('POST /api/v2/stream/register', () => {
     expect(mockMutation).toHaveBeenCalledWith('registerStream', {
       deviceId: 'test-device',
       streamUrl: 'tcp://100.64.0.1:8554',
+      deviceKey: 'test-key',
     })
     expect(mockConnect).toHaveBeenCalledWith('test-device', '100.64.0.1', 8554)
   })

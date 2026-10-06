@@ -1,10 +1,6 @@
 import { api } from '~~/convex/_generated/api'
 import { useConvexAuth } from '~~/server/utils/convex'
-import { processImage, generateHash } from '~~/server/utils/images'
-import { uploadFile } from '~~/server/utils/storage'
-
-const IMAGE_BUCKET = process.env.MINIO_BUCKET_IMAGE ?? 'images'
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024
+import { runUploadPipeline } from '~~/server/utils/uploadPipeline'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -40,20 +36,8 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: 'File must be an image' })
     }
 
-    if (file.data.length > MAX_IMAGE_BYTES) {
-      throw createError({ statusCode: 413, statusMessage: 'Image too large (max 20MB)' })
-    }
-
     const input = file.data
-    const hash = generateHash(input)
-    const pathPrefix = hash
-
-    const sizes = [50, 200, 400, 800, 1200]
-    const images = await processImage(input, sizes)
-
-    for (const image of images) {
-      await uploadFile(IMAGE_BUCKET, `${pathPrefix}/${image.size}w.webp`, image.buffer, 'image/webp')
-    }
+    const { path: pathPrefix } = await runUploadPipeline(input)
 
     return { path: pathPrefix }
   } catch (error: unknown) {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
 import { usePlantSearch } from '@/composables/usePlantSearch'
-import type { PlantPreset } from '@/lib/plants'
+import type { PlantPreset } from '@/utils/plant-presets'
 
 const props = defineProps<{
   presets: PlantPreset[]

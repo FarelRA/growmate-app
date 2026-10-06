@@ -193,6 +193,7 @@ describe('POST /api/v1/upload', () => {
           `abc123def456/${size}w.webp`,
           Buffer.from(`s${size}`),
           'image/webp',
+          { publicRead: true },
         )
       }
 

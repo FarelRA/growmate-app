@@ -2,7 +2,7 @@ import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { api } from '~~/convex/_generated/api'
 import { useConvexAuth } from '~~/server/utils/convex'
-import { s3Client, RECORDINGS_BUCKET } from '~~/server/utils/storage'
+import { s3PublicClient, RECORDINGS_BUCKET } from '~~/server/utils/storage'
 
 export default defineEventHandler(async (event) => {
   const authHeader = getHeader(event, 'authorization')
@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
     limit: 50,
   })
 
-  const client = s3Client()
+  const client = s3PublicClient()
   const recordingsWithUrls = await Promise.all(recordings.map(async (rec) => {
     const command = new GetObjectCommand({
       Bucket: RECORDINGS_BUCKET,

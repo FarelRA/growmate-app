@@ -59,7 +59,7 @@ export default defineNuxtConfig({
         'Cross-Origin-Opener-Policy': 'same-origin',
         'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
         'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-        'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob: https://storage.growmate.bond; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
+        'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob: https://storage.growmate.bond; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https://convex.growmate.bond wss://convex.growmate.bond https://storage.growmate.bond; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
       },
     },
     '/dashboard': { ssr: false },
@@ -83,7 +83,6 @@ export default defineNuxtConfig({
       imageBaseUrl: process.env.NUXT_PUBLIC_MINIO_BASE_URL ?? 'https://storage.growmate.bond',
       minioBucketImage: process.env.NUXT_PUBLIC_MINIO_BUCKET_IMAGE ?? 'images',
     },
-    deviceApiKey: process.env.DEVICE_API_KEY,
   },
   css: ['@/assets/main.css', 'vue-sonner/style.css'],
   alias: {

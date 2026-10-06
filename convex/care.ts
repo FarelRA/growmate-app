@@ -4,6 +4,7 @@ import type { Id } from './_generated/dataModel'
 import type { MutationCtx, UserDoc, CareScheduleDoc, ScheduleCadence, ScheduleCadenceUnit } from './types'
 import { requireUser } from './helpers/auth'
 import { recordGrowEvent } from './helpers/events'
+import { CARE_SCHEDULES_PER_PLANT_CAP } from './crons'
 import {
   getSelectedDevice,
   executeManualWatering, executeManualLighting,
@@ -205,6 +206,15 @@ export async function saveScheduleCore(
       nextRunAt,
     })
   } else {
+    const existing = await ctx.db
+      .query('careSchedules')
+      .withIndex('by_plant', (q) => q.eq('plantId', plant._id))
+      .take(CARE_SCHEDULES_PER_PLANT_CAP + 1)
+    if (existing.length >= CARE_SCHEDULES_PER_PLANT_CAP) {
+      throw new ConvexError(
+        'Batas jadwal perawatan tercapai (maksimal 20 per tanaman). Hapus jadwal yang tidak dipakai sebelum menambah.',
+      )
+    }
     scheduleId = await ctx.db.insert('careSchedules', {
       plantId: plant._id,
       title,

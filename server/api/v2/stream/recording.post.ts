@@ -1,15 +1,11 @@
 import { api } from '~~/convex/_generated/api'
 import { useConvex } from '~~/server/utils/convex'
-
-const DEVICE_API_KEY = process.env.DEVICE_API_KEY
+import { requireDeviceKey } from '~~/server/utils/requireDeviceKey'
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event)
+  const deviceKey = requireDeviceKey(event)
 
-  const apiKey = getHeader(event, 'x-api-key')
-  if (DEVICE_API_KEY && apiKey !== DEVICE_API_KEY) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-  }
+  const body = await readBody(event)
 
   if (!body.deviceId || !body.fileName || !body.path || !body.size) {
     throw createError({ statusCode: 400, statusMessage: 'deviceId, fileName, path, and size are required' })
@@ -23,6 +19,7 @@ export default defineEventHandler(async (event) => {
     size: body.size,
     durationMs: body.durationMs,
     capturedAt: body.capturedAt,
+    deviceKey,
   })
 
   return { success: true }

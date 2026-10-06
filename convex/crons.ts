@@ -12,11 +12,18 @@ crons.interval('cleanup-old-video-recordings', { hours: 24 }, internal.crons.cle
 crons.interval('cleanup-old-plant-images', { hours: 24 }, internal.crons.cleanupPlantImages)
 crons.interval('cleanup-old-notifications', { hours: 24 }, internal.crons.cleanupNotifications)
 crons.interval('cleanup-old-user-activities', { hours: 24 }, internal.crons.cleanupUserActivities)
+crons.interval('cleanup-old-assistant-messages', { hours: 24 }, internal.crons.cleanupAssistantMessages)
 
 export const PLANT_IMAGES_PER_PLANT_CAP = 50
 export const NOTIFICATIONS_PER_USER_CAP = 50
 export const NOTIFICATIONS_TTL_DAYS = 30
 export const USER_ACTIVITIES_TTL_DAYS = 90
+export const ASSISTANT_MESSAGES_PER_THREAD_CAP = 200
+export const ASSISTANT_MESSAGES_TTL_DAYS = 90
+export const SUPPORT_MESSAGES_PER_TICKET_CAP = 200
+export const MARKETPLACE_MESSAGES_PER_THREAD_CAP = 200
+export const LISTING_DRAFTS_PER_USER_CAP = 20
+export const CARE_SCHEDULES_PER_PLANT_CAP = 20
 export const RECORDINGS_BUCKET_NAME = 'recordings'
 
 export function retentionCutoff(now: number, ttlDays: number): number {
@@ -170,6 +177,44 @@ export const cleanupUserActivities = internalMutation({
   },
 })
 
+export const cleanupAssistantMessages = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const cutoff = retentionCutoff(Date.now(), ASSISTANT_MESSAGES_TTL_DAYS)
+    const threads = await ctx.db.query('assistantThreads').take(1000)
+    for (const thread of threads) {
+      // 90-day TTL per thread (no plain by_createdAt index — scope by thread).
+      let batch
+      do {
+        batch = await ctx.db
+          .query('assistantMessages')
+          .withIndex('by_createdAt', (q) =>
+            q.eq('threadId', thread._id).lte('createdAt', cutoff),
+          )
+          .take(500)
+        for (const m of batch) {
+          await ctx.db.delete(m._id)
+        }
+      } while (batch.length === 500)
+
+      // 200/thread hard cap, trim oldest.
+      let trimmed = 0
+      do {
+        const items = await ctx.db
+          .query('assistantMessages')
+          .withIndex('by_createdAt', (q) => q.eq('threadId', thread._id))
+          .order('desc')
+          .take(500)
+        const overflow = overflowBeyondCap(items, ASSISTANT_MESSAGES_PER_THREAD_CAP)
+        for (const item of overflow) {
+          await ctx.db.delete(item._id)
+        }
+        trimmed = overflow.length
+      } while (trimmed === 500 - ASSISTANT_MESSAGES_PER_THREAD_CAP)
+    }
+  },
+})
+
 async function sha256Hex(data: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data))
   return Array.from(new Uint8Array(digest))
@@ -196,14 +241,56 @@ export function encodeS3Key(key: string): string {
     .join('/')
 }
 
+export const S3_SKIP_WARNING_TITLE =
+  'system-warning: kredensial S3 tidak dikonfigurasi, penghapusan objek rekaman dilewati'
+
+export function s3SkipWarningDayStart(now: number): number {
+  const day = new Date(now)
+  day.setUTCHours(0, 0, 0, 0)
+  return day.getTime()
+}
+
+export const recordS3SkipWarning = internalMutation({
+  args: { key: v.string(), now: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const now = args.now ?? Date.now()
+    const dayStart = s3SkipWarningDayStart(now)
+    const candidates = await ctx.db
+      .query('growEvents')
+      .withIndex('by_eventType_and_timestamp', (q) =>
+        q.eq('eventType', 'automation_action_executed'),
+      )
+      .collect()
+    const alreadyWarned = candidates.some(
+      (event) => event.title === S3_SKIP_WARNING_TITLE && event.timestamp >= dayStart,
+    )
+    if (alreadyWarned) return { recorded: false, deduped: true }
+    await ctx.db.insert('growEvents', {
+      source: 'system',
+      entityType: 'automation',
+      eventType: 'automation_action_executed',
+      title: S3_SKIP_WARNING_TITLE,
+      detail: `Melewatkan penghapusan objek S3 untuk rekaman "${args.key}". Baris DB dihapus tetapi objek dapat tersisa di bucket "${RECORDINGS_BUCKET_NAME}". Atur MINIO_ENDPOINT/MINIO_ACCESS_KEY/MINIO_SECRET_KEY.`,
+      data: { key: args.key },
+      timestamp: now,
+    })
+    return { recorded: true, deduped: false }
+  },
+})
+
 export const deleteRecordingS3Object = internalAction({
   args: { key: v.string() },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const endpoint = process.env.MINIO_ENDPOINT
     const accessKeyId = process.env.MINIO_ACCESS_KEY
     const secretAccessKey = process.env.MINIO_SECRET_KEY
     if (!endpoint || !accessKeyId || !secretAccessKey) {
       console.warn('[crons] S3 credentials not configured; skipping object delete for', args.key)
+      try {
+        await ctx.runMutation(internal.crons.recordS3SkipWarning, { key: args.key })
+      } catch (error) {
+        console.error('[crons] Failed to record S3 skip warning:', error)
+      }
       return { success: false, skipped: true }
     }
 

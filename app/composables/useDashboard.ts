@@ -7,6 +7,7 @@ import { getErrorMessage } from '~~/shared/utils/errors'
 import { useDeviceSelection } from '@/composables/useDeviceSelection'
 import { useSchedules } from '@/composables/useSchedules'
 import { useRecordings } from '@/composables/useRecordings'
+import { authState } from '@/utils/auth'
 
 export type DashboardPanel = 'overview' | 'care' | 'devices' | 'history' | 'stream'
 
@@ -74,7 +75,7 @@ export function useDashboard() {
 
   const { data: historyData } = useConvexQuery(
     api.devices.deviceHistory,
-    computed(() => ({ deviceId: currentDeviceId.value })),
+    computed(() => ({ deviceId: currentDeviceId.value, paginationOpts: { numItems: 20, cursor: null } })),
   )
 
   const isV2 = computed(() => data.value?.device?.version === 'v2')
@@ -100,9 +101,12 @@ export function useDashboard() {
     handleDeleteSchedule,
   } = useSchedules(currentDeviceId)
 
-  const streamUrl = computed(() =>
-    isV2.value ? `/api/v2/stream/${currentDeviceId.value}/live` : null,
-  )
+  const streamUrl = computed(() => {
+    if (!isV2.value) return null
+    const baseUrl = `/api/v2/stream/${currentDeviceId.value}/live`
+    const token = authState.token.value
+    return token ? `${baseUrl}?token=${encodeURIComponent(token)}` : baseUrl
+  })
 
   const streamActive = ref(false)
   const isLiveLoading = ref(false)

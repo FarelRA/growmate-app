@@ -1,7 +1,7 @@
 import { v, ConvexError } from 'convex/values'
 import { query, mutation, internalMutation } from './_generated/server'
 import type { Id } from './_generated/dataModel'
-import type { Ctx, UserDoc, DeviceDoc, PlantDoc, SensorDoc, CareScheduleDoc, SensorKind } from './types'
+import type { Ctx, MutationCtx, UserDoc, DeviceDoc, PlantDoc, SensorDoc, CareScheduleDoc, SensorKind } from './types'
 import { getCurrentUser, requireUser } from './helpers/auth'
 import {
   getSelectedDevice, buildDeviceSummary,
@@ -28,6 +28,11 @@ import {
   formatScheduleCadence,
 } from './care'
 import { internal } from './_generated/api'
+import {
+  ASSISTANT_MESSAGES_PER_THREAD_CAP,
+  CARE_SCHEDULES_PER_PLANT_CAP,
+  overflowBeyondCap,
+} from './crons'
 
 export function getAssistantMessageLimit(tier?: 'basic' | 'advanced') {
   return tier === 'advanced' ? 100 : 20
@@ -54,6 +59,26 @@ async function getAssistantMessages(ctx: Ctx, threadId: Id<'assistantThreads'>, 
     .take(limit)
 
   return messages.reverse()
+}
+
+// Hard retention cap: 200 messages/thread, trim oldest. No grandfathering.
+export async function trimAssistantThreadToCap(
+  ctx: MutationCtx,
+  threadId: Id<'assistantThreads'>,
+) {
+  while (true) {
+    const newestFirst = await ctx.db
+      .query('assistantMessages')
+      .withIndex('by_createdAt', (q) => q.eq('threadId', threadId))
+      .order('desc')
+      .take(500)
+    const overflow = overflowBeyondCap(newestFirst, ASSISTANT_MESSAGES_PER_THREAD_CAP)
+    if (overflow.length === 0) break
+    for (const message of overflow) {
+      await ctx.db.delete(message._id)
+    }
+    if (newestFirst.length < 500) break
+  }
 }
 
 async function getAssistantUsage(
@@ -517,6 +542,21 @@ export const assistantCreateSchedule = internalMutation({
     const user = await ctx.db.get(args.userId)
     if (!user) throw new ConvexError('Pengguna tidak ditemukan')
 
+    // Hard cap: 20 schedules/plant — reject over cap, no grandfathering.
+    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
+    const plant = device?.plantId ? await ctx.db.get(device.plantId) : null
+    if (plant && !plant.archived) {
+      const existing = await ctx.db
+        .query('careSchedules')
+        .withIndex('by_plant', (q) => q.eq('plantId', plant._id))
+        .take(CARE_SCHEDULES_PER_PLANT_CAP + 1)
+      if (existing.length >= CARE_SCHEDULES_PER_PLANT_CAP) {
+        throw new ConvexError(
+          'Batas jadwal perawatan tercapai (maksimal 20 per tanaman). Hapus jadwal yang tidak dipakai sebelum menambah.',
+        )
+      }
+    }
+
     const { scheduleId, title, cadence } = await saveScheduleCore(ctx, user, args)
     return { success: true, scheduleId, title, cadenceLabel: formatScheduleCadence(cadence) }
   },
@@ -569,6 +609,9 @@ export const sendAssistantMessage = mutation({
       status: 'streaming',
       createdAt: now + 1,
     })
+
+    // Hard retention cap: trim oldest beyond 200/thread on every insert.
+    await trimAssistantThreadToCap(ctx, thread._id)
 
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
     const plant = device?.plantId ? await ctx.db.get(device.plantId) : null

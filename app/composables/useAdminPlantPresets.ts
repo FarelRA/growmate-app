@@ -11,8 +11,8 @@ import {
   DEFAULT_WATERING_THRESHOLD,
   type LifecycleProfile,
   type PlantSensorProfile,
-  type PlantLifecycleStage,
-} from '@/lib/plants'
+  type PlantStageValue as PlantLifecycleStage,
+} from '~~/convex/types'
 import { uploadImageFile } from '@/utils/uploads'
 import { useImageUpload } from './useImageUpload'
 import type { AdminTab } from './useAdminDevices'

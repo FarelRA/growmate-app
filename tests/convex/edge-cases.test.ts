@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { estimateBatterySoC, evaluateFertilizingRule, evaluatePesticideRule } from '../../convex/helpers/v2sensors'
-import { parseStreamUrl } from '../../convex/helpers/streams'
+import { parseStreamUrl } from '../../shared/utils/streamUrl'
 import {
   buildQueuedFertilizerAction,
   buildQueuedPesticideAction,

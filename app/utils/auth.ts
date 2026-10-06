@@ -13,13 +13,7 @@ const isAuthenticated = ref(false)
 let authStateInitialized = false
 let storageListener: ((event: StorageEvent) => void) | null = null
 
-export type SetupStatus = {
-  authenticated?: boolean
-  setupComplete?: boolean
-  nextStep?: 'complete-profile' | 'claim-device' | 'select-plant' | 'done'
-  nextDeviceId?: string | null
-  isAdmin?: boolean
-}
+import type { SetupStatus } from '~~/shared/utils/setup'
 
 function storageKey(key: string) {
   return `${key}_${encodeURIComponent(getConvexUrl())}`

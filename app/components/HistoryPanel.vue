@@ -9,7 +9,11 @@ const props = defineProps<{
     timeline: { _id: string; title: string; detail?: string; timestampLabel: string; relativeTime: string }[]
     currentPlant: { name: string; species: string } | null
     imageHistory: { _id: string; imageUrl: string | null; capturedAtLabel: string }[]
-    archivedPlants: { _id: string; name: string; species: string; plantedAtLabel: string; archivedAtLabel: string | null }[]
+    archivedPlants: {
+      page: { _id: string; name: string; species: string; plantedAtLabel: string; archivedAtLabel: string | null }[]
+      isDone: boolean
+      continueCursor: string
+    }
     recordings?: {
       _id: string
       fileName: string
@@ -235,9 +239,9 @@ function formatDuration(ms?: number): string {
         <article class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
           <p class="text-xs font-bold uppercase tracking-[0.2em] text-gm-primary">Arsip</p>
           <h2 class="mt-2 font-headline text-2xl font-black tracking-tight text-gm-text">Tanaman sebelumnya pada pod ini</h2>
-          <div v-if="historyData.archivedPlants.length" class="mt-4 space-y-3">
+          <div v-if="historyData.archivedPlants.page.length" class="mt-4 space-y-3">
             <article
-              v-for="plant in historyData.archivedPlants"
+              v-for="plant in historyData.archivedPlants.page"
               :key="plant._id"
               class="rounded-[1.5rem] bg-[#f3f3f3] p-4"
             >

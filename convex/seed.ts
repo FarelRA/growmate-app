@@ -1,16 +1,25 @@
 "use node";
 
 /**
- * Seed entry point (public CLI surface).
+ * Seed entry point (CLI surface).
  *
- * This file is the ONLY seed module invoked from package.json scripts:
- *   - `convex run seed:admin`    -> {@link admin}
- *   - `convex run seed:plants`   -> {@link plants}
- *   - `convex run seed:products` -> {@link products}
- *   - `convex run seed:blog`     -> {@link blog}
- *   (`convex:seed:all` runs those four sequentially; see package.json.)
+ * This file is the ONLY seed module invoked from package.json scripts —
+ * exactly one script per dataset, in `comprehensive` run order:
+ *   - `convex run seed:admin`         -> {@link admin}
+ *   - `convex run seed:plants`        -> {@link plants}
+ *   - `convex run seed:users`         -> {@link users}
+ *   - `convex run seed:devices`       -> {@link devices}
+ *   - `convex run seed:processClaims` -> {@link processClaims} (script: convex:seed:claims)
+ *   - `convex run seed:products`      -> {@link products}
+ *   - `convex run seed:community`     -> {@link community}
+ *   - `convex run seed:blog`          -> {@link blog}
+ * A full seed is ONLY `convex run seed:comprehensive` (script:
+ * `convex:seed:all`); there is no npm-chained multi-invoke path.
  *
- * The exported names above MUST keep working, so do not rename them.
+ * All exports are `internalAction`: unreachable from clients over HTTP,
+ * but runnable from the CLI (`convex run` supports public AND internal
+ * functions) and the dashboard. Do NOT widen these to public `action` —
+ * seed writes must never be client-triggerable.
  *
  * DB-level helpers (internal queries/mutations/actions) live in
  * `./seedInternal` and are called via `internal.seedInternal.*`.

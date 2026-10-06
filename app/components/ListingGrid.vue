@@ -8,6 +8,7 @@ defineProps<{
   searchQuery: string
   selectedCategory: string
   hasWorkingImage: (id: string, imageUrl?: string | null) => boolean
+  readonly?: boolean
 }>()
 
 defineEmits<{
@@ -164,12 +165,20 @@ defineEmits<{
             {{ item.sellerName }}
           </div>
           <button
+            v-if="!readonly"
             @click="$emit('openInquiry', item)"
             class="w-full rounded-full bg-gm-primary px-5 py-3 text-sm font-bold text-white"
             :disabled="item.status !== 'active'"
           >
             {{ item.contactThreadId ? 'Buka Percakapan' : 'Hubungi Penjual' }}
           </button>
+          <NuxtLink
+            v-else
+            to="/login"
+            class="block w-full rounded-full bg-gm-primary px-5 py-3 text-center text-sm font-bold text-white"
+          >
+            Masuk untuk menghubungi
+          </NuxtLink>
         </div>
       </article>
     </div>

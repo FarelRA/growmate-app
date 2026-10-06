@@ -1,5 +1,6 @@
 import { ref, watch } from 'vue'
 import type { Ref } from 'vue'
+import { getAuthToken } from '@/utils/auth'
 import { getErrorMessage } from '~~/shared/utils/errors'
 
 export interface DeviceRecording {
@@ -31,7 +32,10 @@ export function useRecordings(deviceId: Ref<string | undefined>, isV2: Ref<boole
     recordingsLoading.value = true
     recordingsError.value = null
     try {
-      const resp = await fetch(`/api/v2/recordings/${encodeURIComponent(id)}`)
+      const token = await getAuthToken()
+      const resp = await fetch(`/api/v2/recordings/${encodeURIComponent(id)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
       if (!resp.ok) {
         throw new Error(`Gagal memuat rekaman (HTTP ${resp.status})`)
       }

@@ -12,7 +12,7 @@ function makeHistoryData(overrides = {}) {
     timeline: [],
     currentPlant: null,
     imageHistory: [],
-    archivedPlants: [],
+    archivedPlants: { page: [], isDone: true, continueCursor: '' },
     recordings: undefined,
     ...overrides,
   }

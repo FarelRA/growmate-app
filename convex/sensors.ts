@@ -15,6 +15,21 @@ import { shouldSkipSensorRecordedEvent } from './helpers/events'
 
 export const MAX_SENSORS_PER_POST = 8
 
+// Device auth: all device-facing mutations below require `deviceKey: v.string()`.
+// The expected value comes from the `DEVICE_API_KEY` env var, which MUST be set
+// on the Convex deployment (self-hosted actions read container env). Nitro
+// passes the key server-side; browsers never see it. Fail closed when unset.
+
+function assertDeviceKey(deviceKey: string) {
+  const expected = process.env.DEVICE_API_KEY
+  if (!expected) {
+    throw new ConvexError('server misconfigured')
+  }
+  if (deviceKey !== expected) {
+    throw new ConvexError('Unauthorized')
+  }
+}
+
 type DeviceUpdateValue = boolean | number | string | Record<string, unknown> | null | undefined
 
 interface IngestionResult {
@@ -266,6 +281,7 @@ function evaluateLightingRule(
 }
 
 const ingestSensorDataArgs = {
+  deviceKey: v.string(),
   deviceId: v.string(),
   firmwareVersion: v.optional(v.string()),
   currentState: v.optional(
@@ -297,6 +313,7 @@ const ingestSensorDataArgs = {
 }
 
 type IngestSensorDataArgs = {
+  deviceKey: string
   deviceId: string
   firmwareVersion?: string
   currentState?: {
@@ -546,6 +563,7 @@ async function performIngest(
 export const ingestSensorData = mutation({
   args: ingestSensorDataArgs,
   handler: async (ctx, args) => {
+    assertDeviceKey(args.deviceKey)
     assertSensorCap(args.sensors)
     return await performIngest(ctx, args, { ack: false })
   },
@@ -554,6 +572,7 @@ export const ingestSensorData = mutation({
 export const ingestAndAckSensorData = mutation({
   args: ingestSensorDataArgs,
   handler: async (ctx, args) => {
+    assertDeviceKey(args.deviceKey)
     assertSensorCap(args.sensors)
     return await performIngest(ctx, args, { ack: true })
   },
@@ -561,6 +580,7 @@ export const ingestAndAckSensorData = mutation({
 
 export const clearDeviceCommands = mutation({
   args: {
+    deviceKey: v.string(),
     deviceId: v.string(),
     commands: v.array(v.union(
       v.literal('pump'),
@@ -570,6 +590,7 @@ export const clearDeviceCommands = mutation({
     )),
   },
   handler: async (ctx, args) => {
+    assertDeviceKey(args.deviceKey)
     const device = await getDeviceByExternalId(ctx, args.deviceId)
     if (!device) {
       return { success: false, cleared: false }
@@ -610,11 +631,13 @@ export const clearDeviceCommands = mutation({
 
 export const ingestCameraImage = mutation({
   args: {
+    deviceKey: v.string(),
     deviceId: v.string(),
     imageUrl: v.string(),
     capturedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    assertDeviceKey(args.deviceKey)
     const device = await ensureDeviceExists(ctx, args.deviceId)
     const plant: PlantDoc | null = device.plantId ? await ctx.db.get(device.plantId) as PlantDoc | null : null
     const activePlant = plant && !plant.archived ? plant : null

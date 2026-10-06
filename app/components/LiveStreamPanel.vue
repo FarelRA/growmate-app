@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { authState, getAuthToken } from '@/utils/auth'
 
 const props = defineProps<{
   deviceId: string
@@ -23,8 +24,9 @@ const webCodecsSupported = typeof VideoDecoder !== 'undefined' && typeof Encoded
 
 function buildWsUrl() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const url = `${protocol}//${window.location.host}/api/v2/stream/${props.deviceId}/live`
-  return url
+  const baseUrl = `${protocol}//${window.location.host}/api/v2/stream/${props.deviceId}/live`
+  const token = authState.token.value
+  return token ? `${baseUrl}?token=${encodeURIComponent(token)}` : baseUrl
 }
 
 function initDecoder() {
@@ -121,9 +123,10 @@ function connectWs() {
       timerInterval = null
     }
     ws = null
-    // Auto-reconnect after 3s
+    // Auto-reconnect after 3s with a freshly refreshed token, so an
+    // expired JWT does not turn into a permanent 401 reconnect loop.
     reconnectTimer = setTimeout(() => {
-      if (webCodecsSupported) connectWs()
+      if (webCodecsSupported) void refreshTokenAndReconnect()
     }, 3000)
   }
 
@@ -133,6 +136,16 @@ function connectWs() {
     loading.value = false
     error.value = 'Koneksi WebSocket gagal'
   }
+}
+
+async function refreshTokenAndReconnect() {
+  try {
+    await getAuthToken({ forceRefreshToken: true })
+  } catch {
+    // Fall back to the cached token; the server rejects expired tokens
+    // and the reconnect loop retries.
+  }
+  connectWs()
 }
 
 function toggleFullscreen() {

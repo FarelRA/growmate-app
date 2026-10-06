@@ -7,9 +7,7 @@ import {
 import { defaultPlantSensorProfile as helperDefaultProfile } from '../../convex/helpers/sensors'
 import {
   defaultCustomPlantPreset,
-  defaultPlantSensorProfile as appDefaultProfile,
-  defaultLifecycleProfile as appLifecycle,
-} from '../../app/lib/plants'
+} from '../../app/utils/plant-presets'
 import { formatDeviceDetail } from '../../convex/helpers/devices'
 import {
   toggleScheduleCore,
@@ -33,11 +31,11 @@ describe('audit fixes: single sources and shared helpers', () => {
       water: { min: 20, max: 90 },
     })
     expect(helperDefaultProfile).toEqual(typesDefaultProfile)
-    expect(appDefaultProfile).toEqual(typesDefaultProfile)
+    expect(defaultCustomPlantPreset.sensorProfile).toEqual(typesDefaultProfile)
   })
 
-  it('app/lib/plants.ts re-exports lifecycle defaults from types.ts', () => {
-    expect(appLifecycle).toEqual(defaultLifecycleProfile)
+  it('app/utils/plant-presets.ts uses lifecycle defaults from types.ts', () => {
+    expect(defaultCustomPlantPreset.lifecycleProfile).toEqual(defaultLifecycleProfile)
   })
 
   it('wateringThreshold drift fixed: custom preset uses 35', () => {

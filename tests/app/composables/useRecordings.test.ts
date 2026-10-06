@@ -3,6 +3,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref, nextTick } from 'vue'
 import { useRecordings } from '../../../app/composables/useRecordings'
 
+vi.mock('@/utils/auth', () => ({
+  getAuthToken: vi.fn(async () => 'test-token'),
+}))
+
 describe('useRecordings', () => {
   const fetchMock = vi.fn()
 
@@ -92,6 +96,22 @@ describe('useRecordings', () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(recordingsError.value).toContain('500')
+  })
+
+  it('sends the Bearer auth token (endpoint requires it)', async () => {
+    const deviceId = ref<string | undefined>('GM-007')
+    const isV2 = ref(true)
+    fetchMock.mockResolvedValue(okPayload([]))
+
+    useRecordings(deviceId, isV2)
+    await nextTick()
+    await nextTick()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      headers: { Authorization: 'Bearer test-token' },
+    })
   })
 
   it('retryRecordings re-attempts the load and clears the error on success', async () => {

@@ -1,18 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest'
 import { EventEmitter } from 'node:events'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const { createConnectionMock } = vi.hoisted(() => ({
+const { createConnectionMock, mockMutation } = vi.hoisted(() => ({
   createConnectionMock: vi.fn(),
+  mockMutation: vi.fn().mockResolvedValue({}),
 }))
 
 vi.mock('node:net', () => ({
   default: {
     createConnection: (...args: unknown[]) => (createConnectionMock as any)(...args),
   },
+}))
+
+vi.mock('~~/convex/_generated/api', () => ({
+  api: { streams: { recordStreamSegment: 'recordStreamSegment' } },
 }))
 
 vi.mock('../../server/utils/storage', () => ({
@@ -22,7 +27,7 @@ vi.mock('../../server/utils/storage', () => ({
 }))
 
 vi.mock('../../server/utils/convex', () => ({
-  useConvex: () => ({ mutation: vi.fn().mockResolvedValue({}), query: vi.fn() }),
+  useConvex: () => ({ mutation: mockMutation, query: vi.fn() }),
   useConvexAuth: () => ({}),
 }))
 
@@ -93,6 +98,9 @@ afterAll(() => {
 beforeEach(() => {
   createConnectionMock.mockReset()
   createConnectionMock.mockImplementation(() => new FakeSocket())
+  mockMutation.mockClear()
+  mockMutation.mockResolvedValue({})
+  process.env.DEVICE_API_KEY = 'test-key'
 })
 
 afterEach(() => {
@@ -220,6 +228,31 @@ describe('streamManager NAL framing caps', () => {
     expect(idrMsg.subarray(0, 1)).toHaveLength(1)
     expect(idrMsg.subarray(1, 7)).toHaveLength(6)
     expect([...idrMsg.subarray(7)]).toEqual([0x05, 0x99])
+  })
+})
+
+describe('streamManager device auth', () => {
+  it('throws at connect-time when DEVICE_API_KEY is unset (fail closed)', async () => {
+    delete process.env.DEVICE_API_KEY
+    await expect(mgr.connect('dev-nokey', '127.0.0.1', 8554)).rejects.toThrow(
+      'DEVICE_API_KEY is not configured',
+    )
+    expect(mgr.streams.has('dev-nokey')).toBe(false)
+  })
+
+  it('passes deviceKey to recordStreamSegment on segment upload', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gm-segkey-'))
+    const file = join(dir, 'seg.h264')
+    writeFileSync(file, Buffer.from('segment-data'))
+    try {
+      await mgr.uploadSegment('dev-key', file, Date.now())
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+    expect(mockMutation).toHaveBeenCalledWith(
+      'recordStreamSegment',
+      expect.objectContaining({ deviceId: 'dev-key', deviceKey: 'test-key' }),
+    )
   })
 })
 

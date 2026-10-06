@@ -7,13 +7,15 @@ import { activeDeviceId, setActiveDeviceId, syncActiveDevice } from '@/composabl
 import { getErrorMessage } from '~~/shared/utils/errors'
 import {
   defaultCustomPlantPreset,
-  defaultPlantSensorProfile,
   lifecycleStageOptions,
-  type LifecycleProfile,
   type PlantPreset,
+} from '@/utils/plant-presets'
+import {
+  defaultPlantSensorProfile,
+  type LifecycleProfile,
   type PlantSensorProfile,
-  type PlantLifecycleStage,
-} from '@/lib/plants'
+  type PlantStageValue as PlantLifecycleStage,
+} from '~~/convex/types'
 import { uploadImageFile } from '@/utils/uploads'
 import { cloneSensorProfile } from '@/composables/useAdminPlantPresets'
 import { useImageUpload } from '@/composables/useImageUpload'

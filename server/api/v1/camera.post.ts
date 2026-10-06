@@ -1,18 +1,11 @@
 import { api } from '~~/convex/_generated/api'
 import { useConvex } from '~~/server/utils/convex'
-import { processImage, generateHash } from '~~/server/utils/images'
-import { uploadFile } from '~~/server/utils/storage'
-
-const DEVICE_API_KEY = process.env.DEVICE_API_KEY
-const IMAGE_BUCKET = process.env.MINIO_BUCKET_IMAGE ?? 'images'
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024
+import { requireDeviceKey } from '~~/server/utils/requireDeviceKey'
+import { runUploadPipeline, MAX_IMAGE_BYTES } from '~~/server/utils/uploadPipeline'
 
 export default defineEventHandler(async (event) => {
   try {
-    const apiKey = getHeader(event, 'x-api-key')
-    if (DEVICE_API_KEY && apiKey !== DEVICE_API_KEY) {
-      throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-    }
+    const deviceKey = requireDeviceKey(event)
 
     const deviceId = getHeader(event, 'x-device-id')?.trim()
     if (!deviceId) {
@@ -40,26 +33,15 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: 'Image body is required' })
     }
 
-    if (rawBody.length > MAX_IMAGE_BYTES) {
-      throw createError({ statusCode: 413, statusMessage: 'Image too large (max 20MB)' })
-    }
-
     const input = Buffer.from(rawBody)
-    const hash = generateHash(input)
-    const pathPrefix = hash
-
-    const sizes = [50, 200, 400, 800, 1200]
-    const images = await processImage(input, sizes)
-
-    for (const image of images) {
-      await uploadFile(IMAGE_BUCKET, `${pathPrefix}/${image.size}w.webp`, image.buffer, 'image/webp')
-    }
+    const { path: pathPrefix } = await runUploadPipeline(input)
 
     const convex = useConvex()
     await convex.mutation(api.sensors.ingestCameraImage, {
       deviceId,
       imageUrl: pathPrefix,
       capturedAt: Date.now(),
+      deviceKey,
     })
 
     return { success: true, path: pathPrefix }

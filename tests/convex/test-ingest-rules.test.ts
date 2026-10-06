@@ -17,6 +17,12 @@ import { createFakeCtx, callHandler, type FakeCtx } from './test-ingest-rules-fa
 
 const now = Date.now()
 
+const TEST_DEVICE_KEY = 'test-device-key'
+
+beforeEach(() => {
+  process.env.DEVICE_API_KEY = TEST_DEVICE_KEY
+})
+
 function baseDevice(overrides: Record<string, any> = {}): DeviceDoc {
   return {
     deviceId: 'GM-TEST',
@@ -240,6 +246,7 @@ describe('ingestSensorData watering rule (v1)', () => {
   it('queues a pump command when soil is below the plant threshold', async () => {
     await seedDeviceWithPlant(ctx)
     const res = await callHandler(ingestSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-TEST',
       sensors: [...soilDry, { kind: 'water', value: 60, unit: '%' }],
     })
@@ -253,6 +260,7 @@ describe('ingestSensorData watering rule (v1)', () => {
   it('does nothing when soil is above threshold', async () => {
     await seedDeviceWithPlant(ctx)
     const res = await callHandler(ingestSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-TEST',
       sensors: [...soilWet, { kind: 'water', value: 60, unit: '%' }],
     })
@@ -262,6 +270,7 @@ describe('ingestSensorData watering rule (v1)', () => {
   it('dry-tank interlock: blocks watering when water level <= 5', async () => {
     await seedDeviceWithPlant(ctx)
     const res = await callHandler(ingestSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-TEST',
       sensors: [...soilDry, { kind: 'water', value: 3, unit: '%' }],
     })
@@ -272,14 +281,16 @@ describe('ingestSensorData watering rule (v1)', () => {
   it('cooldown: second dry ingest does not re-queue until cooldown elapses', async () => {
     const { deviceId } = await seedDeviceWithPlant(ctx)
     const first = await callHandler(ingestSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-TEST',
       sensors: [...soilDry, { kind: 'water', value: 60, unit: '%' }],
     })
     expect(first.commands).toHaveLength(1)
     const lastWatered = (await ctx.db.get(deviceId))!.lastWatered
-    await callHandler(clearDeviceCommands, ctx, { deviceId: 'GM-TEST', commands: ['pump'] })
+    await callHandler(clearDeviceCommands, ctx, { deviceKey: TEST_DEVICE_KEY, deviceId: 'GM-TEST', commands: ['pump'] })
 
     const second = await callHandler(ingestSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-TEST',
       sensors: [...soilDry, { kind: 'water', value: 60, unit: '%' }],
     })
@@ -290,6 +301,7 @@ describe('ingestSensorData watering rule (v1)', () => {
   it('does not water when autoWatering is off', async () => {
     await seedDeviceWithPlant(ctx, { autoWatering: false })
     const res = await callHandler(ingestSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-TEST',
       sensors: [...soilDry, { kind: 'water', value: 60, unit: '%' }],
     })
@@ -306,6 +318,7 @@ describe('ingestSensorData lighting rule (v1)', () => {
   it('turns the grow light on when ambient light is below threshold', async () => {
     await seedDeviceWithPlant(ctx)
     const res = await callHandler(ingestSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-TEST',
       sensors: [{ kind: 'light', value: 10, unit: '%' }],
     })
@@ -317,6 +330,7 @@ describe('ingestSensorData lighting rule (v1)', () => {
   it('turns the light off only past threshold + hysteresis', async () => {
     await seedDeviceWithPlant(ctx, { lightEnabled: true })
     const off = await callHandler(ingestSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-TEST',
       sensors: [{ kind: 'light', value: 60, unit: '%' }],
     })
@@ -325,8 +339,9 @@ describe('ingestSensorData lighting rule (v1)', () => {
 
   it('holds state inside the hysteresis band', async () => {
     await seedDeviceWithPlant(ctx, { lightEnabled: true })
-    await callHandler(clearDeviceCommands, ctx, { deviceId: 'GM-TEST', commands: ['light'] })
+    await callHandler(clearDeviceCommands, ctx, { deviceKey: TEST_DEVICE_KEY, deviceId: 'GM-TEST', commands: ['light'] })
     const hold = await callHandler(ingestSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-TEST',
       sensors: [{ kind: 'light', value: 44, unit: '%' }],
     })
@@ -345,6 +360,7 @@ describe('ingestSensorData v2 rules (fertilizing + pesticide)', () => {
     // watering threshold (30), so only the fertilizing rule fires.
     await seedDeviceWithPlant(ctx, { version: 'v2', autoFertilizing: true })
     const res = await callHandler(ingestSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-TEST',
       sensors: [
         { kind: 'soil', value: 32, unit: '%' },
@@ -371,6 +387,7 @@ describe('ingestSensorData v2 rules (fertilizing + pesticide)', () => {
   it('v2 dry-tank interlock blocks fertilizing too', async () => {
     await seedDeviceWithPlant(ctx, { version: 'v2', autoFertilizing: true })
     const res = await callHandler(ingestSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-TEST',
       sensors: [...soilDry, { kind: 'water', value: 4, unit: '%' }],
     })
@@ -380,6 +397,7 @@ describe('ingestSensorData v2 rules (fertilizing + pesticide)', () => {
   it('schedules pesticide on high humidity pest risk', async () => {
     await seedDeviceWithPlant(ctx, { version: 'v2', autoPesticide: true })
     const res = await callHandler(ingestSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-TEST',
       sensors: [{ kind: 'air', value: 90, unit: '%' }],
     })
@@ -393,6 +411,7 @@ describe('ingestSensorData v2 rules (fertilizing + pesticide)', () => {
   it('no pesticide on normal humidity', async () => {
     await seedDeviceWithPlant(ctx, { version: 'v2', autoPesticide: true })
     const res = await callHandler(ingestSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-TEST',
       sensors: [{ kind: 'air', value: 60, unit: '%' }],
     })

@@ -27,8 +27,37 @@ function getClient(): S3Client {
   return _client
 }
 
-export async function ensureBucket(bucket: string): Promise<void> {
-  if (_bucketPromises.has(bucket)) return _bucketPromises.get(bucket)!
+/** Browser-reachable MinIO base URL. Never the internal docker hostname. */
+function publicBaseUrl(): string {
+  const raw =
+    process.env.NUXT_PUBLIC_MINIO_BASE_URL ??
+    process.env.MINIO_ENDPOINT ??
+    'http://localhost:9000'
+  return raw.replace(/\/+$/, '')
+}
+
+/**
+ * Signing-only S3 client pointed at the PUBLIC MinIO host.
+ * Presigning is local crypto (no transport), so this client must use the
+ * browser-reachable base URL — signing with the internal endpoint bakes an
+ * unresolvable hostname (e.g. http://minio:9000) into every URL.
+ * Built fresh per call so env changes are always honored.
+ */
+export function s3PublicClient(): S3Client {
+  return new S3Client({
+    endpoint: publicBaseUrl(),
+    credentials: {
+      accessKeyId: process.env.MINIO_ACCESS_KEY ?? '',
+      secretAccessKey: process.env.MINIO_SECRET_KEY ?? '',
+    },
+    region: 'auto',
+    forcePathStyle: true,
+  })
+}
+
+export async function ensureBucket(bucket: string, opts: { publicRead: boolean }): Promise<void> {
+  const cacheKey = `${bucket}:${opts.publicRead ? 'public' : 'private'}`
+  if (_bucketPromises.has(cacheKey)) return _bucketPromises.get(cacheKey)!
 
   const promise = (async () => {
     const client = getClient()
@@ -41,12 +70,16 @@ export async function ensureBucket(bucket: string): Promise<void> {
           ? (error as { name: string }).name === 'NotFound'
           : false
       if (!is404) {
-        _bucketPromises.delete(bucket)
+        _bucketPromises.delete(cacheKey)
         throw error
       }
     }
 
     await client.send(new CreateBucketCommand({ Bucket: bucket }))
+
+    // Private buckets stay private by default (unauthenticated GETs 403).
+    // Only image buckets get a public GetObject policy.
+    if (!opts.publicRead) return
 
     await client.send(
       new PutBucketPolicyCommand({
@@ -66,7 +99,7 @@ export async function ensureBucket(bucket: string): Promise<void> {
     )
   })()
 
-  _bucketPromises.set(bucket, promise)
+  _bucketPromises.set(cacheKey, promise)
   return promise
 }
 
@@ -79,8 +112,9 @@ export async function uploadFile(
   key: string,
   buffer: Buffer,
   contentType: string,
+  opts: { publicRead: boolean },
 ): Promise<void> {
-  await ensureBucket(bucket)
+  await ensureBucket(bucket, opts)
   const client = getClient()
   await client.send(
     new PutObjectCommand({

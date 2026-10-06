@@ -26,6 +26,7 @@ Built with **Nuxt 4**, **Vue 3**, **Convex**, **MinIO**, and **Tailwind CSS v4**
 - [Project Structure](#project-structure)
 - [Scripts](#scripts)
 - [Deployment](#deployment)
+- [Traffic & gateway](#traffic--gateway)
 - [Environment Reference](#environment-reference)
 - [Database](#database)
 - [Stack](#stack)
@@ -78,33 +79,36 @@ The app is available at `http://localhost:3000`.
 ## Project Structure
 
 ```
-app/              # Nuxt application (pages, components, composables, lib)
+app/              # Nuxt app (file-based routing, auto-imported dirs)
   assets/         # Global CSS (Tailwind entry point)
-  components/     # UI components (shell, chat, marketing, charts)
+  components/     # UI components (shell, chat, marketing, admin, charts)
   composables/    # Vue composables (dashboard, admin, marketplace, etc.)
-  lib/            # Utilities (auth, images, errors, SEO, markdown)
-  pages/          # File-based routing (25+ pages)
+  middleware/     # Global auth middleware (auth.global.ts)
+  pages/          # Routes, incl. blog/, products/, stories/ subdirs
   plugins/        # Convex Vue client plugin
-  middleware/     # Global auth middleware
-components/       # Page-specific components (admin, dashboard, marketplace panels)
+  utils/          # App helpers (auth, images, uploads, markdown, plant-presets)
+  app.vue, error.vue
 convex/           # Convex backend
   _generated/     # Auto-generated client types
   helpers/        # Reusable query/mutation helpers
-  seedData/       # Seed data for plants, products, blog
-  schema.ts       # Database schema (23 tables)
-  auth.ts         # Auth configuration
-  *.ts            # Feature modules (plants, devices, sensors, blog, etc.)
+  migrations/     # One-off data migrations
+  seedData/       # Seed data for plants, products, blog, community
+  schema.ts       # Database schema
+  auth.ts, auth.config.ts, customPassword.ts, types.ts
+  *.ts            # Feature modules (plants, devices, sensors, streams, blog, etc.)
 server/           # Nitro server layer
-  api/v1/, api/v2/ # REST endpoints (camera, sensors, upload, stream)
-  utils/          # Server utilities (Convex client, images, storage, sitemap)
+  api/v1/         # REST endpoints (camera, sensors, upload)
+  api/v2/         # REST + WebSocket endpoints (sensors, recordings, stream)
+  routes/         # sitemap.xml route
+  utils/          # Server utilities (Convex client, images, storage, streamManager, …)
 shared/           # Cross-context pure code (auto-imported app + server)
-  utils/          # seo, errors, images, glossary, setup
-  types/          # shared TypeScript types
-tests/            # Tests (mirrors source tree)
+  utils/          # errors, glossary, images, seo, setup, streamUrl
+tests/            # Tests (mirror source tree)
   app/            # Component, composable, and util tests
-  convex/         # Helper and type tests
+  convex/         # Backend helper and rule tests
   server/         # API route and utility tests
   e2e/            # Playwright E2E tests
+  setup/          # Vitest setup
 public/           # Static assets (icons, favicon)
 ```
 
@@ -299,6 +303,27 @@ On the server, set up a webhook or cron to pull and restart:
 docker compose pull && docker compose up -d
 ```
 
+## Traffic & gateway
+
+All public traffic enters through Traefik (TLS via Let's Encrypt) and fans out by host:
+
+```
+internet ── :443 ──▶ traefik ─┬─ growmate.bond ────────▶ growmate:3000 (Nuxt + Nitro)
+                               ├─ convex.growmate.bond ─▶ convex:3210 (/api/*, /instance_name)
+                               │                          └▶ convex:3211 (everything else)
+                               └─ storage.growmate.bond ─▶ minio:9000 (S3)
+```
+
+The browser opens 3 connections: same-origin pages/API via Nitro, Convex queries/subscriptions direct to the Convex host, and images direct to the storage host. The browser bypasses Nitro for Convex data — deliberate (realtime subscriptions); auth is enforced inside Convex functions, not at the edge.
+
+- Device ingest: `POST growmate.bond/api/v1|v2/...` with `x-api-key: <DEVICE_API_KEY>` → Nitro `requireDeviceKey` (500 when the key is unset — fail-closed) → Convex mutation re-checks `deviceKey` server-side (`convex/sensors.ts`, `convex/streams.ts`).
+- Nitro reaches Convex over `CONVEX_INTERNAL_URL` (`http://convex:3210`), never the public hairpin (`server/utils/convex.ts`).
+- Live video WS (`/api/v2/stream/:id/live`) requires `?token=` plus device ownership; recordings require `Bearer` plus ownership and are served as 1h presigned URLs from the private `recordings` bucket (signed against the public MinIO host, `server/utils/storage.ts`).
+- Stream registration runs an SSRF guard (`isBlockedStreamHost`): loopback / link-local / RFC-1918 / service names rejected, Tailscale `100.64/10` intentionally allowed.
+- Edge hardening (compose + Nuxt): `api-ratelimit` (100 avg / 200 burst) on the MinIO + Convex API routers, `www` → apex redirect, digest-pinned app + Convex images, healthchecks + `restart: unless-stopped`, tightened CSP (`connect-src` limited to self + Convex + storage hosts).
+
+Secrets (`DEVICE_API_KEY`, `MINIO_SECRET_KEY`, `CONVEX_INTERNAL_URL`, …) live only in server/container env — the browser sees just `NUXT_PUBLIC_CONVEX_URL`, `NUXT_PUBLIC_MINIO_BASE_URL`, and the image bucket name.
+
 ## Environment Reference
 
 **Docker Compose env vars** (set in `.env`, consumed by containers):
@@ -315,7 +340,7 @@ docker compose pull && docker compose up -d
 | `MINIO_BUCKET_IMAGE` | Nuxt, Convex | S3 bucket for plant images |
 | `NUXT_PUBLIC_MINIO_BASE_URL` | Nuxt | Public MinIO URL |
 | `NUXT_PUBLIC_CONVEX_URL` | Nuxt | Public Convex URL (for browser) |
-| `DEVICE_API_KEY` | Nuxt | IoT device auth |
+| `DEVICE_API_KEY` | Nitro device routes + Convex ingest/stream mutations | IoT device auth |
 | `OPENAI_API_KEY` | Nuxt | Gemini/OpenAI API key |
 
 **Convex user env vars** (set via `npx convex env set`, stored in Convex DB):
@@ -338,7 +363,6 @@ docker compose pull && docker compose up -d
 | `public.convexUrl` | `NUXT_PUBLIC_CONVEX_URL` | `VITE_CONVEX_URL` fallback |
 | `public.imageBaseUrl` | `NUXT_PUBLIC_MINIO_BASE_URL` | `https://storage.growmate.bond` |
 | `public.minioBucketImage` | `NUXT_PUBLIC_MINIO_BUCKET_IMAGE` | `images` |
-| `deviceApiKey` | `DEVICE_API_KEY` | — |
 
 ## Database
 

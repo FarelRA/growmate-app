@@ -11,6 +11,16 @@ const env = (globalThis as { process?: { env?: Record<string, string | undefined
 const OPENAI_BASE_URL = env.OPENAI_BASE_URL ?? "https://gateway.farel.at.eu.org/v1";
 const OPENAI_MODEL = env.OPENAI_MODEL ?? "gemini/gemini-3.1-flash-lite";
 
+const AI_BACKEND_ENV_KEYS = ["OPENAI_BASE_URL", "OPENAI_API_KEY", "OPENAI_MODEL"] as const;
+
+export type AiBackendEnvKey = (typeof AI_BACKEND_ENV_KEYS)[number];
+
+export function getAiBackendStatus(): { configured: boolean; missing: string[] } {
+  const live = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+  const missing = AI_BACKEND_ENV_KEYS.filter((key) => !live[key]?.trim());
+  return { configured: missing.length === 0, missing: [...missing] };
+}
+
 function buildSystemPrompt() {
   return [
     "You are Floral Assistant, the GrowMate AI copilot.",
@@ -349,17 +359,11 @@ export const generateAIResponse = internalAction({
     context: assistantContextValidator,
   },
   handler: async (ctx, args) => {
-    const apiKey = env.OPENAI_API_KEY;
-
-    if (!apiKey) {
-      const message = "Asisten Floral tidak tersedia karena OPENAI_API_KEY belum dikonfigurasi.";
-      await ctx.runMutation(internal.assistant.insertAIResponse, {
-        assistantMessageId: args.assistantMessageId,
-        body: message,
-        status: "error",
-      });
-      throw new Error(message);
+    const backend = getAiBackendStatus();
+    if (!backend.configured) {
+      throw new Error("Asisten Floral tidak tersedia karena OPENAI_API_KEY belum dikonfigurasi.");
     }
+    const apiKey = env.OPENAI_API_KEY as string;
 
     try {
       const client = new OpenAI({

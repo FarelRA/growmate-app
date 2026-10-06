@@ -14,6 +14,19 @@ export const MAX_VIEWERS_PER_DEVICE = 20
 export const MAX_PENDING_UPLOADS = 32
 export const MAX_NAL_BUFFER_BYTES = 2 * 1024 * 1024
 
+/**
+ * Server-side device key for Convex mutations (same trust domain — this code
+ * only runs on the server). Fail-closed: a missing key is a misconfiguration
+ * and must throw instead of allowing unauthenticated writes.
+ */
+function readDeviceKey(): string {
+  const key = process.env.DEVICE_API_KEY
+  if (!key) {
+    throw new Error('DEVICE_API_KEY is not configured')
+  }
+  return key
+}
+
 interface PeerLike {
   send(data: unknown): void
   close(code?: number, reason?: string): void
@@ -39,6 +52,10 @@ class StreamManager {
   private pendingUploads = new Set<Promise<void>>()
 
   async connect(deviceId: string, host: string, port: number): Promise<void> {
+    // Fail closed up front: without a server device key, segment uploads
+    // can't authenticate to Convex — refuse the stream now, not 60s later.
+    readDeviceKey()
+
     const existing = this.streams.get(deviceId)
     if (existing) this.disconnect(deviceId)
 
@@ -296,7 +313,7 @@ class StreamManager {
       const s3Path = `${deviceId}/stream/${fileName}`
 
       const buffer = await readFile(filePath)
-      await uploadFile(RECORDINGS_BUCKET, s3Path, buffer, 'video/h264')
+      await uploadFile(RECORDINGS_BUCKET, s3Path, buffer, 'video/h264', { publicRead: false })
 
       const convex = useConvex()
       await convex.mutation(api.streams.recordStreamSegment, {
@@ -306,6 +323,7 @@ class StreamManager {
         size: stats.size,
         durationMs: Date.now() - capturedAt,
         capturedAt,
+        deviceKey: readDeviceKey(),
       })
 
       await unlink(filePath)

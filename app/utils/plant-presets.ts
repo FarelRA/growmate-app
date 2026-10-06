@@ -1,28 +1,19 @@
-// Single source of truth lives in convex/types.ts.
-// This module re-exports shared plant types/defaults and keeps only UI-only
-// labels and the custom-preset default here.
-export type {
-  LifecycleProfile,
-  PlantSensorProfile,
-  PlantStageValue as PlantLifecycleStage,
-  SensorRange,
-} from '../../convex/types'
-export {
-  defaultLifecycleProfile,
-  defaultPlantSensorProfile,
-  DEFAULT_WATERING_THRESHOLD,
-} from '../../convex/types'
 import {
   defaultLifecycleProfile,
   defaultPlantSensorProfile,
   DEFAULT_WATERING_THRESHOLD,
+} from '../../convex/types'
+import type {
+  LifecycleProfile,
+  PlantSensorProfile,
+  PlantStageValue,
 } from '../../convex/types'
 
 export type PlantPreset = {
   key: string
   name: string
   species: string
-  growthStage: import('../../convex/types').PlantStageValue
+  growthStage: PlantStageValue
   imageUrl: string | null
   description: string
   location: string
@@ -34,8 +25,8 @@ export type PlantPreset = {
   fertilizerCadenceDays?: number
   pesticideCadenceDays?: number
   nutrientNotes?: string
-  sensorProfile?: import('../../convex/types').PlantSensorProfile
-  lifecycleProfile: import('../../convex/types').LifecycleProfile
+  sensorProfile?: PlantSensorProfile
+  lifecycleProfile: LifecycleProfile
 }
 
 export const defaultCustomPlantPreset: Pick<

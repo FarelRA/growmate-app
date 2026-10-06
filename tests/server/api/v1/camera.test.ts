@@ -61,24 +61,17 @@ describe('POST /api/v1/camera', () => {
       })
     })
 
-    it('accepts request when DEVICE_API_KEY is unset', async () => {
+    it('rejects request when DEVICE_API_KEY is unset (fail closed)', async () => {
       vi.resetModules()
       delete process.env.DEVICE_API_KEY
       const { default: cameraHandler } = await import(SRC)
 
-      mockGenerateHash.mockReturnValue('hash123')
-      mockProcessImage.mockResolvedValue([
-        { size: 50, buffer: Buffer.from('s50') },
-      ])
-      mockUploadFile.mockResolvedValue(undefined)
-      mockMutation.mockResolvedValue(undefined)
-      globalThis.readRawBody = vi.fn().mockResolvedValue('fake-body')
-
       const event = mockEvent()
       event.headers.set('x-device-id', 'device-1')
 
-      const result = await cameraHandler(event)
-      expect(result).toEqual({ success: true, path: 'hash123' })
+      await expect(cameraHandler(event)).rejects.toMatchObject({
+        statusCode: 500,
+      })
     })
   })
 
@@ -225,30 +218,35 @@ describe('POST /api/v1/camera', () => {
         'camera-hash-1234/50w.webp',
         Buffer.from('s50'),
         'image/webp',
+        { publicRead: true },
       )
       expect(mockUploadFile).toHaveBeenCalledWith(
         'images',
         'camera-hash-1234/200w.webp',
         Buffer.from('s200'),
         'image/webp',
+        { publicRead: true },
       )
       expect(mockUploadFile).toHaveBeenCalledWith(
         'images',
         'camera-hash-1234/400w.webp',
         Buffer.from('s400'),
         'image/webp',
+        { publicRead: true },
       )
       expect(mockUploadFile).toHaveBeenCalledWith(
         'images',
         'camera-hash-1234/800w.webp',
         Buffer.from('s800'),
         'image/webp',
+        { publicRead: true },
       )
       expect(mockUploadFile).toHaveBeenCalledWith(
         'images',
         'camera-hash-1234/1200w.webp',
         Buffer.from('s1200'),
         'image/webp',
+        { publicRead: true },
       )
 
       expect(mockMutation).toHaveBeenCalledWith(

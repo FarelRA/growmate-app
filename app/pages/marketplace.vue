@@ -2,18 +2,12 @@
 import { computed, ref } from 'vue'
 import { api } from '~~/convex/_generated/api'
 import { createBreadcrumbSchema } from '~~/shared/utils/seo'
+import type { CommunityMarketplaceItem, OfficialMarketplaceItem } from '@/utils/convex-types'
 
-interface Product {
-  _id: string
-  title: string
-  description: string
-  category: string
-  sellerName: string
-  imageUrl: string | null
-}
-interface MarketplaceData {
-  official: Product[]
-  community: Product[]
+interface PublicMarketplaceData {
+  official: OfficialMarketplaceItem[]
+  community: CommunityMarketplaceItem[]
+  featured: OfficialMarketplaceItem | null
 }
 
 definePageMeta({ public: true })
@@ -41,18 +35,47 @@ usePublicSeo({
 })
 
 const query = ref('')
-const { data } = await usePublicConvexQuery<Record<string, unknown>, MarketplaceData>('public-marketplace-listing', api.marketplace.marketplace, {})
+const selectedCategory = ref<'all' | 'official' | 'community'>('all')
+const failedImages = ref<string[]>([])
+const { data } = await usePublicConvexQuery<Record<string, unknown>, PublicMarketplaceData>('public-marketplace-listing', api.marketplace.marketplace, {})
 
-const communityProducts = computed(() => data.value?.community ?? [])
-const filteredProducts = computed(() => {
+const featured = computed(() => data.value?.featured ?? null)
+
+const filteredOfficial = computed(() => {
+  const official = data.value?.official ?? []
   const search = query.value.trim().toLowerCase()
-  if (!search) return communityProducts.value
-  return communityProducts.value.filter((product) =>
-    `${product.title} ${product.description} ${product.category} ${product.sellerName}`
-      .toLowerCase()
-      .includes(search),
-  )
+  return official.filter((item) => {
+    if (selectedCategory.value === 'community') return false
+    if (!search) return true
+    return `${item.title} ${item.description} ${item.category}`.toLowerCase().includes(search)
+  })
 })
+
+const filteredCommunity = computed(() => {
+  const community = data.value?.community ?? []
+  const search = query.value.trim().toLowerCase()
+  return community.filter((item) => {
+    if (selectedCategory.value === 'official') return false
+    if (!search) return true
+    return `${item.title} ${item.description} ${item.category} ${item.sellerName}`
+      .toLowerCase()
+      .includes(search)
+  })
+})
+
+function openExternal(url: string) {
+  if (url) window.open(url, '_blank')
+}
+
+function hasWorkingImage(id: string, image?: string | null) {
+  return Boolean(image) && !failedImages.value.includes(id)
+}
+
+function handleImageError(id: string) {
+  if (!failedImages.value.includes(id)) {
+    failedImages.value = [...failedImages.value, id]
+  }
+}
 </script>
 
 <template>
@@ -71,20 +94,20 @@ const filteredProducts = computed(() => {
     </section>
 
     <section class="bg-white py-16 lg:py-20">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <RevealBlock as="div" class="mb-8 flex items-center justify-between gap-4">
-          <h2 class="font-headline text-2xl text-gm-text sm:text-3xl">Daftar penawaran terbaru</h2>
-          <p class="text-sm text-gm-muted">{{ filteredProducts.length }} penawaran</p>
-        </RevealBlock>
-
-        <div v-if="filteredProducts.length" class="flex flex-wrap justify-center gap-4 lg:gap-6">
-          <RevealBlock v-for="(product, index) in filteredProducts" :key="product._id" as="div" :delay="Math.min(index * 70, 280)" origin="up" class="w-[calc(50%-0.5rem)] lg:w-[calc(25%-1.125rem)]">
-            <MarketingProductCard :product="product" compact centered />
-          </RevealBlock>
-        </div>
-        <div v-else class="rounded-[2rem] bg-[#f5f6f2] p-10 text-center text-sm text-gm-muted">
-          Belum ada penawaran komunitas yang sesuai dengan pencarian Anda.
-        </div>
+      <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+        <ListingGrid
+          :featured="featured"
+          :filtered-official="filteredOfficial"
+          :filtered-community="filteredCommunity"
+          :search-query="query"
+          :selected-category="selectedCategory"
+          :has-working-image="hasWorkingImage"
+          :readonly="true"
+          @open-external="openExternal"
+          @handle-image-error="handleImageError"
+          @update:search-query="query = $event"
+          @update:selected-category="selectedCategory = $event"
+        />
       </div>
     </section>
   </MarketingPageShell>

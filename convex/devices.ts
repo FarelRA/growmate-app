@@ -1,4 +1,5 @@
 import { v, ConvexError } from 'convex/values'
+import { paginationOptsValidator } from 'convex/server'
 import { mutation, query } from './_generated/server'
 import type { DeviceDoc, PlantStageValue, DeviceAutomationKey, SensorKind } from './types'
 import { getCurrentUser, requireUser } from './helpers/auth'
@@ -39,7 +40,6 @@ export const getUnclaimedDevice = query({
     return {
       deviceId: device.deviceId,
       name: device.name,
-      firmwareVersion: device.firmwareVersion,
     }
   },
 })
@@ -249,10 +249,13 @@ export const dashboard = query({
 
     const plantView = await buildPlantView(ctx, plant)
     const sensorProfile = normalizePlantSensorProfile(plant.sensorProfile)
+    // Hard bound: exactly one row per sensor kind (soil/light/temperature/air/
+    // water = 5 max). take(10) freezes the ≤5-rows invariant with 2x headroom —
+    // never an unbounded collect() on this per-plant read path.
     const rawSensors = await ctx.db
       .query('sensors')
       .withIndex('by_plant', (q) => q.eq('plantId', plant._id))
-      .collect()
+      .take(10)
     const [sensorHistory, recentEvents, automationLogs, imageHistory] = await Promise.all([
       getSensorHistory(ctx, plant._id, 24),
       getRecentGrowEvents(ctx, device._id, 10),
@@ -345,6 +348,7 @@ export const dashboard = query({
 export const deviceHistory = query({
   args: {
     deviceId: v.optional(v.string()),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx)
@@ -354,10 +358,29 @@ export const deviceHistory = query({
     if (!device) return null
 
     const currentPlant = device.plantId ? await ctx.db.get(device.plantId) : null
-    const archivedPlants = await ctx.db
+    // Cursor-paginated archive, 20/page desc — mirrors the adminDevicesPaginated
+    // convention in convex/admin.ts (paginationOptsValidator + paginate()).
+    // Pre-alpha: the legacy uncapped full-list path is demolished; no
+    // unpaginated export remains.
+    const archivedPage = await ctx.db
       .query('plants')
       .withIndex('by_device_archived', (q) => q.eq('deviceId', device._id).eq('archived', true))
-      .collect()
+      .order('desc')
+      .paginate(args.paginationOpts)
+    const archivedPlants = {
+      ...archivedPage,
+      page: archivedPage.page
+        .sort((a, b) => (b.archivedAt ?? b.updatedAt) - (a.archivedAt ?? a.updatedAt))
+        .map((plant) => ({
+          _id: plant._id,
+          name: plant.name,
+          species: plant.species,
+          growthStage: plant.growthStage,
+          location: plant.location,
+          plantedAtLabel: formatTimestamp(plant.plantedAt),
+          archivedAtLabel: plant.archivedAt ? formatTimestamp(plant.archivedAt) : null,
+        })),
+    }
 
     const [timeline, imageHistory] = await Promise.all([
       getRecentGrowEvents(ctx, device._id, 5),
@@ -378,17 +401,7 @@ export const deviceHistory = query({
           ...(await formatDeviceDetail(ctx, device)),
         },
         currentPlant: null,
-        archivedPlants: archivedPlants
-          .sort((a, b) => (b.archivedAt ?? b.updatedAt) - (a.archivedAt ?? a.updatedAt))
-          .map((plant) => ({
-            _id: plant._id,
-            name: plant.name,
-            species: plant.species,
-            growthStage: plant.growthStage,
-            location: plant.location,
-            plantedAtLabel: formatTimestamp(plant.plantedAt),
-            archivedAtLabel: plant.archivedAt ? formatTimestamp(plant.archivedAt) : null,
-          })),
+        archivedPlants,
         metricHistory: {},
         automationLogs: [],
         timeline,
@@ -420,17 +433,7 @@ export const deviceHistory = query({
         growthStageLabel: formatPlantStage(currentPlant.growthStage),
         progress: computePlantProgress(currentPlant),
       },
-      archivedPlants: archivedPlants
-        .sort((a, b) => (b.archivedAt ?? b.updatedAt) - (a.archivedAt ?? a.updatedAt))
-        .map((plant) => ({
-          _id: plant._id,
-          name: plant.name,
-          species: plant.species,
-          growthStage: plant.growthStage,
-          location: plant.location,
-          plantedAtLabel: formatTimestamp(plant.plantedAt),
-          archivedAtLabel: plant.archivedAt ? formatTimestamp(plant.archivedAt) : null,
-        })),
+      archivedPlants,
       metricHistory,
       automationLogs,
       timeline,

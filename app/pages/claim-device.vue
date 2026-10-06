@@ -124,9 +124,6 @@ async function handleClaimDevice() {
         <article v-if="unclaimedDevice" class="rounded-[1.5rem] bg-[#e8ffe8] p-4 text-[#005313]">
           <div class="text-xs font-bold uppercase tracking-[0.18em]">Terverifikasi</div>
           <div class="mt-2 text-sm font-semibold">{{ unclaimedDevice.name }}</div>
-          <div class="mt-1 text-xs">
-            Firmware {{ unclaimedDevice.firmwareVersion || 'Tidak diketahui' }}
-          </div>
         </article>
       </div>
     </section>

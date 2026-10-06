@@ -1,6 +1,7 @@
 import type { H3Event, EventHandlerRequest } from 'h3'
 import { api } from '~~/convex/_generated/api'
 import { useConvex } from '~~/server/utils/convex'
+import { requireDeviceKey } from '~~/server/utils/requireDeviceKey'
 import { MAX_SENSORS_PER_POST } from '~~/convex/sensors'
 import type { SensorKind } from '~~/convex/types'
 
@@ -125,10 +126,7 @@ export default async function handleSensorIngest(event: H3Event<EventHandlerRequ
 
     const body = (await readBody(event)) as IngestBody
 
-    const apiKey = getHeader(event, 'x-api-key')
-    if (process.env.DEVICE_API_KEY && apiKey !== process.env.DEVICE_API_KEY) {
-      throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-    }
+    const deviceKey = requireDeviceKey(event)
 
     if (!body.deviceId) {
       throw createError({ statusCode: 400, statusMessage: 'deviceId is required' })
@@ -143,6 +141,7 @@ export default async function handleSensorIngest(event: H3Event<EventHandlerRequ
       firmwareVersion: body.firmwareVersion,
       currentState: body.currentState,
       sensors,
+      deviceKey,
     })
 
     return { success: true, updated: result.updated, commands: result.commands }

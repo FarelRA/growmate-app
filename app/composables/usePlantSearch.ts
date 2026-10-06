@@ -1,5 +1,5 @@
 import { type ComputedRef, computed, ref, watch } from 'vue'
-import { lifecycleStageOptions, type PlantPreset } from '@/lib/plants'
+import { lifecycleStageOptions, type PlantPreset } from '@/utils/plant-presets'
 
 const categories = [
   'all',

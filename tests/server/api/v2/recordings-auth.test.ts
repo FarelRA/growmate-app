@@ -4,6 +4,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const SRC = '../../../../server/api/v2/recordings/[deviceId].get'
 
 const mockQuery = vi.hoisted(() => vi.fn())
+const { mockGetSignedUrl, mockPublicClient } = vi.hoisted(() => ({
+  mockGetSignedUrl: vi.fn(async () => 'https://signed.example/url'),
+  mockPublicClient: {},
+}))
 
 vi.mock('~~/convex/_generated/api', () => ({
   api: {
@@ -19,7 +23,7 @@ vi.mock('~~/server/utils/convex', () => ({
 }))
 
 vi.mock('~~/server/utils/storage', () => ({
-  s3Client: () => ({}),
+  s3PublicClient: () => mockPublicClient,
   RECORDINGS_BUCKET: 'recordings',
 }))
 
@@ -30,7 +34,7 @@ vi.mock('@aws-sdk/client-s3', () => ({
 }))
 
 vi.mock('@aws-sdk/s3-request-presigner', () => ({
-  getSignedUrl: vi.fn(async () => 'https://signed.example/url'),
+  getSignedUrl: (...args: unknown[]) => (mockGetSignedUrl as (...a: unknown[]) => unknown)(...args),
 }))
 
 function mockEvent(deviceId = 'dev-1', bearer = 'token-123') {
@@ -108,5 +112,11 @@ describe('GET /api/v2/recordings/:deviceId auth', () => {
       _id: 'r1',
       downloadUrl: 'https://signed.example/url',
     })
+    // Presigned with the PUBLIC-host client so URLs resolve in browsers.
+    expect(mockGetSignedUrl).toHaveBeenCalledWith(
+      mockPublicClient,
+      expect.anything(),
+      { expiresIn: 3600 },
+    )
   })
 })

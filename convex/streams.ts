@@ -14,6 +14,23 @@ export function clampRecordingsLimit(requested?: number): number {
   return Math.min(Math.max(Math.floor(fallback), 0), MAX_RECORDINGS_LIMIT)
 }
 
+/**
+ * Fail-closed device authentication for device-called mutations.
+ * Browsers can reach Convex directly, so Nitro API-key gates are bypassable;
+ * the mutations must enforce the key themselves. Unlike the Nitro layer
+ * (fail-open when unset), a missing server key is a misconfiguration and
+ * must reject rather than allow unauthenticated writes.
+ */
+function requireDeviceKey(deviceKey: string) {
+  const expected = process.env.DEVICE_API_KEY
+  if (!expected) {
+    throw new ConvexError('server misconfigured')
+  }
+  if (deviceKey !== expected) {
+    throw new ConvexError('Unauthorized')
+  }
+}
+
 export const getOwnedDevice = query({
   args: { deviceId: v.string() },
   handler: async (ctx, args) => {
@@ -36,8 +53,11 @@ export const registerStream = mutation({
   args: {
     deviceId: v.string(),
     streamUrl: v.string(),
+    deviceKey: v.string(),
   },
   handler: async (ctx, args) => {
+    requireDeviceKey(args.deviceKey)
+
     const device = await getDeviceByExternalId(ctx, args.deviceId)
     if (!device) {
       throw new ConvexError('Perangkat tidak ditemukan')
@@ -73,8 +93,11 @@ export const recordStreamSegment = mutation({
     size: v.number(),
     durationMs: v.optional(v.number()),
     capturedAt: v.number(),
+    deviceKey: v.string(),
   },
   handler: async (ctx, args) => {
+    requireDeviceKey(args.deviceKey)
+
     const device = await getDeviceByExternalId(ctx, args.deviceId)
     if (!device) {
       throw new ConvexError('Perangkat tidak ditemukan')
@@ -97,8 +120,16 @@ export const recordStreamSegment = mutation({
 export const listRecordings = query({
   args: { deviceId: v.string(), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
+    // User-called with Bearer auth: enforce ownership like getOwnedDevice /
+    // dashboard / deviceHistory so S3 paths never leak across accounts.
+    const user = await getCurrentUser(ctx)
+    if (!user) return []
+
     const device = await getDeviceByExternalId(ctx, args.deviceId)
     if (!device) return []
+    if (!device.userId || String(device.userId) !== String(user._id)) {
+      return []
+    }
 
     const recordings = await ctx.db
       .query('videoRecordings')

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { PlantPreset } from '@/lib/plants'
+import type { PlantPreset } from '@/utils/plant-presets'
 import type { PlantCategory } from '@/composables/usePlantSearch'
-import { lifecycleStageOptions } from '@/lib/plants'
+import { lifecycleStageOptions } from '@/utils/plant-presets'
 import { getImageUrl } from '@/utils/images'
 
 defineProps<{

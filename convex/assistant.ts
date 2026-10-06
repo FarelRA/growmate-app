@@ -38,10 +38,13 @@ export function getAssistantMessageLimit(tier?: 'basic' | 'advanced') {
   return tier === 'advanced' ? 100 : 20
 }
 
-function getStartOfToday() {
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
-  return start.getTime()
+const DAY_MS = 24 * 60 * 60 * 1000
+
+// Quota days are bucketed in UTC so the day boundary is identical for every
+// user regardless of server/user timezone. Server-local midnight
+// (setHours(0,0,0,0)) shifts the quota window for non-server-TZ users.
+export function getStartOfToday(now = Date.now()) {
+  return Math.floor(now / DAY_MS) * DAY_MS
 }
 
 async function getAssistantThread(ctx: Ctx, userId: Id<'users'>) {
@@ -109,7 +112,7 @@ async function getAssistantUsage(
     usedToday,
     limit,
     remainingToday: Math.max(0, limit - usedToday),
-    resetsAt: startOfToday + 24 * 60 * 60 * 1000,
+    resetsAt: startOfToday + DAY_MS,
   }
 }
 
@@ -288,7 +291,7 @@ export const assistant = query({
           usedToday: 0,
           limit: getAssistantMessageLimit(user.tier),
           remainingToday: getAssistantMessageLimit(user.tier),
-          resetsAt: getStartOfToday() + 24 * 60 * 60 * 1000,
+          resetsAt: getStartOfToday() + DAY_MS,
         }
 
     const messages = rawMessages.map((m) => ({
@@ -587,6 +590,7 @@ export const sendAssistantMessage = mutation({
     const trimmedBody = args.body.trim()
     if (!trimmedBody) throw new ConvexError('Pesan tidak boleh kosong')
 
+    // Pre-check: fast-path rejection without writing anything.
     const quota = await getAssistantUsage(ctx, thread._id, user.tier)
     if (quota.remainingToday <= 0) {
       throw new ConvexError(
@@ -594,7 +598,15 @@ export const sendAssistantMessage = mutation({
       )
     }
 
-    await ctx.db.insert('assistantMessages', {
+    // Single-flight quota design: re-check AFTER our reservation rows are
+    // visible, and roll back + throw on exceed BEFORE any AI actuation
+    // (scheduler/trim below). Chosen over insert-a-reservation-first because
+    // it needs no schema or reservation lifecycle: the user's own message row
+    // IS the reservation, and the post-insert recount closes the
+    // read-check-insert race (double-click / two tabs with 1 quota left) so
+    // at most one flight can consume the last slot. Rollback deletes only the
+    // two rows this call inserted, never other users' or earlier messages.
+    const userMessageId = await ctx.db.insert('assistantMessages', {
       threadId: thread._id,
       role: 'user',
       body: trimmedBody,
@@ -609,6 +621,15 @@ export const sendAssistantMessage = mutation({
       status: 'streaming',
       createdAt: now + 1,
     })
+
+    const after = await getAssistantUsage(ctx, thread._id, user.tier)
+    if (after.usedToday > after.limit) {
+      await ctx.db.delete(userMessageId)
+      await ctx.db.delete(assistantMessageId)
+      throw new ConvexError(
+        `Batas penggunaan asisten harian sudah tercapai. Paket Anda saat ini memiliki ${after.limit} pesan per hari.`,
+      )
+    }
 
     // Hard retention cap: trim oldest beyond 200/thread on every insert.
     await trimAssistantThreadToCap(ctx, thread._id)
@@ -637,10 +658,10 @@ export const sendAssistantMessage = mutation({
     return {
       success: true,
       quota: {
-        usedToday: quota.usedToday + 1,
-        limit: quota.limit,
-        remainingToday: Math.max(0, quota.remainingToday - 1),
-        resetsAt: quota.resetsAt,
+        usedToday: after.usedToday,
+        limit: after.limit,
+        remainingToday: Math.max(0, after.limit - after.usedToday),
+        resetsAt: after.resetsAt,
       },
     }
   },

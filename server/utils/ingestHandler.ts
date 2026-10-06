@@ -66,6 +66,12 @@ export function validateSensors(
   sensors: IngestSensorInput[],
   version: SensorApiVersion,
 ): asserts sensors is ValidatedSensorInput[] {
+  if (sensors.length === 0) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'At least one sensor reading is required',
+    })
+  }
   if (sensors.length > MAX_SENSORS_PER_POST) {
     throw createError({
       statusCode: 400,

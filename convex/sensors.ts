@@ -149,7 +149,7 @@ async function ingestSensorReadings(
       (sensorUpdate.kind === 'soil' ||
         sensorUpdate.kind === 'light' ||
         sensorUpdate.kind === 'water')
-        ? normalizeRawSensorValue(sensorUpdate.kind as SensorKind, sensorUpdate.raw)
+        ? normalizeRawSensorValue(sensorUpdate.kind as SensorKind, sensorUpdate.raw, device.version)
         : sensorUpdate.value
 
     sensorState.set(sensorUpdate.kind, { value, unit })
@@ -341,6 +341,9 @@ async function performIngest(
   opts: { ack: boolean },
 ) {
     const device = await ensureDeviceExists(ctx, args.deviceId, args.firmwareVersion)
+    if (device.version !== 'v1' && device.version !== 'v2') {
+      throw new ConvexError(`Unknown device version: ${String(device.version)}`)
+    }
     const plant: PlantDoc | null = device.plantId ? await ctx.db.get(device.plantId) as PlantDoc | null : null
     const activePlant = plant && !plant.archived ? plant : null
     const now = Date.now()
@@ -539,6 +542,21 @@ async function performIngest(
       }
     }
 
+    // Merge queuedCommands field-wise against a fresh read: staged (this
+    // ingest) wins per-key when present, otherwise keep the stored value
+    // (concurrent manual trigger). Prevents last-writer-wins wiping commands.
+    if (Object.prototype.hasOwnProperty.call(deviceUpdates, 'queuedCommands')) {
+      const staged = stagedQueuedCommands(deviceUpdates, device)
+      const fresh = (await ctx.db.get(device._id)) as DeviceDoc | null
+      const stored = fresh ? getQueuedDeviceCommands(fresh) : getQueuedDeviceCommands(device)
+      deviceUpdates.queuedCommands = {
+        pump: staged.pump ?? stored.pump ?? null,
+        light: staged.light ?? stored.light ?? null,
+        fertilizer: staged.fertilizer ?? stored.fertilizer ?? null,
+        pesticide: staged.pesticide ?? stored.pesticide ?? null,
+      }
+    }
+
     await ctx.db.patch(device._id, deviceUpdates)
 
     const nextQueuedCommands = Object.prototype.hasOwnProperty.call(deviceUpdates, 'queuedCommands')
@@ -551,8 +569,20 @@ async function performIngest(
     })
 
     if (opts.ack && commands.length > 0) {
+      // Ack-clear only the keys that were returned; preserve concurrently
+      // queued commands for other keys (delayed ack after new queue).
+      const freshBeforeAck = (await ctx.db.get(device._id)) as DeviceDoc | null
+      const storedBeforeAck = freshBeforeAck
+        ? getQueuedDeviceCommands(freshBeforeAck)
+        : getQueuedDeviceCommands({ ...device, queuedCommands: nextQueuedCommands } as DeviceDoc)
+      const returnedKinds = new Set(commands.map((c) => c.kind))
       await ctx.db.patch(device._id, {
-        queuedCommands: { pump: null, light: null, fertilizer: null, pesticide: null },
+        queuedCommands: {
+          pump: returnedKinds.has('pump') ? null : (storedBeforeAck.pump ?? null),
+          light: returnedKinds.has('light') ? null : (storedBeforeAck.light ?? null),
+          fertilizer: returnedKinds.has('fertilizer') ? null : (storedBeforeAck.fertilizer ?? null),
+          pesticide: returnedKinds.has('pesticide') ? null : (storedBeforeAck.pesticide ?? null),
+        },
         updatedAt: Date.now(),
       })
     }

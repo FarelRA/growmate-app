@@ -1,5 +1,5 @@
 import { v, ConvexError } from 'convex/values'
-import { mutation } from './_generated/server'
+import { internalMutation, mutation } from './_generated/server'
 import type { Id } from './_generated/dataModel'
 import type { MutationCtx, UserDoc, CareScheduleDoc, ScheduleCadence, ScheduleCadenceUnit } from './types'
 import { requireUser } from './helpers/auth'
@@ -370,5 +370,100 @@ export const triggerPesticide = mutation({
     const user = await requireUser(ctx)
     await triggerPesticideCore(ctx, user, args.deviceId)
     return { success: true }
+  },
+})
+
+// ============================================
+// Schedule executor (cron-driven).
+// careSchedules rows carry no action discriminator (free-text title only),
+// so the action is inferred from title keywords with a watering default
+// (matches the "Penyiraman Otomatis" seed schedule). Lighting titles fire
+// the light queue; everything else fires the pump queue via the shared
+// trigger *Core functions above — no rule logic is duplicated here.
+// ============================================
+
+export const SCHEDULE_EXECUTOR_BATCH_CAP = 100
+
+const LIGHTING_TITLE_KEYWORDS = ['cahaya', 'lampu', 'light', 'pencahayaan'] as const
+const LIGHT_OFF_KEYWORDS = ['mati', 'padam', 'off'] as const
+
+export function inferScheduleAction(title: string): { kind: 'lighting'; enabled: boolean } | { kind: 'watering' } {
+  const normalized = title.toLowerCase()
+  if (LIGHTING_TITLE_KEYWORDS.some((keyword) => normalized.includes(keyword))) {
+    return { kind: 'lighting', enabled: !LIGHT_OFF_KEYWORDS.some((keyword) => normalized.includes(keyword)) }
+  }
+  return { kind: 'watering' }
+}
+
+export const executeDueSchedules = internalMutation({
+  args: { now: v.optional(v.number()), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const runStart = args.now ?? Date.now()
+    const cap = Math.max(
+      1,
+      Math.min(SCHEDULE_EXECUTOR_BATCH_CAP, Math.round(args.limit ?? SCHEDULE_EXECUTOR_BATCH_CAP)),
+    )
+    const due = await ctx.db
+      .query('careSchedules')
+      .withIndex('by_nextRunAt', (q) => q.lte('nextRunAt', runStart))
+      .take(cap)
+
+    let fired = 0
+    let skipped = 0
+    const errors: Array<{ scheduleId: string; error: string }> = []
+
+    for (const schedule of due) {
+      // Re-read inside the loop: a schedule deleted/disabled mid-batch is
+      // skipped, and lastRunAt >= runStart guards double-fire if two cron
+      // runs overlap (nextRunAt advancement below is the primary guard —
+      // this whole mutation commits atomically, so a concurrent overlapping
+      // run conflicts and retries against the already-advanced row).
+      const current = await ctx.db.get(schedule._id)
+      if (!current || !current.enabled) {
+        skipped += 1
+        continue
+      }
+      if (current.nextRunAt > runStart) {
+        skipped += 1
+        continue
+      }
+      if (current.lastRunAt != null && current.lastRunAt >= runStart) {
+        skipped += 1
+        continue
+      }
+
+      const cadence = normalizeScheduleCadence(current)
+      const nextRunAt = computeNextRunAtFromCadence(cadence, runStart)
+      const plant = await ctx.db.get(current.plantId)
+      const device = plant ? await ctx.db.get(plant.deviceId) : null
+      const ownerId = device?.userId
+      if (!plant || plant.archived || !device || !ownerId) {
+        // Skip without firing, but still advance nextRunAt so one orphaned
+        // schedule can't permanently wedge the per-run cap. lastRunAt is
+        // left untouched as evidence nothing fired.
+        await ctx.db.patch(current._id, { nextRunAt })
+        skipped += 1
+        continue
+      }
+
+      try {
+        const action = inferScheduleAction(current.title)
+        if (action.kind === 'lighting') {
+          await triggerLightingCore(ctx, { _id: ownerId }, device.deviceId, action.enabled)
+        } else {
+          await triggerWateringCore(ctx, { _id: ownerId }, device.deviceId)
+        }
+        await ctx.db.patch(current._id, { nextRunAt, lastRunAt: runStart })
+        fired += 1
+      } catch (error) {
+        errors.push({
+          scheduleId: String(current._id),
+          error: error instanceof Error ? error.message : String(error),
+        })
+        skipped += 1
+      }
+    }
+
+    return { checked: due.length, fired, skipped, errors }
   },
 })

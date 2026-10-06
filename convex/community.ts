@@ -152,6 +152,11 @@ export const likePost = mutation({
   args: { postId: v.id('communityPosts') },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
+    // Existence first: never create orphan likes/activity on a missing post.
+    const post = await ctx.db.get(args.postId)
+    if (!post) {
+      throw new ConvexError('Postingan tidak ditemukan')
+    }
     const existing = await ctx.db
       .query('postLikes')
       .withIndex('by_user_and_post', (q) => q.eq('userId', user._id).eq('postId', args.postId))
@@ -169,12 +174,25 @@ export const likePost = mutation({
       createdAt: now,
     })
 
-    await addUserActivity(ctx, {
-      userId: user._id,
-      activityType: 'post_liked',
-      relatedId: args.postId,
-      createdAt: now,
-    })
+    // Likes are a toggle: award post_liked points on the FIRST like only.
+    // Unlike awards nothing, and relike after unlike awards nothing, so
+    // unlike→relike loops can never farm leaderboard points.
+    const pastLikes = await ctx.db
+      .query('userActivities')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .collect()
+    const alreadyRewarded = pastLikes.some(
+      (activity) =>
+        activity.activityType === 'post_liked' && String(activity.relatedId) === String(args.postId),
+    )
+    if (!alreadyRewarded) {
+      await addUserActivity(ctx, {
+        userId: user._id,
+        activityType: 'post_liked',
+        relatedId: args.postId,
+        createdAt: now,
+      })
+    }
 
     return { success: true, liked: true }
   },
@@ -184,6 +202,11 @@ export const createComment = mutation({
   args: { postId: v.id('communityPosts'), body: v.string() },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
+    // Existence first: never create orphan comments/activity on a missing post.
+    const post = await ctx.db.get(args.postId)
+    if (!post) {
+      throw new ConvexError('Postingan tidak ditemukan')
+    }
     const now = Date.now()
     const body = args.body.trim()
     if (!body) {

@@ -13,6 +13,7 @@ crons.interval('cleanup-old-plant-images', { hours: 24 }, internal.crons.cleanup
 crons.interval('cleanup-old-notifications', { hours: 24 }, internal.crons.cleanupNotifications)
 crons.interval('cleanup-old-user-activities', { hours: 24 }, internal.crons.cleanupUserActivities)
 crons.interval('cleanup-old-assistant-messages', { hours: 24 }, internal.crons.cleanupAssistantMessages)
+crons.interval('execute-due-care-schedules', { minutes: 5 }, internal.care.executeDueSchedules, {})
 
 export const PLANT_IMAGES_PER_PLANT_CAP = 50
 export const NOTIFICATIONS_PER_USER_CAP = 50

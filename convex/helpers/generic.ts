@@ -34,15 +34,24 @@ export function clampPercent(value: number) {
   return Math.max(0, Math.min(100, value))
 }
 
-export function normalizeRawSensorValue(kind: SensorKind, raw: number) {
-  const clampedRaw = Math.max(ADC_RAW_MIN, Math.min(ADC_RAW_MAX, raw))
-  const range = ADC_RAW_MAX - ADC_RAW_MIN
+export const V1_ADC_RAW_MAX = 4095
+
+export type SensorApiVersion = 'v1' | 'v2'
+
+export function rawMaxForVersion(version: SensorApiVersion): number {
+  return version === 'v1' ? V1_ADC_RAW_MAX : ADC_RAW_MAX
+}
+
+export function normalizeRawSensorValue(kind: SensorKind, raw: number, version: SensorApiVersion) {
+  const adcMax = rawMaxForVersion(version)
+  const clampedRaw = Math.max(ADC_RAW_MIN, Math.min(adcMax, raw))
+  const range = adcMax - ADC_RAW_MIN
   if (range === 0) return 0
 
   switch (kind) {
     case 'soil':
     case 'light':
-      return clampPercent(Math.round(((ADC_RAW_MAX - clampedRaw) / range) * 100))
+      return clampPercent(Math.round(((adcMax - clampedRaw) / range) * 100))
     case 'water':
       return clampPercent(Math.round((clampedRaw / range) * 100))
     default:

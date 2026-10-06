@@ -575,30 +575,30 @@ describe('clampPercent', () => {
 
 describe('normalizeRawSensorValue', () => {
   it('converts soil sensor (inverted)', () => {
-    expect(normalizeRawSensorValue('soil', 0)).toBe(100)
-    expect(normalizeRawSensorValue('soil', ADC_RAW_MAX)).toBe(0)
-    expect(normalizeRawSensorValue('soil', Math.round(ADC_RAW_MAX / 2))).toBe(50)
+    expect(normalizeRawSensorValue('soil', 0, 'v2')).toBe(100)
+    expect(normalizeRawSensorValue('soil', ADC_RAW_MAX, 'v2')).toBe(0)
+    expect(normalizeRawSensorValue('soil', Math.round(ADC_RAW_MAX / 2), 'v2')).toBe(50)
   })
 
   it('converts light sensor (inverted)', () => {
-    expect(normalizeRawSensorValue('light', 0)).toBe(100)
-    expect(normalizeRawSensorValue('light', ADC_RAW_MAX)).toBe(0)
+    expect(normalizeRawSensorValue('light', 0, 'v2')).toBe(100)
+    expect(normalizeRawSensorValue('light', ADC_RAW_MAX, 'v2')).toBe(0)
   })
 
   it('converts water sensor (direct)', () => {
-    expect(normalizeRawSensorValue('water', 0)).toBe(0)
-    expect(normalizeRawSensorValue('water', ADC_RAW_MAX)).toBe(100)
-    expect(normalizeRawSensorValue('water', Math.round(ADC_RAW_MAX / 2))).toBe(50)
+    expect(normalizeRawSensorValue('water', 0, 'v2')).toBe(0)
+    expect(normalizeRawSensorValue('water', ADC_RAW_MAX, 'v2')).toBe(100)
+    expect(normalizeRawSensorValue('water', Math.round(ADC_RAW_MAX / 2), 'v2')).toBe(50)
   })
 
   it('returns raw value for temperature and air', () => {
-    expect(normalizeRawSensorValue('temperature', 2500)).toBe(2500)
-    expect(normalizeRawSensorValue('air', 1800)).toBe(1800)
+    expect(normalizeRawSensorValue('temperature', 2500, 'v2')).toBe(2500)
+    expect(normalizeRawSensorValue('air', 1800, 'v2')).toBe(1800)
   })
 
   it('clamps raw value to ADC range', () => {
-    expect(normalizeRawSensorValue('soil', -100)).toBe(100)
-    expect(normalizeRawSensorValue('soil', 5000)).toBe(92)
+    expect(normalizeRawSensorValue('soil', -100, 'v2')).toBe(100)
+    expect(normalizeRawSensorValue('soil', 5000, 'v2')).toBe(92)
   })
 })
 

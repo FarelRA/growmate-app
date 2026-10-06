@@ -7,17 +7,24 @@ import { enrichMarketplaceProduct } from '../helpers/marketplace'
 // ../admin.ts. Cores here perform pure DB logic. The delegate passes the
 // already-authorized admin's id where the core needs it as data (sellerId).
 
-// Official-product cores (moved verbatim from ../admin.ts).
-export async function fetchAdminProducts(ctx: QueryCtx, adminId: Id<'users'>) {
-  const officialProducts = await ctx.db
+// Official-product core: cursor-paginated, enriched exactly like the legacy
+// array query so the dashboard `data.officialProducts` array keeps its
+// fields.
+export async function fetchAdminProductsPaginated(
+  ctx: QueryCtx,
+  adminId: Id<'users'>,
+  paginationOpts: { cursor: string | null; numItems: number },
+) {
+  const result = await ctx.db
     .query('products')
     .withIndex('by_type', (q) => q.eq('type', 'official'))
     .order('desc')
-    .take(20)
+    .paginate(paginationOpts)
 
-  return Promise.all(
-    officialProducts.map((product) => enrichMarketplaceProduct(ctx, product, adminId)),
+  const page = await Promise.all(
+    result.page.map((product) => enrichMarketplaceProduct(ctx, product, adminId)),
   )
+  return { ...result, page }
 }
 
 export interface SaveOfficialProductArgs {

@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import { useConvexQuery } from '@convex-vue/core'
+import { useConvexPaginatedQuery, useConvexQuery } from '@convex-vue/core'
 import { api } from '~~/convex/_generated/api'
 import { useAdminDevices } from './useAdminDevices'
 import { useAdminProducts } from './useAdminProducts'
@@ -10,21 +10,22 @@ import { useAdminUsers } from './useAdminUsers'
 import type { AdminTab } from './useAdminDevices'
 
 export function useAdmin() {
-  // Single data path: the 6 granular admin queries below. Do NOT consume
-  // `api.admin.adminConsole` here — it fans out to the same fetchers on the
-  // backend and would double-fetch everything the granular queries load.
-  // (convex/admin.ts itself is owned by another worker; leave it alone.)
-  const overviewQuery = useConvexQuery(api.admin.adminOverview, {})
-  const supportQuery = useConvexQuery(api.admin.adminSupportTickets, {})
-  const productsQuery = useConvexQuery(api.admin.adminProductsList, {})
-  const plantCatalogQuery = useConvexQuery(api.admin.adminPlantCatalogList, {})
-  const blogQuery = useConvexQuery(api.admin.adminBlogPostsList, {})
-  const usersQuery = useConvexQuery(api.admin.adminUsersList, {})
+  // Paginated-only data path: every list below loads just its first page
+  // (`useConvexPaginatedQuery` exposes the loaded pages as a flat array, so
+  // `data` keeps the exact same keys and item shapes the dashboard page
+  // consumes). Page sizes mirror the legacy array-query limits.
+  const statsQuery = useConvexQuery(api.admin.adminStats, {})
+  const recentEventsQuery = useConvexQuery(api.admin.adminRecentEvents, {})
+  const devicesQuery = useConvexPaginatedQuery(api.admin.adminDevicesPaginated, {}, { numItems: 40 })
+  const supportQuery = useConvexPaginatedQuery(api.admin.adminSupportPaginated, {}, { numItems: 30 })
+  const productsQuery = useConvexPaginatedQuery(api.admin.adminProductsPaginated, {}, { numItems: 20 })
+  const plantCatalogQuery = useConvexPaginatedQuery(api.admin.adminPlantCatalogPaginated, {}, { numItems: 64 })
+  const blogQuery = useConvexPaginatedQuery(api.admin.adminBlogPostsPaginated, {}, { numItems: 24 })
+  const usersQuery = useConvexPaginatedQuery(api.admin.adminUsersPaginated, {}, { numItems: 24 })
 
   const data = computed(() => {
-    const overview = overviewQuery.data.value
     return {
-      stats: overview?.stats ?? {
+      stats: statsQuery.data.value ?? {
         totalUsers: 0,
         totalDevices: 0,
         claimedDevices: 0,
@@ -35,8 +36,8 @@ export function useAdmin() {
         communityPosts: 0,
         blogPosts: 0,
       },
-      devices: overview?.devices ?? [],
-      recentEvents: overview?.recentEvents ?? [],
+      devices: devicesQuery.data.value ?? [],
+      recentEvents: recentEventsQuery.data.value ?? [],
       supportRequests: supportQuery.data.value ?? [],
       officialProducts: productsQuery.data.value ?? [],
       plantCatalog: plantCatalogQuery.data.value ?? [],

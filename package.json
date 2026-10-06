@@ -29,7 +29,7 @@
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
     "lint:check": "oxlint . && eslint . --cache",
-    "format": "prettier --write --experimental-cli app/ convex/ server/ shared/ tests/",
+    "format": "prettier --write --experimental-cli app/ convex/ server/ shared/ tests/ eslint.config.ts nuxt.config.ts playwright.config.ts vitest.config.ts",
     "check": "run-s typecheck typecheck:convex lint test build"
   },
   "dependencies": {

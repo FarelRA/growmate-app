@@ -25,10 +25,12 @@ export type GrowEventType =
   | 'device_claimed'
   | 'device_unclaimed'
   | 'plant_assigned'
+  | 'plant_added'
   | 'plant_archived'
   | 'plant_image_updated'
   | 'sensor_recorded'
   | 'manual_watering_triggered'
+  | 'system_watering'
   | 'automation_settings_updated'
   | 'care_schedule_toggled'
   | 'automation_action_executed'
@@ -136,6 +138,7 @@ export const DEFAULT_WATERING_COOLDOWN = 6 * 60 * 60
 export const DEFAULT_LIGHTING_HYSTERESIS = 8
 export const ADC_RAW_MIN = 0
 export const ADC_RAW_MAX = 65535
+export const MAX_SENSORS_PER_POST = 8
 
 export const DEFAULT_FERTILIZING_THRESHOLD = 35
 export const DEFAULT_FERTILIZING_DURATION = 10

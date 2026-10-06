@@ -69,7 +69,6 @@ export async function buildDeviceSummary(ctx: Ctx, device: DeviceDoc) {
             plantedAt: currentPlant.plantedAt,
           }
         : null,
-    archivedPlantCount: archivedPlants.length,
     archivedPlants: archivedPlants
       .sort((a, b) => (b.archivedAt ?? b.updatedAt) - (a.archivedAt ?? a.updatedAt))
       .slice(0, 3)

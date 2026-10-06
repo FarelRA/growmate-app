@@ -10,10 +10,9 @@ vi.mock('@convex-dev/auth/server', async (importOriginal) => {
 })
 
 import {
-  adminDevicesList,
-  adminUsersList,
-  adminSupportTickets,
+  adminDevicesPaginated,
   adminUsersPaginated,
+  adminSupportPaginated,
   adminDeleteDevice,
   adminUpdateUserAccess,
   adminDeleteOfficialProduct,
@@ -84,22 +83,23 @@ describe('admin paths: non-admin rejected', () => {
 
   it('rejects non-admin callers on admin queries', async () => {
     ctx.__testUserId = userId
-    await expect(callHandler(adminDevicesList, ctx, {})).rejects.toThrow(
+    const pageArgs = { paginationOpts: { numItems: 20, cursor: null } }
+    await expect(callHandler(adminDevicesPaginated, ctx, pageArgs)).rejects.toThrow(
       'Akses admin diperlukan',
     )
-    await expect(callHandler(adminUsersList, ctx, {})).rejects.toThrow(
+    await expect(callHandler(adminUsersPaginated, ctx, pageArgs)).rejects.toThrow(
       'Akses admin diperlukan',
     )
-    await expect(callHandler(adminSupportTickets, ctx, {})).rejects.toThrow(
+    await expect(callHandler(adminSupportPaginated, ctx, pageArgs)).rejects.toThrow(
       'Akses admin diperlukan',
     )
   })
 
   it('rejects unauthenticated callers on admin queries', async () => {
     ctx.__testUserId = null
-    await expect(callHandler(adminDevicesList, ctx, {})).rejects.toThrow(
-      'Autentikasi diperlukan',
-    )
+    await expect(
+      callHandler(adminDevicesPaginated, ctx, { paginationOpts: { numItems: 20, cursor: null } }),
+    ).rejects.toThrow('Autentikasi diperlukan')
   })
 
   it('rejects non-admin callers on admin mutations', async () => {
@@ -131,8 +131,8 @@ describe('admin paths: non-admin rejected', () => {
 
   it('allows admin callers through (auth passes)', async () => {
     // adminUsersPaginated touches only requireAdmin + a plain paginate read,
-    // both supported by the shared fake (bare withIndex reads like
-    // fetchAdminDevices are not).
+    // both supported by the shared fake (bare withIndex scans like
+    // fetchAdminDevicesPaginated's are not).
     ctx.__testUserId = adminId
     const res = await callHandler(adminUsersPaginated, ctx, {
       paginationOpts: { numItems: 20, cursor: null },

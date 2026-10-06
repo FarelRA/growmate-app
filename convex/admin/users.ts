@@ -7,14 +7,17 @@ import type { MutationCtx, QueryCtx } from '../_generated/server'
 // already-authorized admin's id where the core needs it as data
 // (self-demotion guard).
 
-// User cores (moved verbatim from ../admin.ts).
-export async function fetchAdminUsers(ctx: QueryCtx) {
-  const users = await ctx.db.query('users').take(100)
-
-  return users
-    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
-    .slice(0, 24)
-    .map((user) => ({
+// User core: cursor-paginated, mapped to the admin account-row shape so the
+// dashboard `data.users` array keeps its fields after the legacy array query
+// is gone.
+export async function fetchAdminUsersPaginated(
+  ctx: QueryCtx,
+  paginationOpts: { cursor: string | null; numItems: number },
+) {
+  const result = await ctx.db.query('users').paginate(paginationOpts)
+  return {
+    ...result,
+    page: result.page.map((user) => ({
       _id: user._id,
       name: user.name ?? user.email ?? 'Pengguna tanpa nama',
       email: user.email ?? '',
@@ -22,14 +25,8 @@ export async function fetchAdminUsers(ctx: QueryCtx) {
       tier: user.tier ?? 'basic',
       role: user.role ?? 'grower',
       setupComplete: Boolean(user.setupComplete),
-    }))
-}
-
-export async function fetchAdminUsersPaginated(
-  ctx: QueryCtx,
-  paginationOpts: { cursor: string | null; numItems: number },
-) {
-  return await ctx.db.query('users').paginate(paginationOpts)
+    })),
+  }
 }
 
 export async function updateUserAccess(

@@ -280,7 +280,7 @@ export async function finalizeIngest(
   // (concurrent manual trigger). Prevents last-writer-wins wiping commands.
   if (Object.prototype.hasOwnProperty.call(deviceUpdates, 'queuedCommands')) {
     const staged = stagedQueuedCommands(deviceUpdates, device)
-    const fresh = (await ctx.db.get(device._id)) as DeviceDoc | null
+    const fresh: DeviceDoc | null = await ctx.db.get(device._id)
     const stored = fresh ? getQueuedDeviceCommands(fresh) : getQueuedDeviceCommands(device)
     deviceUpdates.queuedCommands = {
       pump: staged.pump ?? stored.pump ?? null,
@@ -292,9 +292,7 @@ export async function finalizeIngest(
 
   await ctx.db.patch(device._id, deviceUpdates)
 
-  const nextQueuedCommands = Object.prototype.hasOwnProperty.call(deviceUpdates, 'queuedCommands')
-    ? (deviceUpdates.queuedCommands as unknown as DeviceDoc['queuedCommands'])
-    : getQueuedDeviceCommands(device)
+  const nextQueuedCommands = stagedQueuedCommands(deviceUpdates, device)
 
   const commands = buildDeviceCommandList({
     ...device,
@@ -304,10 +302,10 @@ export async function finalizeIngest(
   if (opts.ack && commands.length > 0) {
     // Ack-clear only the keys that were returned; preserve concurrently
     // queued commands for other keys (delayed ack after new queue).
-    const freshBeforeAck = (await ctx.db.get(device._id)) as DeviceDoc | null
+    const freshBeforeAck: DeviceDoc | null = await ctx.db.get(device._id)
     const storedBeforeAck = freshBeforeAck
       ? getQueuedDeviceCommands(freshBeforeAck)
-      : getQueuedDeviceCommands({ ...device, queuedCommands: nextQueuedCommands } as DeviceDoc)
+      : getQueuedDeviceCommands({ ...device, queuedCommands: nextQueuedCommands })
     const returnedKinds = new Set(commands.map((c) => c.kind))
     await ctx.db.patch(device._id, {
       queuedCommands: {

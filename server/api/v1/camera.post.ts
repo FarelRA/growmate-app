@@ -1,7 +1,7 @@
 import { api } from '~~/convex/_generated/api'
 import { useConvex } from '~~/server/utils/convex'
 import { requireDeviceKey } from '~~/server/utils/requireDeviceKey'
-import { runUploadPipeline, MAX_IMAGE_BYTES } from '~~/server/utils/uploadPipeline'
+import { runUploadPipeline, deleteUploadedKeys, MAX_IMAGE_BYTES, IMAGE_BUCKET } from '~~/server/utils/uploadPipeline'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -34,15 +34,20 @@ export default defineEventHandler(async (event) => {
     }
 
     const input = Buffer.from(rawBody)
-    const { path: pathPrefix } = await runUploadPipeline(input)
+    const { path: pathPrefix, keys } = await runUploadPipeline(input)
 
     const convex = useConvex()
-    await convex.mutation(api.sensors.ingestCameraImage, {
-      deviceId,
-      imageUrl: pathPrefix,
-      capturedAt: Date.now(),
-      deviceKey,
-    })
+    try {
+      await convex.mutation(api.sensors.ingestCameraImage, {
+        deviceId,
+        imageUrl: pathPrefix,
+        capturedAt: Date.now(),
+        deviceKey,
+      })
+    } catch (error: unknown) {
+      await deleteUploadedKeys(IMAGE_BUCKET, keys)
+      throw error
+    }
 
     return { success: true, path: pathPrefix }
   } catch (error: unknown) {

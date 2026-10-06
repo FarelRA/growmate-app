@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { validateSensors, normalizeSensors } from '~~/server/utils/ingestHandler'
-import { MAX_SENSORS_PER_POST } from '~~/convex/sensors'
+import { MAX_SENSORS_PER_POST } from '~~/convex/types'
 
 const HANDLER_SRC = '~~/server/utils/ingestHandler'
 

@@ -6,17 +6,27 @@ import { batchGetUsers } from './stats'
 // AUTH POLICY: `requireAdmin` gates live ONLY in the thin delegates in
 // ../admin.ts. Cores here perform pure DB logic.
 
-// Support-ticket cores (moved verbatim from ../admin.ts).
-export async function fetchAdminSupport(ctx: QueryCtx) {
-  const supportRequests = await ctx.db.query('supportRequests').withIndex('by_createdAt').order('desc').take(30)
+// Support-ticket core: cursor-paginated, enriched to the full ticket shape
+// (owner/handler names, labels, latest messages) so the dashboard
+// `data.supportRequests` array keeps its fields after the legacy array query
+// is gone.
+export async function fetchAdminSupportPaginated(
+  ctx: QueryCtx,
+  paginationOpts: { cursor: string | null; numItems: number },
+) {
+  const result = await ctx.db
+    .query('supportRequests')
+    .withIndex('by_createdAt')
+    .order('desc')
+    .paginate(paginationOpts)
   const allUserIds = [
-    ...supportRequests.map((r) => r.userId),
-    ...supportRequests.map((r) => r.handledBy),
+    ...result.page.map((r) => r.userId),
+    ...result.page.map((r) => r.handledBy),
   ]
   const userMap = await batchGetUsers(ctx, allUserIds)
 
-  return Promise.all(
-    supportRequests.map(async (request) => {
+  const page = await Promise.all(
+    result.page.map(async (request) => {
       const owner = userMap.get(String(request.userId))
       const handledBy = request.handledBy ? userMap.get(String(request.handledBy)) : null
       const messages = await getSupportMessages(ctx, request._id, 24)
@@ -40,15 +50,5 @@ export async function fetchAdminSupport(ctx: QueryCtx) {
       }
     }),
   )
-}
-
-export async function fetchAdminSupportPaginated(
-  ctx: QueryCtx,
-  paginationOpts: { cursor: string | null; numItems: number },
-) {
-  return await ctx.db
-    .query('supportRequests')
-    .withIndex('by_createdAt')
-    .order('desc')
-    .paginate(paginationOpts)
+  return { ...result, page }
 }

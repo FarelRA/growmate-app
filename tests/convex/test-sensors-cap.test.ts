@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi } from 'vitest'
-import { MAX_SENSORS_PER_POST } from '../../convex/sensors'
+import { MAX_SENSORS_PER_POST } from '../../convex/types'
 import {
   SENSOR_EVENT_COOLDOWN_MS,
   isDeviceOnlyEventType,

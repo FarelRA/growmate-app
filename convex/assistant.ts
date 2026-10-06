@@ -426,6 +426,10 @@ export const sendAssistantMessage = mutation({
     const quota = await getAssistantUsage(ctx, thread._id, user.tier)
     assertAssistantQuotaAvailable(quota)
 
+    // Ownership before writes: a rejected foreign deviceId must not leave rows.
+    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
+    const plant = device?.plantId ? await ctx.db.get(device.plantId) : null
+
     // Single-flight quota design: re-check AFTER our reservation rows are
     // visible, and roll back + throw on exceed BEFORE any AI actuation
     // (scheduler/trim below). Chosen over insert-a-reservation-first because
@@ -460,8 +464,6 @@ export const sendAssistantMessage = mutation({
     // Hard retention cap: trim oldest beyond 200/thread on every insert.
     await trimAssistantThreadToCap(ctx, thread._id)
 
-    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
-    const plant = device?.plantId ? await ctx.db.get(device.plantId) : null
     const [chatHistory, assistantContext] = await Promise.all([
       getAssistantMessages(ctx, thread._id, 24),
       buildAssistantContext(ctx, user, device, plant, args.timezoneOffsetMinutes),

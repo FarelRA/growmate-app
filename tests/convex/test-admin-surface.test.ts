@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * Static `api.admin.*` surface snapshot.
+ * Static `api.admin.*` surface snapshot (post-consolidation).
  *
- * Guards the pre-alpha admin split (thin delegates in convex/admin.ts over
- * plain cores in convex/admin/<domain>.ts): every public path must stay
- * byte-identical — same export names, same query/mutation kinds, same args
- * validators — because the frontend (`app/composables/useAdmin*.ts`) and
- * existing tests call `api.admin.*` directly.
+ * The pre-alpha array-returning list queries (adminOverview, adminConsole,
+ * adminDevicesList, adminSupportTickets, adminProductsList,
+ * adminPlantCatalogList, adminBlogPostsList, adminUsersList) are deleted:
+ * every admin list is cursor-paginated, stats/recentEvents are standalone
+ * queries, and the frontend (`app/composables/useAdmin.ts`) consumes only
+ * the paginated shapes.
  *
  * The `argsJson` fingerprints below are the deterministic `exportArgs()`
  * serializations of each function's Convex validators. Any change to an
@@ -18,16 +19,13 @@ import { describe, it, expect } from 'vitest'
 import * as adminModule from '../../convex/admin'
 
 const EXPECTED_QUERIES = [
-  'adminBlogPostsList',
-  'adminConsole',
-  'adminDevicesList',
+  'adminBlogPostsPaginated',
   'adminDevicesPaginated',
-  'adminOverview',
-  'adminPlantCatalogList',
-  'adminProductsList',
+  'adminPlantCatalogPaginated',
+  'adminProductsPaginated',
+  'adminRecentEvents',
+  'adminStats',
   'adminSupportPaginated',
-  'adminSupportTickets',
-  'adminUsersList',
   'adminUsersPaginated',
 ].sort()
 
@@ -47,23 +45,20 @@ const EMPTY_ARGS = "{\"type\":\"object\",\"value\":{}}"
 const PAGINATED_ARGS = "{\"type\":\"object\",\"value\":{\"paginationOpts\":{\"fieldType\":{\"type\":\"object\",\"value\":{\"numItems\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"cursor\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"optional\":false},\"endCursor\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"optional\":true},\"id\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"maximumRowsRead\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"maximumBytesRead\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true}}},\"optional\":false}}}"
 
 const ARGS_SNAPSHOT: Record<string, string> = {
-  adminBlogPostsList: EMPTY_ARGS,
-  adminConsole: EMPTY_ARGS,
+  adminBlogPostsPaginated: PAGINATED_ARGS,
+  adminRecentEvents: EMPTY_ARGS,
+  adminStats: EMPTY_ARGS,
   adminDeleteDevice: "{\"type\":\"object\",\"value\":{\"deviceId\":{\"fieldType\":{\"type\":\"id\",\"tableName\":\"devices\"},\"optional\":false}}}",
   adminDeleteOfficialProduct: "{\"type\":\"object\",\"value\":{\"productId\":{\"fieldType\":{\"type\":\"id\",\"tableName\":\"products\"},\"optional\":false}}}",
   adminDeletePlantPreset: "{\"type\":\"object\",\"value\":{\"presetId\":{\"fieldType\":{\"type\":\"id\",\"tableName\":\"plantCatalog\"},\"optional\":false}}}",
-  adminDevicesList: EMPTY_ARGS,
   adminDevicesPaginated: PAGINATED_ARGS,
-  adminOverview: EMPTY_ARGS,
-  adminPlantCatalogList: EMPTY_ARGS,
-  adminProductsList: EMPTY_ARGS,
+  adminPlantCatalogPaginated: PAGINATED_ARGS,
+  adminProductsPaginated: PAGINATED_ARGS,
   adminSaveDevice: "{\"type\":\"object\",\"value\":{\"existingDeviceId\":{\"fieldType\":{\"type\":\"id\",\"tableName\":\"devices\"},\"optional\":true},\"deviceId\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"name\":{\"fieldType\":{\"type\":\"string\"},\"optional\":true},\"firmwareVersion\":{\"fieldType\":{\"type\":\"string\"},\"optional\":true},\"version\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"literal\",\"value\":\"v1\"},{\"type\":\"literal\",\"value\":\"v2\"}]},\"optional\":true},\"autoWatering\":{\"fieldType\":{\"type\":\"boolean\"},\"optional\":false},\"autoLighting\":{\"fieldType\":{\"type\":\"boolean\"},\"optional\":false},\"wateringThreshold\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"wateringDuration\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"wateringCooldown\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"lightingThreshold\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"lightingHysteresis\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"autoFertilizing\":{\"fieldType\":{\"type\":\"boolean\"},\"optional\":true},\"autoPesticide\":{\"fieldType\":{\"type\":\"boolean\"},\"optional\":true},\"fertilizingThreshold\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"fertilizingDuration\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"fertilizingCooldown\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"pesticideThreshold\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"pesticideDuration\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"pesticideCooldown\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"streamUrl\":{\"fieldType\":{\"type\":\"string\"},\"optional\":true},\"tankCapacity\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"tankMinLevel\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"batteryCapacityAh\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"hasModem\":{\"fieldType\":{\"type\":\"boolean\"},\"optional\":true},\"hasSolarPanel\":{\"fieldType\":{\"type\":\"boolean\"},\"optional\":true}}}",
   adminSaveOfficialProduct: "{\"type\":\"object\",\"value\":{\"productId\":{\"fieldType\":{\"type\":\"id\",\"tableName\":\"products\"},\"optional\":true},\"title\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"description\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"price\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"category\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"quantityAvailable\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"priceUnit\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"imageUrl\":{\"fieldType\":{\"type\":\"string\"},\"optional\":true},\"featured\":{\"fieldType\":{\"type\":\"boolean\"},\"optional\":false},\"status\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"literal\",\"value\":\"active\"},{\"type\":\"literal\",\"value\":\"reserved\"},{\"type\":\"literal\",\"value\":\"sold\"},{\"type\":\"literal\",\"value\":\"archived\"}]},\"optional\":false},\"shopeeUrl\":{\"fieldType\":{\"type\":\"string\"},\"optional\":true}}}",
   adminSupportPaginated: PAGINATED_ARGS,
-  adminSupportTickets: EMPTY_ARGS,
   adminUpdateOfficialProductStatus: "{\"type\":\"object\",\"value\":{\"productId\":{\"fieldType\":{\"type\":\"id\",\"tableName\":\"products\"},\"optional\":false},\"status\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"literal\",\"value\":\"active\"},{\"type\":\"literal\",\"value\":\"reserved\"},{\"type\":\"literal\",\"value\":\"sold\"},{\"type\":\"literal\",\"value\":\"archived\"}]},\"optional\":false}}}",
   adminUpdateUserAccess: "{\"type\":\"object\",\"value\":{\"userId\":{\"fieldType\":{\"type\":\"id\",\"tableName\":\"users\"},\"optional\":false},\"tier\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"literal\",\"value\":\"basic\"},{\"type\":\"literal\",\"value\":\"advanced\"}]},\"optional\":true},\"role\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"literal\",\"value\":\"grower\"},{\"type\":\"literal\",\"value\":\"company\"},{\"type\":\"literal\",\"value\":\"admin\"}]},\"optional\":true}}}",
-  adminUsersList: EMPTY_ARGS,
   adminUsersPaginated: PAGINATED_ARGS,
   adminSavePlantPreset: "{\"type\":\"object\",\"value\":{\"presetId\":{\"fieldType\":{\"type\":\"id\",\"tableName\":\"plantCatalog\"},\"optional\":true},\"key\":{\"fieldType\":{\"type\":\"string\"},\"optional\":true},\"name\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"species\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"growthStage\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"literal\",\"value\":\"seed_dormancy\"},{\"type\":\"literal\",\"value\":\"germination\"},{\"type\":\"literal\",\"value\":\"seedling_development\"},{\"type\":\"literal\",\"value\":\"vegetative_growth\"},{\"type\":\"literal\",\"value\":\"flowering_reproduction\"},{\"type\":\"literal\",\"value\":\"maturity_senescence\"}]},\"optional\":false},\"description\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"location\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"category\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"literal\",\"value\":\"herb\"},{\"type\":\"literal\",\"value\":\"leafy\"},{\"type\":\"literal\",\"value\":\"fruiting\"},{\"type\":\"literal\",\"value\":\"houseplant\"},{\"type\":\"literal\",\"value\":\"flower\"},{\"type\":\"literal\",\"value\":\"microgreen\"}]},\"optional\":false},\"difficulty\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"literal\",\"value\":\"easy\"},{\"type\":\"literal\",\"value\":\"medium\"},{\"type\":\"literal\",\"value\":\"advanced\"}]},\"optional\":false},\"wateringThreshold\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"lightingThreshold\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"fertilizingThreshold\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"fertilizerCadenceDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"pesticideCadenceDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"nutrientNotes\":{\"fieldType\":{\"type\":\"string\"},\"optional\":true},\"sensorProfile\":{\"fieldType\":{\"type\":\"object\",\"value\":{\"soil\":{\"fieldType\":{\"type\":\"object\",\"value\":{\"min\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"max\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false}}},\"optional\":false},\"light\":{\"fieldType\":{\"type\":\"object\",\"value\":{\"min\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"max\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false}}},\"optional\":false},\"temperature\":{\"fieldType\":{\"type\":\"object\",\"value\":{\"min\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"max\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false}}},\"optional\":false},\"air\":{\"fieldType\":{\"type\":\"object\",\"value\":{\"min\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"max\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false}}},\"optional\":false},\"water\":{\"fieldType\":{\"type\":\"object\",\"value\":{\"min\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"max\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false}}},\"optional\":false}}},\"optional\":false},\"lifecycleProfile\":{\"fieldType\":{\"type\":\"object\",\"value\":{\"seedDormancyDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"germinationDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"seedlingDevelopmentDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"vegetativeGrowthDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"floweringReproductionDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"maturitySenescenceDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false}}},\"optional\":false},\"imageUrl\":{\"fieldType\":{\"type\":\"string\"},\"optional\":true}}}",
 }
@@ -73,7 +68,7 @@ function fnOf(name: string): any {
 }
 
 describe('admin api surface snapshot (api.admin.*)', () => {
-  it('exports exactly the 19 public functions — no renames, no additions, no removals', () => {
+  it('exports exactly the 16 public functions — no renames, no additions, no removals', () => {
     expect(Object.keys(adminModule).sort()).toEqual([...EXPECTED_QUERIES, ...EXPECTED_MUTATIONS].sort())
   })
 

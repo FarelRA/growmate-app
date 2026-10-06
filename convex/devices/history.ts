@@ -2,9 +2,8 @@ import type { QueryCtx, DeviceDoc, PlantDoc } from '../types'
 import { getRecentGrowEvents, getRecentAutomationLogs } from '../helpers/events'
 import { formatTimestamp } from '../helpers/generic'
 import { getSensorHistory, getPlantImageHistory } from '../helpers/sensors'
-import { buildPlantView } from '../helpers/plants'
+import { buildPlantView, formatPlantStage, computePlantProgress } from '../helpers/plants'
 import { formatDeviceDetail } from '../helpers/devices'
-import { formatPlantStage, computePlantProgress } from '../helpers/plants'
 
 // deviceHistory core for convex/devices.ts. The delegate owns the ownership
 // gate (getSelectedDevice, visible there) plus the cursor-paginated archived

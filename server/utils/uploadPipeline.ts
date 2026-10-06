@@ -62,3 +62,14 @@ export async function runUploadPipeline(
 
   return { path, keys: images.map((image) => `${path}/${image.size}w.webp`) }
 }
+
+export async function deleteUploadedKeys(
+  bucket: string,
+  keys: string[],
+): Promise<void> {
+  await Promise.allSettled(
+    keys.map((Key) =>
+      s3Client().send(new DeleteObjectCommand({ Bucket: bucket, Key })),
+    ),
+  )
+}

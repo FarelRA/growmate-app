@@ -37,9 +37,13 @@ export function getAiBackendStatus(): { configured: boolean; missing: string[] }
 
 function getAiConfig(): { baseUrl: string; apiKey: string; model: string } {
   const live = readLiveEnv();
+  const apiKey = live.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Asisten Floral tidak tersedia karena OPENAI_API_KEY belum dikonfigurasi.");
+  }
   return {
     baseUrl: live.OPENAI_BASE_URL ?? DEFAULT_OPENAI_BASE_URL,
-    apiKey: live.OPENAI_API_KEY ?? "",
+    apiKey,
     model: live.OPENAI_MODEL ?? DEFAULT_OPENAI_MODEL,
   };
 }
@@ -63,7 +67,7 @@ export const generateAIResponse = internalAction({
       throw new Error("Asisten Floral tidak tersedia karena OPENAI_API_KEY belum dikonfigurasi.");
     }
     const aiConfig = getAiConfig();
-    const apiKey = aiConfig.apiKey as string;
+    const apiKey = aiConfig.apiKey;
 
     try {
       const client = new OpenAI({

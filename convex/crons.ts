@@ -259,7 +259,7 @@ export const recordS3SkipWarning = internalMutation({
     const candidates = await ctx.db
       .query('growEvents')
       .withIndex('by_eventType_and_timestamp', (q) =>
-        q.eq('eventType', 'automation_action_executed'),
+        q.eq('eventType', 'automation_action_executed').gte('timestamp', dayStart),
       )
       .collect()
     const alreadyWarned = candidates.some(

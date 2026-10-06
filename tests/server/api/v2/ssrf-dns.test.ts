@@ -170,7 +170,7 @@ describe('SSRF legit hosts still pass', () => {
       'registerStream',
       expect.objectContaining({ deviceId: 'dev-1', deviceKey: 'test-key' }),
     )
-    expect(mockConnect).toHaveBeenCalledWith('dev-1', 'camera.example.com', 8554)
+    expect(mockConnect).toHaveBeenCalledWith('dev-1', '93.184.216.34', 8554)
   })
 
   it('allows a public IP literal', async () => {

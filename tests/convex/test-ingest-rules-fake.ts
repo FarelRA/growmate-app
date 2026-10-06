@@ -9,7 +9,8 @@
  * Supports the db surface used by the handlers under test:
  * `get` / `insert` / `patch` / `delete`, and `query(table)` with
  * `.withIndex(name, q => q.eq(...).eq(...))`, `.order()`, `.take()`,
- * `.collect()`, `.first()`. Index names are ignored; `eq` filters are
+ * `.collect()`, `.first()`. Index names are ignored; `eq` + range (`gte`/`lte`/`gt`/`lt`)
+ * filters are applied, but rows come back in insertion order (_seq), never
  * applied in memory and `order()` follows insertion order (like Convex's
  * `_creationTime` ordering for the small datasets used here).
  *
@@ -28,12 +29,20 @@ interface EqFilter {
   value: unknown
 }
 
+interface RangeFilter {
+  field: string
+  op: 'gte' | 'lte' | 'gt' | 'lt'
+  value: number
+}
+
+type FakeFilter = EqFilter | RangeFilter
+
 class FakeQueryRunner {
   private getDocs: () => Doc[]
-  private filters: EqFilter[]
+  private filters: FakeFilter[]
   private desc: boolean
 
-  constructor(getDocs: () => Doc[], filters: EqFilter[] = [], desc = false) {
+  constructor(getDocs: () => Doc[], filters: FakeFilter[] = [], desc = false) {
     this.getDocs = getDocs
     this.filters = filters
     this.desc = desc
@@ -44,7 +53,19 @@ class FakeQueryRunner {
   }
 
   private run(): Doc[] {
-    const out = this.getDocs().filter((d) => this.filters.every((f) => d[f.field] === f.value))
+    const out = this.getDocs().filter((d) =>
+      this.filters.every((f) => {
+        if (!('op' in f)) return d[f.field] === f.value
+        const v = d[f.field]
+        if (typeof v !== 'number') return false
+        switch (f.op) {
+          case 'gte': return v >= f.value
+          case 'lte': return v <= f.value
+          case 'gt': return v > f.value
+          case 'lt': return v < f.value
+        }
+      }),
+    )
     out.sort((a, b) => (this.desc ? b._seq - a._seq : a._seq - b._seq))
     return out
   }
@@ -150,10 +171,26 @@ export function createFakeDb(): FakeDb {
       const getDocs = () => snapshot(table)
       return {
         withIndex: (_name: string, fn: (q: any) => void) => {
-          const filters: EqFilter[] = []
+          const filters: FakeFilter[] = []
           const q: any = {
             eq: (field: string, value: unknown) => {
               filters.push({ field, value })
+              return q
+            },
+            gte: (field: string, value: number) => {
+              filters.push({ field, op: 'gte', value })
+              return q
+            },
+            lte: (field: string, value: number) => {
+              filters.push({ field, op: 'lte', value })
+              return q
+            },
+            gt: (field: string, value: number) => {
+              filters.push({ field, op: 'gt', value })
+              return q
+            },
+            lt: (field: string, value: number) => {
+              filters.push({ field, op: 'lt', value })
               return q
             },
           }

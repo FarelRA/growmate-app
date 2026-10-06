@@ -1,5 +1,6 @@
 import type { Ctx, ProductDoc } from '../types'
 import type { Doc, Id } from '../_generated/dataModel'
+import { ConvexError } from 'convex/values'
 import { formatTimestamp, formatCurrencyIdr } from './generic'
 
 function formatMarketplaceStatus(status: 'active' | 'reserved' | 'sold' | 'archived') {
@@ -17,7 +18,9 @@ function formatMarketplaceStatus(status: 'active' | 'reserved' | 'sold' | 'archi
 
 export async function enrichMarketplaceProduct(ctx: Ctx, product: ProductDoc, viewerId?: Id<'users'>) {
   const enriched = await enrichMarketplaceProducts(ctx, [product], viewerId)
-  return enriched[0]!
+  const first = enriched[0]
+  if (!first) throw new ConvexError('Penawaran tidak ditemukan')
+  return first
 }
 
 export async function enrichMarketplaceProducts(
@@ -63,7 +66,7 @@ export async function enrichMarketplaceProducts(
       priceLabel: `${formatCurrencyIdr(product.price)} / ${product.priceUnit}`,
       quantityLabel: `${product.quantityAvailable} ${product.quantityUnit ?? 'item'}`,
       statusLabel: formatMarketplaceStatus(product.status),
-      contactThreadId: (thread?._id as never) ?? null,
+      contactThreadId: thread?._id ?? null,
     }
   })
 }

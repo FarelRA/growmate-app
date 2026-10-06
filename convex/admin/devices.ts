@@ -1,5 +1,5 @@
 import { ConvexError } from 'convex/values'
-import type { Id } from '../_generated/dataModel'
+import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import {
   getDeviceWateringDuration, getDeviceWateringCooldown, getDeviceLightingHysteresis,
@@ -18,62 +18,9 @@ import { batchGetPlants, batchGetUsers } from './stats'
 // AUTH POLICY: `requireAdmin` gates live ONLY in the thin delegates in
 // ../admin.ts. Cores here perform pure DB logic.
 
-// Device-list cores (moved verbatim from ../admin.ts).
-export async function fetchAdminDevices(ctx: QueryCtx) {
-  const devices = await ctx.db.query('devices').withIndex('by_createdAt').order('desc').take(40)
-  const allPlantIds = devices.map((d) => d.plantId)
-  const plantMap = await batchGetPlants(ctx, allPlantIds)
-
-  const allUserIds = devices.map((d) => d.userId)
-  const userMap = await batchGetUsers(ctx, allUserIds)
-
-  return devices.map((device) => {
-    const owner = device.userId ? userMap.get(String(device.userId)) : null
-    const plant = device.plantId ? plantMap.get(String(device.plantId)) : null
-    return {
-      _id: device._id,
-      deviceId: device.deviceId,
-      name: device.name,
-      ownerName: owner?.name ?? null,
-      ownerEmail: owner?.email ?? null,
-      firmwareVersion: device.firmwareVersion ?? '',
-      isClaimed: Boolean(device.userId),
-      plantName: plant && !plant.archived ? plant.name : null,
-      autoWatering: device.autoWatering,
-      autoLighting: device.autoLighting,
-      wateringThreshold: device.wateringThreshold,
-      wateringDuration: getDeviceWateringDuration(device),
-      wateringCooldown: getDeviceWateringCooldown(device),
-      lightingThreshold: device.lightingThreshold,
-      lightingHysteresis: getDeviceLightingHysteresis(device),
-      lastSeen: device.lastSeen,
-      lastSeenLabel: formatTimestamp(device.lastSeen),
-      isOnline: isDeviceOnline(device.lastSeen),
-      version: device.version ?? 'v1',
-      autoFertilizing: device.autoFertilizing,
-      autoPesticide: device.autoPesticide,
-      fertilizingThreshold: device.fertilizingThreshold,
-      fertilizingDuration: getDeviceFertilizingDuration(device),
-      fertilizingCooldown: getDeviceFertilizingCooldown(device),
-      pesticideThreshold: device.pesticideThreshold,
-      pesticideDuration: getDevicePesticideDuration(device),
-      pesticideCooldown: getDevicePesticideCooldown(device),
-      streamUrl: device.streamUrl,
-      tankCapacity: device.tankCapacity,
-      tankMinLevel: device.tankMinLevel,
-      batteryCapacityAh: device.batteryCapacityAh,
-      batterySoC: device.batterySoC,
-      batteryCurrent: device.batteryCurrent,
-      reportedTankSwitchOpen: device.reportedTankSwitchOpen,
-      reportedDrawerSwitchOpen: device.reportedDrawerSwitchOpen,
-      modemImei: device.modemImei,
-      solarPanelWatts: device.solarPanelWatts,
-      hasModem: device.hasModem,
-      hasSolarPanel: device.hasSolarPanel,
-    }
-  })
-}
-
+// Device-list core: cursor-paginated, enriched to the full admin list-item
+// shape (owner/plant names, automation config, connectivity) so the dashboard
+// `data.devices` array keeps its fields after the legacy array query is gone.
 export async function fetchAdminDevicesPaginated(
   ctx: QueryCtx,
   paginationOpts: { cursor: string | null; numItems: number },
@@ -89,20 +36,59 @@ export async function fetchAdminDevicesPaginated(
   const userMap = await batchGetUsers(ctx, allUserIds)
   return {
     ...result,
-    page: result.page.map((device) => ({
-      _id: device._id,
-      deviceId: device.deviceId,
-      name: device.name,
-      ownerName: device.userId ? (userMap.get(String(device.userId))?.name ?? null) : null,
-      ownerEmail: device.userId ? (userMap.get(String(device.userId))?.email ?? null) : null,
-      plantName:
-        device.plantId && !plantMap.get(String(device.plantId))?.archived
-          ? (plantMap.get(String(device.plantId))?.name ?? null)
-          : null,
-      version: device.version ?? 'v1',
-      isClaimed: Boolean(device.userId),
-      lastSeen: device.lastSeen,
-    })),
+    page: result.page.map((device) => mapAdminDevice(device, userMap, plantMap)),
+  }
+}
+
+type DeviceDoc = Doc<'devices'>
+
+function mapAdminDevice(
+  device: DeviceDoc,
+  userMap: Map<string, Doc<'users'> | null>,
+  plantMap: Map<string, Doc<'plants'> | null>,
+) {
+  const owner = device.userId ? userMap.get(String(device.userId)) : null
+  const plant = device.plantId ? plantMap.get(String(device.plantId)) : null
+  return {
+    _id: device._id,
+    deviceId: device.deviceId,
+    name: device.name,
+    ownerName: owner?.name ?? null,
+    ownerEmail: owner?.email ?? null,
+    firmwareVersion: device.firmwareVersion ?? '',
+    isClaimed: Boolean(device.userId),
+    plantName: plant && !plant.archived ? plant.name : null,
+    autoWatering: device.autoWatering,
+    autoLighting: device.autoLighting,
+    wateringThreshold: device.wateringThreshold,
+    wateringDuration: getDeviceWateringDuration(device),
+    wateringCooldown: getDeviceWateringCooldown(device),
+    lightingThreshold: device.lightingThreshold,
+    lightingHysteresis: getDeviceLightingHysteresis(device),
+    lastSeen: device.lastSeen,
+    lastSeenLabel: formatTimestamp(device.lastSeen),
+    isOnline: isDeviceOnline(device.lastSeen),
+    version: device.version ?? 'v1',
+    autoFertilizing: device.autoFertilizing,
+    autoPesticide: device.autoPesticide,
+    fertilizingThreshold: device.fertilizingThreshold,
+    fertilizingDuration: getDeviceFertilizingDuration(device),
+    fertilizingCooldown: getDeviceFertilizingCooldown(device),
+    pesticideThreshold: device.pesticideThreshold,
+    pesticideDuration: getDevicePesticideDuration(device),
+    pesticideCooldown: getDevicePesticideCooldown(device),
+    streamUrl: device.streamUrl,
+    tankCapacity: device.tankCapacity,
+    tankMinLevel: device.tankMinLevel,
+    batteryCapacityAh: device.batteryCapacityAh,
+    batterySoC: device.batterySoC,
+    batteryCurrent: device.batteryCurrent,
+    reportedTankSwitchOpen: device.reportedTankSwitchOpen,
+    reportedDrawerSwitchOpen: device.reportedDrawerSwitchOpen,
+    modemImei: device.modemImei,
+    solarPanelWatts: device.solarPanelWatts,
+    hasModem: device.hasModem,
+    hasSolarPanel: device.hasSolarPanel,
   }
 }
 
@@ -233,15 +219,173 @@ export async function saveAdminDevice(ctx: MutationCtx, args: SaveAdminDeviceArg
   return { success: true, deviceId: deviceDocId }
 }
 
+// Cascade batch size for device deletion. Every child-table loop below
+// re-queries until a batch comes back empty, so datasets larger than one
+// batch are fully drained.
+const CASCADE_BATCH = 100
+
 export async function deleteAdminDevice(ctx: MutationCtx, args: { deviceId: Id<'devices'> }) {
   const device = await ctx.db.get(args.deviceId)
   if (!device) {
-     throw new ConvexError('Perangkat tidak ditemukan')
+    throw new ConvexError('Perangkat tidak ditemukan')
   }
-  if (device.userId || device.plantId) {
-     throw new ConvexError('Lepaskan klaim perangkat dan arsipkan tanaman aktif sebelum menghapus perangkat ini')
+  if (device.userId) {
+    throw new ConvexError('Lepaskan klaim perangkat sebelum menghapus perangkat ini')
   }
+
+  // Plants are only reachable via plantId for careSchedules and plant-keyed
+  // events, so collect every plant id owned by this device first (paginated
+  // until exhausted). The device's active-plant pointer is included
+  // defensively in case it ever diverges from the by_device index.
+  const plantIds = await collectDevicePlantIds(ctx, device._id)
+  if (device.plantId && !plantIds.some((id) => String(id) === String(device.plantId))) {
+    plantIds.push(device.plantId)
+  }
+
+  // Plant-keyed children first.
+  for (const plantId of plantIds) {
+    await deleteCareSchedulesByPlant(ctx, plantId)
+    await deleteGrowEventsByPlant(ctx, plantId)
+    await deleteAutomationLogsByPlant(ctx, plantId)
+  }
+
+  // Device-keyed children (each loop drains its table in batches).
+  await deletePlantsByDevice(ctx, device._id)
+  await deleteSensorsByDevice(ctx, device._id)
+  await deleteSensorReadingsByDevice(ctx, device._id)
+  await deletePlantImagesByDevice(ctx, device._id)
+  await deleteVideoRecordingsByDevice(ctx, device._id)
+  await deleteGrowEventsByDevice(ctx, device._id)
+  await deleteAutomationLogsByDevice(ctx, device._id)
 
   await ctx.db.delete(args.deviceId)
   return { success: true }
+}
+
+async function collectDevicePlantIds(
+  ctx: MutationCtx,
+  deviceId: Id<'devices'>,
+): Promise<Id<'plants'>[]> {
+  const ids: Id<'plants'>[] = []
+  let cursor: string | null = null
+  while (true) {
+    const page = await ctx.db
+      .query('plants')
+      .withIndex('by_device', (q) => q.eq('deviceId', deviceId))
+      .paginate({ cursor, numItems: CASCADE_BATCH })
+    for (const plant of page.page) ids.push(plant._id)
+    if (page.isDone) break
+    cursor = page.continueCursor
+  }
+  return ids
+}
+
+async function deletePlantsByDevice(ctx: MutationCtx, deviceId: Id<'devices'>) {
+  while (true) {
+    const rows = await ctx.db
+      .query('plants')
+      .withIndex('by_device', (q) => q.eq('deviceId', deviceId))
+      .take(CASCADE_BATCH)
+    if (rows.length === 0) break
+    await Promise.all(rows.map((row) => ctx.db.delete(row._id)))
+  }
+}
+
+async function deleteSensorsByDevice(ctx: MutationCtx, deviceId: Id<'devices'>) {
+  while (true) {
+    const rows = await ctx.db
+      .query('sensors')
+      .withIndex('by_device', (q) => q.eq('deviceId', deviceId))
+      .take(CASCADE_BATCH)
+    if (rows.length === 0) break
+    await Promise.all(rows.map((row) => ctx.db.delete(row._id)))
+  }
+}
+
+async function deleteSensorReadingsByDevice(ctx: MutationCtx, deviceId: Id<'devices'>) {
+  while (true) {
+    const rows = await ctx.db
+      .query('sensorReadings')
+      .withIndex('by_device', (q) => q.eq('deviceId', deviceId))
+      .take(CASCADE_BATCH)
+    if (rows.length === 0) break
+    await Promise.all(rows.map((row) => ctx.db.delete(row._id)))
+  }
+}
+
+async function deletePlantImagesByDevice(ctx: MutationCtx, deviceId: Id<'devices'>) {
+  while (true) {
+    const rows = await ctx.db
+      .query('plantImages')
+      .withIndex('by_device', (q) => q.eq('deviceId', deviceId))
+      .take(CASCADE_BATCH)
+    if (rows.length === 0) break
+    await Promise.all(rows.map((row) => ctx.db.delete(row._id)))
+  }
+}
+
+async function deleteVideoRecordingsByDevice(ctx: MutationCtx, deviceId: Id<'devices'>) {
+  while (true) {
+    const rows = await ctx.db
+      .query('videoRecordings')
+      .withIndex('by_device', (q) => q.eq('deviceId', deviceId))
+      .take(CASCADE_BATCH)
+    if (rows.length === 0) break
+    await Promise.all(rows.map((row) => ctx.db.delete(row._id)))
+  }
+}
+
+async function deleteGrowEventsByDevice(ctx: MutationCtx, deviceId: Id<'devices'>) {
+  while (true) {
+    const rows = await ctx.db
+      .query('growEvents')
+      .withIndex('by_device_and_timestamp', (q) => q.eq('deviceId', deviceId))
+      .take(CASCADE_BATCH)
+    if (rows.length === 0) break
+    await Promise.all(rows.map((row) => ctx.db.delete(row._id)))
+  }
+}
+
+async function deleteGrowEventsByPlant(ctx: MutationCtx, plantId: Id<'plants'>) {
+  while (true) {
+    const rows = await ctx.db
+      .query('growEvents')
+      .withIndex('by_plant_and_timestamp', (q) => q.eq('plantId', plantId))
+      .take(CASCADE_BATCH)
+    if (rows.length === 0) break
+    await Promise.all(rows.map((row) => ctx.db.delete(row._id)))
+  }
+}
+
+async function deleteAutomationLogsByDevice(ctx: MutationCtx, deviceId: Id<'devices'>) {
+  while (true) {
+    const rows = await ctx.db
+      .query('automationLogs')
+      .withIndex('by_device', (q) => q.eq('deviceId', deviceId))
+      .take(CASCADE_BATCH)
+    if (rows.length === 0) break
+    await Promise.all(rows.map((row) => ctx.db.delete(row._id)))
+  }
+}
+
+async function deleteAutomationLogsByPlant(ctx: MutationCtx, plantId: Id<'plants'>) {
+  while (true) {
+    const rows = await ctx.db
+      .query('automationLogs')
+      .withIndex('by_plant', (q) => q.eq('plantId', plantId))
+      .take(CASCADE_BATCH)
+    if (rows.length === 0) break
+    await Promise.all(rows.map((row) => ctx.db.delete(row._id)))
+  }
+}
+
+async function deleteCareSchedulesByPlant(ctx: MutationCtx, plantId: Id<'plants'>) {
+  while (true) {
+    const rows = await ctx.db
+      .query('careSchedules')
+      .withIndex('by_plant', (q) => q.eq('plantId', plantId))
+      .take(CASCADE_BATCH)
+    if (rows.length === 0) break
+    await Promise.all(rows.map((row) => ctx.db.delete(row._id)))
+  }
 }

@@ -17,15 +17,20 @@ export function normalizePlantPresetKey(value: string) {
     .replace(/-+/g, '_')
 }
 
-export async function fetchAdminPlantCatalog(ctx: QueryCtx) {
-  const plantCatalog = await ctx.db.query('plantCatalog').take(64)
-
-  return Promise.all(
-    plantCatalog.map(async (preset) => ({
+// Plant-catalog core: cursor-paginated, normalized exactly like the legacy
+// array query so the dashboard `data.plantCatalog` array keeps its fields.
+export async function fetchAdminPlantCatalogPaginated(
+  ctx: QueryCtx,
+  paginationOpts: { cursor: string | null; numItems: number },
+) {
+  const result = await ctx.db.query('plantCatalog').paginate(paginationOpts)
+  return {
+    ...result,
+    page: result.page.map((preset) => ({
       ...preset,
       imageUrl: preset.imageUrl ?? null,
     })),
-  )
+  }
 }
 
 export interface SavePlantPresetArgs {

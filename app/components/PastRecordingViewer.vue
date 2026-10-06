@@ -118,7 +118,12 @@ onMounted(async () => {
     if (!canvas) return
     canvas.width = 640
     canvas.height = 480
-    canvasCtx = canvas.getContext('2d')!
+    const ctx2d = canvas.getContext('2d')
+    if (!ctx2d) {
+      error.value = 'Gagal memuat rekaman: kanvas tidak didukung'
+      return
+    }
+    canvasCtx = ctx2d
 
     decoder = new VideoDecoder({
       output: (frame: VideoFrame) => {
@@ -131,10 +136,10 @@ onMounted(async () => {
       },
     })
 
-    if (spsNal) {
-      const profile = spsNal[1]!
-      const constraints = spsNal[2]!
-      const level = spsNal[3]! & 0x3F
+    if (spsNal && spsNal.length >= 4) {
+      const profile = spsNal[1] ?? 0
+      const constraints = spsNal[2] ?? 0
+      const level = (spsNal[3] ?? 0) & 0x3F
       const codec = `avc1.${profile.toString(16).padStart(2, '0')}${constraints.toString(16).padStart(2, '0')}${level.toString(16).padStart(2, '0')}`
       decoder.configure({ codec, optimizeForLatency: false })
     }
@@ -162,7 +167,11 @@ function playFrame() {
     return
   }
 
-  const frame = frames[currentFrame]!
+  const frame = frames[currentFrame]
+  if (!frame) {
+    playing.value = false
+    return
+  }
   const chunk = new EncodedVideoChunk({
     type: frame.type,
     data: frame.data,

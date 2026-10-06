@@ -5,97 +5,50 @@ import { requireAdmin } from './helpers/auth'
 import { plantSensorProfile, lifecycleProfileValidator } from './schema'
 import { fetchAdminStats, fetchAdminRecentEvents } from './admin/stats'
 import {
-  fetchAdminDevices, fetchAdminDevicesPaginated, saveAdminDevice, deleteAdminDevice,
+  fetchAdminDevicesPaginated, saveAdminDevice, deleteAdminDevice,
 } from './admin/devices'
-import { fetchAdminSupport, fetchAdminSupportPaginated } from './admin/support'
+import { fetchAdminSupportPaginated } from './admin/support'
 import {
-  fetchAdminProducts, saveOfficialProduct, updateOfficialProductStatus, deleteOfficialProduct,
+  fetchAdminProductsPaginated, saveOfficialProduct, updateOfficialProductStatus, deleteOfficialProduct,
 } from './admin/products'
-import { fetchAdminPlantCatalog, savePlantPreset, deletePlantPreset } from './admin/plants'
-import { fetchAdminBlogPosts } from './admin/blog'
-import { fetchAdminUsers, fetchAdminUsersPaginated, updateUserAccess } from './admin/users'
+import { fetchAdminPlantCatalogPaginated, savePlantPreset, deletePlantPreset } from './admin/plants'
+import { fetchAdminBlogPostsPaginated } from './admin/blog'
+import { fetchAdminUsersPaginated, updateUserAccess } from './admin/users'
 
-// ADMIN MODULE MAP (pre-alpha extraction, zero API change — every
-// `api.admin.*` path stays byte-identical):
+// ADMIN MODULE MAP (paginated-only lists — every `api.admin.*` list query is
+// cursor-paginated; the pre-alpha array-returning list queries are deleted):
 //   convex/admin/stats.ts    — batchGetUsers/batchGetPlants, countAllPaginated,
 //                              fetchAdminStats, fetchAdminRecentEvents
-//   convex/admin/devices.ts  — fetchAdminDevices(+Paginated), save/delete device
-//   convex/admin/support.ts  — fetchAdminSupport(+Paginated)
-//   convex/admin/products.ts — fetchAdminProducts, save/status/delete official product
-//   convex/admin/plants.ts   — normalizePlantPresetKey, fetchAdminPlantCatalog,
+//   convex/admin/devices.ts  — fetchAdminDevicesPaginated, save/delete device
+//                              (delete cascades to all device/plant children)
+//   convex/admin/support.ts  — fetchAdminSupportPaginated (enriched tickets)
+//   convex/admin/products.ts — fetchAdminProductsPaginated, save/status/delete official product
+//   convex/admin/plants.ts   — normalizePlantPresetKey, fetchAdminPlantCatalogPaginated,
 //                              save/delete plant preset
-//   convex/admin/blog.ts     — fetchAdminBlogPosts
-//   convex/admin/users.ts    — fetchAdminUsers(+Paginated), updateUserAccess
+//   convex/admin/blog.ts     — fetchAdminBlogPostsPaginated
+//   convex/admin/users.ts    — fetchAdminUsersPaginated, updateUserAccess
 // AUTH POLICY: `requireAdmin` gates live ONLY in the thin delegates below
 // (auth stays at the API boundary). Cores in convex/admin/* perform pure DB
 // logic and never call requireAdmin themselves; where a core needs the admin
 // identity as data (sellerId, self-demotion guard), the delegate passes the
-// already-authorized `admin._id`. The adminOverview/adminConsole compositions
-// stay here as fan-out over the cores.
+// already-authorized `admin._id`.
 
-export const adminOverview = query({
+export const adminStats = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx)
-    const [stats, devices, recentEvents] = await Promise.all([
-      fetchAdminStats(ctx),
-      fetchAdminDevices(ctx),
-      fetchAdminRecentEvents(ctx),
-    ])
-    return { stats, devices, recentEvents }
+    return fetchAdminStats(ctx)
   },
 })
 
-export const adminDevicesList = query({
+export const adminRecentEvents = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx)
-    return fetchAdminDevices(ctx)
+    return fetchAdminRecentEvents(ctx)
   },
 })
 
-export const adminSupportTickets = query({
-  args: {},
-  handler: async (ctx) => {
-    await requireAdmin(ctx)
-    return fetchAdminSupport(ctx)
-  },
-})
-
-export const adminProductsList = query({
-  args: {},
-  handler: async (ctx) => {
-    const admin = await requireAdmin(ctx)
-    return fetchAdminProducts(ctx, admin._id)
-  },
-})
-
-export const adminPlantCatalogList = query({
-  args: {},
-  handler: async (ctx) => {
-    await requireAdmin(ctx)
-    return fetchAdminPlantCatalog(ctx)
-  },
-})
-
-export const adminBlogPostsList = query({
-  args: {},
-  handler: async (ctx) => {
-    await requireAdmin(ctx)
-    return fetchAdminBlogPosts(ctx)
-  },
-})
-
-export const adminUsersList = query({
-  args: {},
-  handler: async (ctx) => {
-    await requireAdmin(ctx)
-    return fetchAdminUsers(ctx)
-  },
-})
-
-// Cursor-paginated admin lists (20/page default). Existing array-returning
-// queries above are kept for backward compatibility with the dashboard.
 export const adminDevicesPaginated = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
@@ -112,39 +65,35 @@ export const adminSupportPaginated = query({
   },
 })
 
+export const adminProductsPaginated = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx)
+    return fetchAdminProductsPaginated(ctx, admin._id, args.paginationOpts)
+  },
+})
+
+export const adminPlantCatalogPaginated = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    return fetchAdminPlantCatalogPaginated(ctx, args.paginationOpts)
+  },
+})
+
+export const adminBlogPostsPaginated = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    return fetchAdminBlogPostsPaginated(ctx, args.paginationOpts)
+  },
+})
+
 export const adminUsersPaginated = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
     return fetchAdminUsersPaginated(ctx, args.paginationOpts)
-  },
-})
-
-export const adminConsole = query({
-  args: {},
-  handler: async (ctx) => {
-    const admin = await requireAdmin(ctx)
-    const [stats, devices, supportRequests, officialProducts, plantCatalog, blogPosts, users, recentEvents] = await Promise.all([
-      fetchAdminStats(ctx),
-      fetchAdminDevices(ctx),
-      fetchAdminSupport(ctx),
-      fetchAdminProducts(ctx, admin._id),
-      fetchAdminPlantCatalog(ctx),
-      fetchAdminBlogPosts(ctx),
-      fetchAdminUsers(ctx),
-      fetchAdminRecentEvents(ctx),
-    ])
-
-    return {
-      stats,
-      devices,
-      supportRequests,
-      officialProducts,
-      blogPosts,
-      plantCatalog,
-      recentEvents,
-      users,
-    }
   },
 })
 

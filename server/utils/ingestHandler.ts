@@ -2,7 +2,7 @@ import type { H3Event, EventHandlerRequest } from 'h3'
 import { api } from '~~/convex/_generated/api'
 import { useConvex } from '~~/server/utils/convex'
 import { requireDeviceKey } from '~~/server/utils/requireDeviceKey'
-import { MAX_SENSORS_PER_POST } from '~~/convex/sensors'
+import { MAX_SENSORS_PER_POST } from '~~/convex/types'
 import type { SensorKind } from '~~/convex/types'
 
 export type SensorApiVersion = 'v1' | 'v2'

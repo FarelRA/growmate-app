@@ -1,6 +1,7 @@
 import { v, ConvexError } from 'convex/values'
 import { mutation, type MutationCtx } from './_generated/server'
 import type { DeviceDoc, PlantDoc, SensorDoc, SensorKind } from './types'
+import { MAX_SENSORS_PER_POST } from './types'
 import {
   ensureDeviceExists, getQueuedDeviceCommands,
   getDeviceByExternalId,
@@ -17,7 +18,7 @@ import {
 } from './sensors/apply'
 import type { WateringDecision, LightingDecision } from './sensors/apply'
 
-export const MAX_SENSORS_PER_POST = 8
+export { MAX_SENSORS_PER_POST }
 
 // Device auth: all device-facing mutations below require `deviceKey: v.string()`.
 // The expected value comes from the `DEVICE_API_KEY` env var, which MUST be set
@@ -34,11 +35,11 @@ function assertDeviceKey(deviceKey: string) {
   }
 }
 
-type DeviceUpdateValue = boolean | number | string | Record<string, unknown> | null | undefined
+import type { DeviceUpdates } from './sensors/apply'
 
 interface IngestionResult {
   sensorState: Map<string, { value: number; unit: string }>
-  deviceUpdates: Record<string, DeviceUpdateValue>
+  deviceUpdates: DeviceUpdates
   updated: number
 }
 
@@ -82,7 +83,7 @@ async function ingestSensorReadings(
   }
 
   let updated = 0
-  const deviceUpdates: Record<string, DeviceUpdateValue> = {
+  const deviceUpdates: DeviceUpdates = {
     lastSeen: now,
     updatedAt: now,
     firmwareVersion: firmwareVersion?.trim() || device.firmwareVersion,
@@ -332,7 +333,7 @@ async function performIngest(
     if (device.version !== 'v1' && device.version !== 'v2') {
       throw new ConvexError(`Unknown device version: ${String(device.version)}`)
     }
-    const plant: PlantDoc | null = device.plantId ? await ctx.db.get(device.plantId) as PlantDoc | null : null
+    const plant: PlantDoc | null = device.plantId ? await ctx.db.get(device.plantId) : null
     const activePlant = plant && !plant.archived ? plant : null
     const now = Date.now()
 
@@ -435,7 +436,7 @@ export const ingestCameraImage = mutation({
   handler: async (ctx, args) => {
     assertDeviceKey(args.deviceKey)
     const device = await ensureDeviceExists(ctx, args.deviceId)
-    const plant: PlantDoc | null = device.plantId ? await ctx.db.get(device.plantId) as PlantDoc | null : null
+    const plant: PlantDoc | null = device.plantId ? await ctx.db.get(device.plantId) : null
     const activePlant = plant && !plant.archived ? plant : null
     const capturedAt = args.capturedAt ?? Date.now()
 

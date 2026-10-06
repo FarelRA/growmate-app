@@ -147,7 +147,7 @@ export default defineEventHandler(async (event) => {
     deviceKey,
   })
 
-  await streamManager.connect(body.deviceId, parsed.host, parsed.port)
+  await streamManager.connect(body.deviceId, resolvedHost, parsed.port)
 
   return { success: true, streamId: body.deviceId }
 })

@@ -29,10 +29,18 @@ usePublicSeo({
   ],
 })
 
-const { data: marketplace } = await usePublicConvexQuery<Record<string, unknown>, MarketplaceData>('public-marketplace-home', api.marketplace.marketplace, {})
-const { data: community } = await usePublicConvexQuery<Record<string, unknown>, CommunityData>('public-community-home', api.community.community, {})
-const { data: plantLibrary } = await usePublicConvexQuery<Record<string, unknown>, PlantPreset[]>('public-plant-library-home', api.plants.plantLibrary, {})
-const { data: blogPosts } = await usePublicConvexQuery<Record<string, unknown>, BlogPost[]>('public-blog-home', api.blog.publicBlog, {})
+// Concurrent: sequential top-level awaits would stack each SSR timeout
+// (4 x 8s) when the backend is unreachable; Promise.all bounds it to one.
+const [marketplaceAsync, communityAsync, plantLibraryAsync, blogPostsAsync] = await Promise.all([
+  usePublicConvexQuery<Record<string, unknown>, MarketplaceData>('public-marketplace-home', api.marketplace.marketplace, {}),
+  usePublicConvexQuery<Record<string, unknown>, CommunityData>('public-community-home', api.community.community, {}),
+  usePublicConvexQuery<Record<string, unknown>, PlantPreset[]>('public-plant-library-home', api.plants.plantLibrary, {}),
+  usePublicConvexQuery<Record<string, unknown>, BlogPost[]>('public-blog-home', api.blog.publicBlog, {}),
+])
+const marketplace = marketplaceAsync.data
+const community = communityAsync.data
+const plantLibrary = plantLibraryAsync.data
+const blogPosts = blogPostsAsync.data
 
 interface MarketplaceProduct {
   _id: string

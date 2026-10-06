@@ -29,8 +29,26 @@ export function usePublicConvexQuery<TArgs extends Record<string, unknown>, TRes
   key: PublicConvexKey,
   query: FunctionReference<'query', 'public', TArgs, TResult>,
   args: TArgs,
+  opts?: { timeoutMs?: number },
 ) {
-  return useAsyncData(key, () => fetchPublicConvexQuery<TArgs, TResult>(query, args), {
+  // SSR blocks the document on this query (lazy: false), so a hung backend
+  // would hang the page forever. Fail soft to null past the timeout; the
+  // page renders and reactive queries take over on hydration.
+  // Default 8s keeps SSR snappy while tolerating a slow backend.
+  const timeoutMs = opts?.timeoutMs ?? 8000
+  return useAsyncData(key, async () => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      return await Promise.race([
+        fetchPublicConvexQuery<TArgs, TResult>(query, args),
+        new Promise<null>((resolve) => {
+          timer = setTimeout(() => resolve(null), timeoutMs)
+        }),
+      ])
+    } finally {
+      if (timer !== undefined) clearTimeout(timer)
+    }
+  }, {
     server: true,
     lazy: false,
     default: () => null,

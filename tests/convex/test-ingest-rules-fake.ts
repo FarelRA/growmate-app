@@ -15,6 +15,10 @@
  *
  * NOTE: this file intentionally has no `.test.ts` suffix so vitest does
  * not run it as a suite.
+ *
+ * NOTE (index-order caveat): FakeQueryRunner ignores index names and serves
+ * rows in insertion order (_seq), never real Convex index order — do not
+ * trust this fake for index-ordering assertions; verify those on real Convex.
  */
 
 type Doc = Record<string, any>

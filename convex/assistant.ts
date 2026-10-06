@@ -672,7 +672,7 @@ export const sendAssistantMessage = mutation({
   },
 })
 
-export const MAX_AI_RESPONSE_CHARS = 4000
+export const MAX_AI_RESPONSE_CAP = 4000
 
 export const insertAIResponse = internalMutation({
   args: {
@@ -682,11 +682,11 @@ export const insertAIResponse = internalMutation({
   },
   handler: async (ctx, args) => {
     let body = args.body
-    if (body.length > MAX_AI_RESPONSE_CHARS) {
+    if (body.length > MAX_AI_RESPONSE_CAP) {
       console.warn(
-        `[assistant] AI response truncated from ${body.length} to ${MAX_AI_RESPONSE_CHARS} chars`,
+        `[assistant] AI response truncated from ${body.length} to ${MAX_AI_RESPONSE_CAP} chars`,
       )
-      body = body.slice(0, MAX_AI_RESPONSE_CHARS)
+      body = body.slice(0, MAX_AI_RESPONSE_CAP)
     }
     await ctx.db.patch(args.assistantMessageId, {
       body,

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
-  ingestSensorData,
   ingestAndAckSensorData,
   clearDeviceCommands,
   ingestCameraImage,
@@ -12,11 +11,6 @@ const TEST_DEVICE_KEY = 'test-device-key'
 const savedEnv = process.env.DEVICE_API_KEY
 
 const mutationCases: { name: string; fn: any; args: Record<string, any> }[] = [
-  {
-    name: 'ingestSensorData',
-    fn: ingestSensorData,
-    args: { deviceId: 'GM-AUTH', sensors: [{ kind: 'soil', value: 50, unit: '%' }] },
-  },
   {
     name: 'ingestAndAckSensorData',
     fn: ingestAndAckSensorData,
@@ -71,8 +65,8 @@ describe('sensors deviceKey auth', () => {
     })
   }
 
-  it('ingestSensorData with key performs ingest identically', async () => {
-    const res = await callHandler(ingestSensorData, ctx, {
+  it('ingestAndAckSensorData with key performs ingest identically', async () => {
+    const res = await callHandler(ingestAndAckSensorData, ctx, {
       deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-AUTH',
       sensors: [{ kind: 'soil', value: 50, unit: '%' }],

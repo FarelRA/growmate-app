@@ -22,6 +22,7 @@ import { useImageUpload } from '@/composables/useImageUpload'
 
 definePageMeta({
   requiresAuth: true,
+  onboarding: true,
 })
 
 const route = useRoute()

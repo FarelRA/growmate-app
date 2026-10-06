@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useAdmin } from '@/composables/useAdmin'
 
-definePageMeta({ requiresAuth: true })
+definePageMeta({ requiresAuth: true, requiresAdmin: true })
 
 const {
   data, activeTab, tabs,

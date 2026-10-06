@@ -12,11 +12,16 @@ import { formatTimestamp, isDeviceOnline } from './generic'
 import { formatPlantStage } from './plants'
 import { recordGrowEvent, recordAutomationEvent, getRecentGrowEvents } from './events'
 
+// convex/types.ts has no reservoir constants (read-only check); the missing
+// literals live next to their usage.
+const DEFAULT_RESERVOIR_CAPACITY_L = 60
+const DEFAULT_RESERVOIR_DAILY_USAGE_L = 5
+
 export function computeWaterReservoirDays(
   waterLevel: number,
-  dailyUsage: number = 5,
+  dailyUsage: number = DEFAULT_RESERVOIR_DAILY_USAGE_L,
 ): number {
-  const reservoirCapacity = 60
+  const reservoirCapacity = DEFAULT_RESERVOIR_CAPACITY_L
   const currentLiters = (waterLevel / 100) * reservoirCapacity
   return Math.floor(currentLiters / dailyUsage)
 }

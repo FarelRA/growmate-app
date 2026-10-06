@@ -4,14 +4,14 @@ import { getCurrentUser } from './helpers/auth'
 import { getDeviceByExternalId } from './helpers/devices'
 import { recordGrowEvent } from './helpers/events'
 
-export const DEFAULT_RECORDINGS_LIMIT = 50
-export const MAX_RECORDINGS_LIMIT = 100
+export const DEFAULT_RECORDINGS_CAP = 50
+export const MAX_RECORDINGS_CAP = 100
 
 export function clampRecordingsLimit(requested?: number): number {
   const fallback = Number.isFinite(requested as number)
     ? (requested as number)
-    : DEFAULT_RECORDINGS_LIMIT
-  return Math.min(Math.max(Math.floor(fallback), 0), MAX_RECORDINGS_LIMIT)
+    : DEFAULT_RECORDINGS_CAP
+  return Math.min(Math.max(Math.floor(fallback), 0), MAX_RECORDINGS_CAP)
 }
 
 /**

@@ -30,7 +30,6 @@ import type * as helpers_streams from "../helpers/streams.js";
 import type * as helpers_v2sensors from "../helpers/v2sensors.js";
 import type * as http from "../http.js";
 import type * as marketplace from "../marketplace.js";
-import type * as migrations_setDeviceVersions from "../migrations/setDeviceVersions.js";
 import type * as notifications from "../notifications.js";
 import type * as openai from "../openai.js";
 import type * as plants from "../plants.js";
@@ -81,7 +80,6 @@ declare const fullApi: ApiFromModules<{
   "helpers/v2sensors": typeof helpers_v2sensors;
   http: typeof http;
   marketplace: typeof marketplace;
-  "migrations/setDeviceVersions": typeof migrations_setDeviceVersions;
   notifications: typeof notifications;
   openai: typeof openai;
   plants: typeof plants;

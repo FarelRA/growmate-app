@@ -67,7 +67,6 @@ async function ingestSensorReadings(
     tankSwitchOpen?: boolean
     drawerSwitchOpen?: boolean
     batteryCurrent?: number
-    _batteryAccumulatedMah?: number
   },
   firmwareVersion?: string,
 ): Promise<IngestionResult> {
@@ -601,15 +600,6 @@ async function performIngest(
 
     return { success: true, updated, commands }
 }
-
-export const ingestSensorData = mutation({
-  args: ingestSensorDataArgs,
-  handler: async (ctx, args) => {
-    assertDeviceKey(args.deviceKey)
-    assertSensorCap(args.sensors)
-    return await performIngest(ctx, args, { ack: false })
-  },
-})
 
 export const ingestAndAckSensorData = mutation({
   args: ingestSensorDataArgs,

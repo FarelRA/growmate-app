@@ -47,7 +47,7 @@ defineEmits<{
         <div v-for="event in recentEvents" :key="event._id" class="rounded-[1.5rem] bg-[#f3f3f3] p-4">
           <div class="text-sm font-bold text-gm-text">{{ event.title }}</div>
           <div v-if="event.detail" class="mt-1 text-sm text-gm-muted">{{ event.detail }}</div>
-          <div class="mt-2 text-[11px] text-gm-muted">{{ event.relativeTime }} • {{ event.timestampLabel }}</div>
+          <div class="mt-2 text-[11px] text-gm-muted">{{ event.timestampLabel }}</div>
         </div>
       </div>
     </article>

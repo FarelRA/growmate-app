@@ -27,24 +27,32 @@ export function useRecordings(deviceId: Ref<string | undefined>, isV2: Ref<boole
   const recordingsError = ref<string | null>(null)
   const recordingsLoading = ref(false)
   const recordingsRetryCount = ref(0)
+  let latestRequestId = 0
 
   async function fetchRecordings(id: string) {
+    const requestId = ++latestRequestId
     recordingsLoading.value = true
     recordingsError.value = null
     try {
       const token = await getAuthToken()
+      if (requestId !== latestRequestId) return
       const resp = await fetch(`/api/v2/recordings/${encodeURIComponent(id)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
+      if (requestId !== latestRequestId) return
       if (!resp.ok) {
         throw new Error(`Gagal memuat rekaman (HTTP ${resp.status})`)
       }
       const json = await resp.json()
+      if (requestId !== latestRequestId) return
       recordings.value = json.recordings ?? []
     } catch (error: unknown) {
+      if (requestId !== latestRequestId) return
       recordingsError.value = getErrorMessage(error, 'Gagal memuat rekaman')
     } finally {
-      recordingsLoading.value = false
+      if (requestId === latestRequestId) {
+        recordingsLoading.value = false
+      }
     }
   }
 
@@ -61,8 +69,10 @@ export function useRecordings(deviceId: Ref<string | undefined>, isV2: Ref<boole
       if (id && v2) {
         void fetchRecordings(id)
       } else {
+        latestRequestId += 1
         recordings.value = []
         recordingsError.value = null
+        recordingsLoading.value = false
       }
     },
     { immediate: true },

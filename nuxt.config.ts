@@ -59,6 +59,7 @@ export default defineNuxtConfig({
         'Cross-Origin-Opener-Policy': 'same-origin',
         'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
         'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+        // NOTE: connect-src hosts must match the NUXT_PUBLIC_CONVEX_URL override.
         'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob: https://storage.growmate.bond; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https://convex.growmate.bond wss://convex.growmate.bond https://storage.growmate.bond; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
       },
     },
@@ -119,7 +120,7 @@ export default defineNuxtConfig({
       display: 'standalone',
       orientation: 'portrait',
       scope: '/',
-      start_url: '/dashboard',
+      start_url: '/',
       icons: [
         {
             src: '/icons/icon-192.png',
@@ -148,7 +149,7 @@ export default defineNuxtConfig({
       skipWaiting: true,
     },
     devOptions: {
-      enabled: true,
+      enabled: false,
       suppressWarnings: true,
       navigateFallback: '/',
       navigateFallbackAllowlist: [/^\/$/, /^\/(products|marketplace|plant-library|support|about|blog|stories)(\/.*)?$/],

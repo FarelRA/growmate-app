@@ -236,9 +236,15 @@ export async function fetchSetupStatus(retries = 2): Promise<SetupStatus | null>
   return null
 }
 
+let refreshInFlight: Promise<string | null> | null = null
+
 export async function getAuthToken({ forceRefreshToken }: { forceRefreshToken?: boolean } = {}) {
   if (!forceRefreshToken) {
     return token.value
+  }
+
+  if (refreshInFlight) {
+    return refreshInFlight
   }
 
   const refreshToken = getStoredValue(REFRESH_TOKEN_STORAGE_KEY)
@@ -246,11 +252,19 @@ export async function getAuthToken({ forceRefreshToken }: { forceRefreshToken?: 
     return token.value
   }
 
-  const result = await createClient().action(api.auth.signIn, { refreshToken })
-  if (result.tokens === undefined) {
-    return token.value
-  }
+  refreshInFlight = (async () => {
+    const result = await createClient().action(api.auth.signIn, { refreshToken })
+    if (result.tokens === undefined) {
+      return token.value
+    }
 
-  storeTokens(result.tokens ?? null)
-  return token.value
+    storeTokens(result.tokens ?? null)
+    return token.value
+  })()
+
+  try {
+    return await refreshInFlight
+  } finally {
+    refreshInFlight = null
+  }
 }

@@ -78,6 +78,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/login', { replace: true })
   }
 
+  if (to.meta.requiresAdmin && !status.isAdmin) {
+    return navigateTo(getSetupRoute(status), { replace: true })
+  }
+
   if (status.isAdmin) {
     if (to.path !== '/admin' && to.path !== '/profile') {
       return navigateTo('/admin', { replace: true })

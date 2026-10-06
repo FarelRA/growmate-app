@@ -28,6 +28,7 @@
     "lint": "run-s lint:*",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
+    "lint:check": "oxlint . && eslint . --cache",
     "format": "prettier --write --experimental-cli app/ convex/ server/ shared/ tests/",
     "check": "run-s typecheck typecheck:convex lint test build"
   },

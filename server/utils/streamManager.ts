@@ -14,6 +14,19 @@ export const MAX_VIEWERS_PER_DEVICE = 20
 export const MAX_PENDING_UPLOADS = 32
 export const MAX_NAL_BUFFER_BYTES = 2 * 1024 * 1024
 
+export const RECONNECT_BASE_DELAY_MS = RECONNECT_DELAY_MS
+export const RECONNECT_MAX_DELAY_MS = 60_000
+export const MAX_RECONNECT_ATTEMPTS = 10
+export const RECONNECT_JITTER_MS = 1_000
+
+export function getReconnectDelay(attempt: number): number {
+  const safeAttempt = Math.max(0, Math.floor(attempt))
+  const exponential = RECONNECT_BASE_DELAY_MS * 2 ** safeAttempt
+  const capped = Math.min(exponential, RECONNECT_MAX_DELAY_MS)
+  const jitter = Math.random() * RECONNECT_JITTER_MS
+  return capped + jitter
+}
+
 /**
  * Server-side device key for Convex mutations (same trust domain — this code
  * only runs on the server). Fail-closed: a missing key is a misconfiguration
@@ -44,12 +57,22 @@ interface StreamState {
   port: number
   frameCount: number
   segmentStartTime: number
+  generation: number
+  reconnectAttempts: number
 }
 class StreamManager {
   private streams = new Map<string, StreamState>()
   private viewers = new Map<string, Set<PeerLike>>()
   private peerDeviceMap = new WeakMap<object, string>()
   private pendingUploads = new Set<Promise<void>>()
+  private deviceGenerations = new Map<string, number>()
+
+  private isCurrent(state: StreamState): boolean {
+    return (
+      this.streams.get(state.deviceId) === state &&
+      this.deviceGenerations.get(state.deviceId) === state.generation
+    )
+  }
 
   async connect(deviceId: string, host: string, port: number): Promise<void> {
     // Fail closed up front: without a server device key, segment uploads
@@ -58,6 +81,9 @@ class StreamManager {
 
     const existing = this.streams.get(deviceId)
     if (existing) this.disconnect(deviceId)
+
+    const generation = (this.deviceGenerations.get(deviceId) ?? 0) + 1
+    this.deviceGenerations.set(deviceId, generation)
 
     const state: StreamState = {
       deviceId,
@@ -71,6 +97,8 @@ class StreamManager {
       port,
       frameCount: 0,
       segmentStartTime: Date.now(),
+      generation,
+      reconnectAttempts: 0,
     }
 
     this.streams.set(deviceId, state)
@@ -80,11 +108,17 @@ class StreamManager {
 
   private connectSocket(state: StreamState): void {
     const { deviceId, host, port } = state
+    const generation = state.generation
     const socket = net.createConnection(port, host, () => {
+      if (!this.isCurrent(state)) {
+        socket.destroy()
+        return
+      }
       if (state.reconnectTimer) {
         clearTimeout(state.reconnectTimer)
         state.reconnectTimer = null
       }
+      state.reconnectAttempts = 0
     })
 
     state.tcpSocket = socket
@@ -94,6 +128,7 @@ class StreamManager {
       state.segmentTimer = null
     }
     state.segmentTimer = setInterval(() => {
+      if (!this.isCurrent(state)) return
       void this.rotateSegment(state).catch((err) => {
         console.error(`[StreamManager] Failed to rotate segment for ${deviceId}:`, err)
       })
@@ -102,6 +137,7 @@ class StreamManager {
     let nalBuffer = Buffer.alloc(0)
 
     socket.on('data', (chunk: Buffer) => {
+      if (!this.isCurrent(state)) return
       nalBuffer = Buffer.concat([nalBuffer, chunk])
 
       if (nalBuffer.length > MAX_NAL_BUFFER_BYTES) {
@@ -142,7 +178,13 @@ class StreamManager {
           nalStart = searchFrom
           continue
         }
-        const nalType = nalUnit.at(0)! & 0x1F
+        const firstByte = nalUnit.at(0)
+        if (firstByte === undefined) {
+          searchFrom = next.pos + next.len
+          nalStart = searchFrom
+          continue
+        }
+        const nalType = firstByte & 0x1F
         const timestamp = state.frameCount * (1_000_000 / 15)
 
         this.processNalUnit(state, nalUnit, nalType, timestamp)
@@ -157,16 +199,34 @@ class StreamManager {
     })
 
     socket.on('close', () => {
+      if (this.deviceGenerations.get(deviceId) !== generation) return
+      if (this.streams.get(deviceId) !== state) return
+
       this.disconnect(deviceId, true)
 
+      if (this.streams.get(deviceId) !== state) return
+      if (this.deviceGenerations.get(deviceId) !== generation) return
+
+      if (state.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.error(
+          `[StreamManager] Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached for ${deviceId}; giving up`,
+        )
+        return
+      }
+
+      const delay = getReconnectDelay(state.reconnectAttempts)
+      state.reconnectAttempts += 1
+
       state.reconnectTimer = setTimeout(() => {
+        if (this.deviceGenerations.get(deviceId) !== generation) return
+        if (this.streams.get(deviceId) !== state) return
         if (this.streams.has(deviceId)) {
           this.connectSocket(state)
           void this.rotateSegment(state).catch((err) => {
             console.error(`[StreamManager] Failed to rotate segment for ${deviceId}:`, err)
           })
         }
-      }, RECONNECT_DELAY_MS)
+      }, delay)
     })
 
     socket.on('error', () => {
@@ -175,6 +235,7 @@ class StreamManager {
   }
 
   private processNalUnit(state: StreamState, nalUnit: Buffer, nalType: number, timestamp: number) {
+    if (!this.isCurrent(state)) return
     const isVclNal = nalType === 1 || nalType === 5
     if (isVclNal) {
       state.frameCount++
@@ -288,26 +349,46 @@ class StreamManager {
   }
 
   private async rotateSegment(state: StreamState): Promise<void> {
+    if (!this.isCurrent(state)) return
+    const generation = state.generation
     if (state.fileWriter && state.currentFilePath) {
       const filePath = state.currentFilePath
       const segmentStart = state.segmentStartTime
       await this.closeWriter(state)
+      if (!this.isCurrent(state)) return
+      if (this.deviceGenerations.get(state.deviceId) !== generation) return
       state.currentFilePath = null
-      this.trackUpload(this.uploadSegment(state.deviceId, filePath, segmentStart))
+      this.trackUpload(this.uploadSegment(state.deviceId, filePath, segmentStart, generation))
     }
+
+    if (!this.isCurrent(state)) return
+    if (this.deviceGenerations.get(state.deviceId) !== generation) return
 
     const now = new Date()
     const pad = (n: number) => String(n).padStart(2, '0')
     const fileName = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.h264`
     const dir = `${SEGMENT_DIR}/${state.deviceId}`
     await mkdir(dir, { recursive: true })
+    if (!this.isCurrent(state)) return
+    if (this.deviceGenerations.get(state.deviceId) !== generation) return
     state.currentFilePath = `${dir}/${fileName}`
     state.fileWriter = fs.createWriteStream(state.currentFilePath)
     state.segmentStartTime = Date.now()
   }
 
-  private async uploadSegment(deviceId: string, filePath: string, capturedAt: number): Promise<void> {
+  private async uploadSegment(deviceId: string, filePath: string, capturedAt: number, generation?: number): Promise<void> {
     try {
+      if (generation !== undefined && this.deviceGenerations.get(deviceId) !== generation) {
+        await unlink(filePath).catch(() => {})
+        return
+      }
+      if (generation !== undefined) {
+        const current = this.streams.get(deviceId)
+        if (current && current.generation !== generation) {
+          await unlink(filePath).catch(() => {})
+          return
+        }
+      }
       const stats = await stat(filePath)
       const fileName = path.basename(filePath)
       const s3Path = `${deviceId}/stream/${fileName}`

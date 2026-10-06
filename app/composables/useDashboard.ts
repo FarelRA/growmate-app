@@ -8,6 +8,17 @@ import { useDeviceSelection } from '@/composables/useDeviceSelection'
 import { useSchedules } from '@/composables/useSchedules'
 import { useRecordings } from '@/composables/useRecordings'
 import { authState } from '@/utils/auth'
+import {
+  DEFAULT_TANK_CAPACITY,
+  DEFAULT_TANK_MIN_LEVEL,
+} from '~~/convex/types'
+
+// convex/types.ts has no battery/solar fallback constants (read-only check),
+// so the missing literals live next to their usage.
+const DEFAULT_BATTERY_SOC = 50
+const DEFAULT_BATTERY_CURRENT = 0
+const DEFAULT_BATTERY_CAPACITY_AH = 5
+const DEFAULT_SOLAR_PANEL_WATTS = 0
 
 export type DashboardPanel = 'overview' | 'care' | 'devices' | 'history' | 'stream'
 
@@ -111,16 +122,16 @@ export function useDashboard() {
   const streamActive = ref(false)
   const isLiveLoading = ref(false)
 
-  const batterySoC = computed(() => data.value?.device?.batterySoC ?? 50)
-  const batteryCurrent = computed(() => data.value?.device?.batteryCurrent ?? 0)
-  const batteryCapacityAh = computed(() => data.value?.device?.batteryCapacityAh ?? 5)
+  const batterySoC = computed(() => data.value?.device?.batterySoC ?? DEFAULT_BATTERY_SOC)
+  const batteryCurrent = computed(() => data.value?.device?.batteryCurrent ?? DEFAULT_BATTERY_CURRENT)
+  const batteryCapacityAh = computed(() => data.value?.device?.batteryCapacityAh ?? DEFAULT_BATTERY_CAPACITY_AH)
   const tankSwitchOpen = computed(() => data.value?.device?.reportedTankSwitchOpen ?? false)
   const drawerSwitchOpen = computed(() => data.value?.device?.reportedDrawerSwitchOpen ?? false)
   const hasModem = computed(() => data.value?.device?.hasModem ?? false)
   const hasSolarPanel = computed(() => data.value?.device?.hasSolarPanel ?? false)
-  const solarPanelWatts = computed(() => data.value?.device?.solarPanelWatts ?? 0)
-  const tankCapacity = computed(() => data.value?.device?.tankCapacity ?? 10)
-  const tankMinLevel = computed(() => data.value?.device?.tankMinLevel ?? 10)
+  const solarPanelWatts = computed(() => data.value?.device?.solarPanelWatts ?? DEFAULT_SOLAR_PANEL_WATTS)
+  const tankCapacity = computed(() => data.value?.device?.tankCapacity ?? DEFAULT_TANK_CAPACITY)
+  const tankMinLevel = computed(() => data.value?.device?.tankMinLevel ?? DEFAULT_TANK_MIN_LEVEL)
 
   const batteryIcon = computed(() => {
     const soc = batterySoC.value

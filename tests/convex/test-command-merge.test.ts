@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach } from 'vitest'
 
-import { ingestSensorData, ingestAndAckSensorData } from '../../convex/sensors'
+import { ingestAndAckSensorData } from '../../convex/sensors'
 import { validateSensors } from '../../server/utils/ingestHandler'
 import type { DeviceDoc } from '../../convex/types'
 import { createFakeCtx, callHandler, type FakeCtx } from './test-ingest-rules-fake'
@@ -175,7 +175,7 @@ describe('queuedCommands field-wise merge (performIngest)', () => {
     expect(finalDevice.queuedCommands.light).toEqual({ kind: 'light', enabled: true })
   })
 
-  it('ingest without ack merges staged + stored and leaves both queued', async () => {
+  it('ingest + ack merges staged + stored, returns both, and acks only returned keys', async () => {
     const ctx = createFakeCtx()
     const { deviceId } = await seedDeviceWithPlant(ctx)
 
@@ -184,7 +184,7 @@ describe('queuedCommands field-wise merge (performIngest)', () => {
       value: { kind: 'light', enabled: true },
     })
 
-    const res = await callHandler(ingestSensorData, ctx, {
+    const res = await callHandler(ingestAndAckSensorData, ctx, {
       deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-MERGE',
       sensors: drySoilWithWater,
@@ -194,8 +194,9 @@ describe('queuedCommands field-wise merge (performIngest)', () => {
     expect(kinds).toEqual(['light', 'pump'])
     const devices = ctx.db.all('devices')
     const stored = devices.find((d) => String(d._id) === String(deviceId)) as any
-    expect(stored.queuedCommands.pump).toEqual({ kind: 'pump', durationMs: 8000 })
-    expect(stored.queuedCommands.light).toEqual({ kind: 'light', enabled: true })
+    // Both were returned, so ack clears both.
+    expect(stored.queuedCommands.pump).toBeNull()
+    expect(stored.queuedCommands.light).toBeNull()
   })
 })
 

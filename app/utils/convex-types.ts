@@ -73,8 +73,6 @@ export interface AdminSupportTicket extends Doc<'supportRequests'> {
 /** Operational event with its display label attached. */
 export interface AdminRecentEvent extends Doc<'growEvents'> {
   timestampLabel: string
-  /** Rendered by the overview template; absent in older payloads. */
-  relativeTime?: string
 }
 
 /** Plant-catalog preset with a normalized (nullable) image URL. */

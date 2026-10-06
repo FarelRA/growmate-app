@@ -12,7 +12,7 @@ vi.mock('@convex-dev/auth/server', async (importOriginal) => {
   }
 })
 
-import { ingestSensorData } from '../../convex/sensors'
+import { ingestAndAckSensorData } from '../../convex/sensors'
 import { createFakeCtx, callHandler, type FakeCtx } from './test-ingest-rules-fake'
 
 const now = Date.now()
@@ -126,7 +126,7 @@ describe('ingest threads device.version into normalization (no fallback)', () =>
 
   it('v1 device: raw soil 4095 stores 0%', async () => {
     await seedDeviceWithVersion(ctx, 'v1')
-    const res = await callHandler(ingestSensorData, ctx, {
+    const res = await callHandler(ingestAndAckSensorData, ctx, {
       deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-V1',
       sensors: [{ kind: 'soil', value: 50, unit: '%', raw: 4095 }],
@@ -138,7 +138,7 @@ describe('ingest threads device.version into normalization (no fallback)', () =>
 
   it('v2 device: raw soil 4095 stores 94% (16-bit scale)', async () => {
     await seedDeviceWithVersion(ctx, 'v2')
-    const res = await callHandler(ingestSensorData, ctx, {
+    const res = await callHandler(ingestAndAckSensorData, ctx, {
       deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-V2',
       sensors: [{ kind: 'soil', value: 50, unit: '%', raw: 4095 }],
@@ -152,7 +152,7 @@ describe('ingest threads device.version into normalization (no fallback)', () =>
     const deviceId = await seedDeviceWithVersion(ctx, 'v1')
     await ctx.db.patch(deviceId, { version: 'v3' })
     await expect(
-      callHandler(ingestSensorData, ctx, {
+      callHandler(ingestAndAckSensorData, ctx, {
         deviceKey: TEST_DEVICE_KEY,
         deviceId: 'GM-V1',
         sensors: [{ kind: 'soil', value: 50, unit: '%', raw: 100 }],

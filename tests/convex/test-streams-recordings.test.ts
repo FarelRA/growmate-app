@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  DEFAULT_RECORDINGS_LIMIT,
-  MAX_RECORDINGS_LIMIT,
+  DEFAULT_RECORDINGS_CAP,
+  MAX_RECORDINGS_CAP,
   clampRecordingsLimit,
 } from '../../convex/streams'
 import {
@@ -16,12 +16,12 @@ import {
 
 describe('listRecordings server-side limit', () => {
   it('defaults to 50 when no limit is requested', () => {
-    expect(DEFAULT_RECORDINGS_LIMIT).toBe(50)
+    expect(DEFAULT_RECORDINGS_CAP).toBe(50)
     expect(clampRecordingsLimit(undefined)).toBe(50)
   })
 
   it('caps the requested limit at 100', () => {
-    expect(MAX_RECORDINGS_LIMIT).toBe(100)
+    expect(MAX_RECORDINGS_CAP).toBe(100)
     expect(clampRecordingsLimit(200)).toBe(100)
     expect(clampRecordingsLimit(100)).toBe(100)
   })

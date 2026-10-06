@@ -11,3 +11,5 @@ tests/
 .vscode/
 *.md
 *.log
+test-results/
+design/

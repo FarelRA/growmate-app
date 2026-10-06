@@ -19,6 +19,21 @@ let canvasCtx: CanvasRenderingContext2D | null = null
 let startTime = 0
 let timerInterval: NodeJS.Timeout | null = null
 let reconnectTimer: NodeJS.Timeout | null = null
+let activeWsUrl: string | null = null
+let activeCanvas: HTMLCanvasElement | null = null
+let cachedSps: Uint8Array | null = null
+let cachedPps: Uint8Array | null = null
+let configuredPps: Uint8Array | null = null
+let decoderConfigured = false
+
+function ppsEquals(a: Uint8Array | null, b: Uint8Array | null): boolean {
+  if (a === b) return true
+  if (!a || !b || a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
+}
 
 const webCodecsSupported = typeof VideoDecoder !== 'undefined' && typeof EncodedVideoChunk !== 'undefined'
 
@@ -34,6 +49,13 @@ function initDecoder() {
     error.value = 'Browser tidak mendukung WebCodecs API'
     return
   }
+  if (decoder && (decoder.state === 'configured' || decoder.state === 'unconfigured')) {
+    return
+  }
+  if (decoder) {
+    try { decoder.close() } catch { /* already closed */ }
+    decoder = null
+  }
 
   decoder = new VideoDecoder({
     output: (frame) => {
@@ -48,16 +70,66 @@ function initDecoder() {
       error.value = `Decoder error: ${e.message}`
     },
   })
+  decoderConfigured = false
+  configuredPps = null
+  tryConfigureDecoder()
+}
+
+function tryConfigureDecoder() {
+  if (!decoder || decoder.state !== 'unconfigured') return
+  if (!cachedSps) return
+  const codec = parseAVCCodec(cachedSps)
+  const description = buildAVCDescription(cachedSps, cachedPps ?? undefined)
+  decoder.configure({ codec, description, optimizeForLatency: true })
+  decoderConfigured = true
+  configuredPps = cachedPps ? cachedPps.slice() : null
+  if (!videoReady.value) videoReady.value = true
+}
+
+function reconfigureWithPpsIfNeeded() {
+  if (!decoder || decoder.state !== 'configured') return
+  if (!cachedSps || !cachedPps) return
+  if (!decoderConfigured) return
+  if (ppsEquals(configuredPps, cachedPps)) return
+  const codec = parseAVCCodec(cachedSps)
+  const description = buildAVCDescription(cachedSps, cachedPps)
+  try {
+    decoder.configure({ codec, description, optimizeForLatency: true })
+  } catch {
+    return
+  }
+  configuredPps = cachedPps.slice()
 }
 
 function connectWs() {
+  const url = buildWsUrl()
+  if (ws && (ws.readyState === 0 || ws.readyState === 1) && activeWsUrl === url) {
+    return
+  }
+  if (ws) {
+    try {
+      ws.onopen = null
+      ws.onclose = null
+      ws.onerror = null
+      ws.onmessage = null
+    } catch { /* ignore */ }
+    try { ws.close() } catch { /* ignore */ }
+    ws = null
+  }
+  if (url !== activeWsUrl) {
+    cachedSps = null
+    cachedPps = null
+    configuredPps = null
+    decoderConfigured = false
+  }
   if (reconnectTimer) {
     clearTimeout(reconnectTimer)
     reconnectTimer = null
   }
 
   loading.value = true
-  ws = new WebSocket(buildWsUrl())
+  activeWsUrl = url
+  ws = new WebSocket(url)
   ws.binaryType = 'arraybuffer'
 
   ws.onopen = () => {
@@ -87,16 +159,20 @@ function connectWs() {
     const nalType = nalUnit[0]! & 0x1F
 
     if (nalType === 7) {
-      if (decoder && decoder.state === 'unconfigured') {
-        const codec = parseAVCCodec(nalUnit)
-        const description = buildAVCDescription(nalUnit, undefined)
-        decoder.configure({ codec, description, optimizeForLatency: true })
-        if (!videoReady.value) videoReady.value = true
-      }
+      cachedSps = nalUnit.slice()
+      tryConfigureDecoder()
       return
     }
 
-    if (nalType === 8) return
+    if (nalType === 8) {
+      cachedPps = nalUnit.slice()
+      if (decoder && decoder.state === 'unconfigured') {
+        tryConfigureDecoder()
+      } else {
+        reconfigureWithPpsIfNeeded()
+      }
+      return
+    }
 
     if (!decoder || decoder.state === 'unconfigured') return
 
@@ -123,6 +199,7 @@ function connectWs() {
       timerInterval = null
     }
     ws = null
+    activeWsUrl = null
     // Auto-reconnect after 3s with a freshly refreshed token, so an
     // expired JWT does not turn into a permanent 401 reconnect loop.
     reconnectTimer = setTimeout(() => {
@@ -168,7 +245,7 @@ function parseAVCCodec(sps: Uint8Array): string {
 
 function buildAVCDescription(sps: Uint8Array, pps: Uint8Array | undefined): Uint8Array {
   const ppsData = pps ?? new Uint8Array(0)
-  const size = 7 + 2 + sps.length + 1 + 2 + ppsData.length
+  const size = 9 + sps.length + (ppsData.length > 0 ? 2 + ppsData.length : 0)
   const buf = new Uint8Array(size)
   let off = 0
   buf[off++] = 0x01
@@ -191,8 +268,19 @@ function buildAVCDescription(sps: Uint8Array, pps: Uint8Array | undefined): Uint
 
 function onCanvasReady(canvas: HTMLCanvasElement | null) {
   if (!canvas) return
+  const url = buildWsUrl()
+  const sameCanvas = activeCanvas === canvas
+  const wsBusy =
+    !!ws &&
+    (ws.readyState === 0 || ws.readyState === 1) &&
+    activeWsUrl === url
+  const decoderAlive = !!decoder && decoder.state !== 'closed'
   canvasCtx = canvas.getContext('2d')!
-  initDecoder()
+  activeCanvas = canvas
+  if (sameCanvas && wsBusy && decoderAlive) return
+  if (!decoderAlive) {
+    initDecoder()
+  }
   connectWs()
 }
 
@@ -208,13 +296,25 @@ onUnmounted(() => {
   if (reconnectTimer) clearTimeout(reconnectTimer)
   if (timerInterval) clearInterval(timerInterval)
   if (ws) {
-    ws.close()
+    try {
+      ws.onopen = null
+      ws.onclose = null
+      ws.onerror = null
+      ws.onmessage = null
+    } catch { /* ignore */ }
+    try { ws.close() } catch { /* ignore */ }
     ws = null
   }
   if (decoder) {
-    decoder.close()
+    try { decoder.close() } catch { /* ignore */ }
     decoder = null
   }
+  activeWsUrl = null
+  activeCanvas = null
+  cachedSps = null
+  cachedPps = null
+  configuredPps = null
+  decoderConfigured = false
 })
 </script>
 

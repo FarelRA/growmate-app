@@ -8,7 +8,6 @@ const mockMutation = vi.hoisted(() => vi.fn())
 vi.mock('~~/convex/_generated/api', () => ({
   api: {
     sensors: {
-      ingestSensorData: 'ingestSensorData',
       ingestAndAckSensorData: 'ingestAndAckSensorData',
       clearDeviceCommands: 'clearDeviceCommands',
     },

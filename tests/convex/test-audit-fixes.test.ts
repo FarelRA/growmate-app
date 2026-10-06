@@ -18,7 +18,7 @@ import {
   triggerFertilizingCore,
   triggerPesticideCore,
 } from '../../convex/care'
-import { MAX_AI_RESPONSE_CHARS } from '../../convex/assistant'
+import { MAX_AI_RESPONSE_CAP } from '../../convex/assistant'
 import { enrichMarketplaceProducts } from '../../convex/helpers/marketplace'
 
 describe('audit fixes: single sources and shared helpers', () => {
@@ -59,7 +59,7 @@ describe('audit fixes: single sources and shared helpers', () => {
   })
 
   it('AI response cap is defined', () => {
-    expect(MAX_AI_RESPONSE_CHARS).toBe(4000)
+    expect(MAX_AI_RESPONSE_CAP).toBe(4000)
   })
 
   it('batched marketplace enrichment is exported', () => {

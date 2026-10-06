@@ -96,10 +96,11 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
     volumes:
       - minio-data:/data
-    # curl per upstream MinIO docs examples; re-verify on first deploy:
-    # `docker exec <minio> which curl`.
+    # NOTE: minio image is not cached locally and pulls are out of scope, so curl
+    # presence is unverifiable (`docker exec <minio> which curl` on first deploy);
+    # use busybox-compatible wget probe instead.
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/minio/health/live > /dev/null"]
       interval: 30s
       timeout: 5s
       retries: 3

@@ -1,0 +1,88 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`assistant/context: buildAssistantContext fixture snapshot > produces identical output for a fixed fixture (key fields) 1`] = `
+{
+  "activeDevice": {
+    "deviceId": "GM-SNAP",
+    "name": "Pod GM-SNAP",
+    "version": "v1",
+    "wateringDuration": 8,
+    "wateringThreshold": 25,
+  },
+  "activePlant": {
+    "growthStage": "Pertumbuhan vegetatif",
+    "health": "good",
+    "name": "Cabai",
+    "sensorProfile": {
+      "air": {
+        "max": 70,
+        "min": 40,
+      },
+      "light": {
+        "max": 80,
+        "min": 30,
+      },
+      "soil": {
+        "max": 80,
+        "min": 50,
+      },
+      "temperature": {
+        "max": 28,
+        "min": 18,
+      },
+      "water": {
+        "max": 90,
+        "min": 20,
+      },
+    },
+    "species": "Capsicum annuum",
+    "wateringThreshold": 45,
+  },
+  "automationLogs": [
+    {
+      "action": "manual_pump",
+      "duration": 8,
+      "soilValue": 40,
+      "threshold": 25,
+    },
+  ],
+  "clientTimezoneOffsetMinutes": 420,
+  "recentEvents": [
+    {
+      "detail": "Tanah 40%",
+      "title": "Pembacaan sensor",
+    },
+  ],
+  "schedules": [
+    {
+      "cadenceLabel": "Setiap hari pukul 08:00",
+      "cadenceUnit": "days",
+      "cadenceValue": 1,
+      "enabled": true,
+      "title": "Siram pagi",
+    },
+  ],
+  "sensors": [
+    {
+      "kind": "soil",
+      "label": "Kelembapan Tanah",
+      "status": "low",
+      "target": "↑ Target min 50%",
+      "unit": "%",
+      "value": 40,
+    },
+    {
+      "kind": "temperature",
+      "label": "Suhu",
+      "status": "optimal",
+      "target": "✓ Ideal 18-28C",
+      "unit": "C",
+      "value": 25,
+    },
+  ],
+  "user": {
+    "name": "Snapshot",
+    "tier": "basic",
+  },
+}
+`;

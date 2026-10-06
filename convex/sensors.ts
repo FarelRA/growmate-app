@@ -2,16 +2,20 @@ import { v, ConvexError } from 'convex/values'
 import { mutation, type MutationCtx } from './_generated/server'
 import type { DeviceDoc, PlantDoc, SensorDoc, SensorKind } from './types'
 import {
-  ensureDeviceExists, getQueuedDeviceCommands, buildDeviceCommandList, buildQueuedPumpAction,
-  buildQueuedLightAction, buildQueuedFertilizerAction, buildQueuedPesticideAction,
-  stagedQueuedCommands, getDeviceByExternalId,
+  ensureDeviceExists, getQueuedDeviceCommands,
+  getDeviceByExternalId,
 } from './helpers/devices'
 import { normalizeRawSensorValue } from './helpers/generic'
-import { recordGrowEvent, recordPlantImage, recordAutomationEvent } from './helpers/events'
+import { recordGrowEvent, recordPlantImage } from './helpers/events'
 import {
   evaluateFertilizingRule, evaluatePesticideRule, estimateBatterySoC,
 } from './helpers/v2sensors'
 import { shouldSkipSensorRecordedEvent } from './helpers/events'
+import {
+  applyWateringRule, applyFertilizingRule, applyPesticideRule, applyLightingRule,
+  finalizeIngest,
+} from './sensors/apply'
+import type { WateringDecision, LightingDecision } from './sensors/apply'
 
 export const MAX_SENSORS_PER_POST = 8
 
@@ -36,21 +40,6 @@ interface IngestionResult {
   sensorState: Map<string, { value: number; unit: string }>
   deviceUpdates: Record<string, DeviceUpdateValue>
   updated: number
-}
-
-interface WateringDecision {
-  shouldWater: boolean
-  cooledDown: boolean
-  effectiveThreshold: number
-  soilValue: number | undefined
-  waterLevel: number | undefined
-}
-
-interface LightingDecision {
-  shouldActivate: boolean
-  nextLightEnabled: boolean
-  effectiveThreshold: number
-  lightValue: number | undefined
 }
 
 async function ingestSensorReadings(
@@ -351,252 +340,27 @@ async function performIngest(
       ctx, device, activePlant, args.sensors, now, args.currentState, args.firmwareVersion,
     )
 
-    const watering = evaluateWateringRule(device, activePlant, sensorState, now)
-    if (watering.shouldWater && watering.cooledDown) {
-      deviceUpdates.lastWatered = now
-      Object.assign(
-        deviceUpdates,
-        buildQueuedPumpAction(device, device.wateringDuration, stagedQueuedCommands(deviceUpdates, device)),
-      )
-
-      if (activePlant) {
-        const soilValue = watering.soilValue
-        if (soilValue === undefined) {
-          throw new ConvexError('soilValue tidak tersedia untuk automation penyiraman')
-        }
-        await recordAutomationEvent(ctx, {
-          deviceId: device._id,
-          plantId: activePlant._id,
-          action: 'pump_enabled',
-          soilValue,
-          threshold: watering.effectiveThreshold,
-          duration: device.wateringDuration,
-          timestamp: now,
-        })
-
-        await recordAutomationEvent(ctx, {
-          deviceId: device._id,
-          plantId: activePlant._id,
-          action: 'pump_disabled',
-          soilValue,
-          threshold: watering.effectiveThreshold,
-          duration: device.wateringDuration,
-          timestamp: now + device.wateringDuration * 1000,
-        })
-
-        await recordGrowEvent(ctx, {
-          deviceId: device._id,
-          plantId: activePlant._id,
-          source: 'automation',
-          entityType: 'automation',
-          eventType: 'automation_action_executed',
-          title: 'Penyiraman otomatis dijadwalkan',
-          detail: `${device.name} menjadwalkan penyiraman karena kelembapan tanah di bawah ambang batas.`,
-          data: {
-            soilValue,
-            threshold: watering.effectiveThreshold,
-            duration: device.wateringDuration,
-          },
-          timestamp: now,
-        })
-      }
-    }
+    const watering: WateringDecision = evaluateWateringRule(device, activePlant, sensorState, now)
+    await applyWateringRule(ctx, device, activePlant, sensorState, deviceUpdates, now, watering)
 
     if (device.version === 'v2') {
       // V2-specific: fertilizing + pesticide rules
       // V2 has no grow light — skip lighting evaluation
       const fertilizing = evaluateFertilizingRule(device, activePlant, sensorState, now)
-      if (fertilizing.shouldFertilize && fertilizing.cooledDown) {
-        deviceUpdates.lastFertilized = now
-        Object.assign(
-          deviceUpdates,
-          buildQueuedFertilizerAction(device, device.fertilizingDuration, stagedQueuedCommands(deviceUpdates, device)),
-        )
-        Object.assign(
-          deviceUpdates,
-          buildQueuedPumpAction(device, device.fertilizingDuration, stagedQueuedCommands(deviceUpdates, device)),
-        )
-
-        if (activePlant) {
-          const soilValue = fertilizing.soilValue
-          if (soilValue === undefined) {
-            throw new ConvexError('soilValue tidak tersedia untuk automation pemupukan')
-          }
-          await recordAutomationEvent(ctx, {
-            deviceId: device._id,
-            plantId: activePlant._id,
-            action: 'fertilizer_opened',
-            soilValue,
-            threshold: fertilizing.effectiveThreshold,
-            duration: device.fertilizingDuration,
-            timestamp: now,
-          })
-          await recordAutomationEvent(ctx, {
-            deviceId: device._id,
-            plantId: activePlant._id,
-            action: 'fertilizer_closed',
-            soilValue,
-            threshold: fertilizing.effectiveThreshold,
-            duration: device.fertilizingDuration,
-            timestamp: now + device.fertilizingDuration * 1000,
-          })
-          await recordGrowEvent(ctx, {
-            deviceId: device._id,
-            plantId: activePlant._id,
-            source: 'automation',
-            entityType: 'automation',
-            eventType: 'automation_action_executed',
-            title: 'Pemupukan otomatis dijadwalkan',
-            detail: `${device.name} menjadwalkan pemupukan karena kelembapan tanah di bawah ambang batas.`,
-            data: {
-              soilValue,
-              threshold: fertilizing.effectiveThreshold,
-              duration: device.fertilizingDuration,
-            },
-            timestamp: now,
-          })
-        }
-      }
+      await applyFertilizingRule(ctx, device, activePlant, sensorState, deviceUpdates, now, fertilizing)
 
       const pesticide = evaluatePesticideRule(device, activePlant, sensorState, now)
-      if (pesticide.shouldApply && pesticide.cooledDown) {
-        deviceUpdates.lastPesticideApplied = now
-        Object.assign(
-          deviceUpdates,
-          buildQueuedPesticideAction(device, device.pesticideDuration, stagedQueuedCommands(deviceUpdates, device)),
-        )
-        Object.assign(
-          deviceUpdates,
-          buildQueuedPumpAction(device, device.pesticideDuration, stagedQueuedCommands(deviceUpdates, device)),
-        )
-
-        if (activePlant) {
-          await recordAutomationEvent(ctx, {
-            deviceId: device._id,
-            plantId: activePlant._id,
-            action: 'pesticide_opened',
-            threshold: device.pesticideThreshold,
-            duration: device.pesticideDuration,
-            timestamp: now,
-          })
-          await recordAutomationEvent(ctx, {
-            deviceId: device._id,
-            plantId: activePlant._id,
-            action: 'pesticide_closed',
-            threshold: device.pesticideThreshold,
-            duration: device.pesticideDuration,
-            timestamp: now + device.pesticideDuration * 1000,
-          })
-          await recordGrowEvent(ctx, {
-            deviceId: device._id,
-            plantId: activePlant._id,
-            source: 'automation',
-            entityType: 'automation',
-            eventType: 'automation_action_executed',
-            title: 'Pestisida otomatis dijadwalkan',
-            detail: `${device.name} menjadwalkan aplikasi pestisida.`,
-            data: {
-              pestRisk: pesticide.pestRisk,
-              threshold: device.pesticideThreshold,
-              duration: device.pesticideDuration,
-            },
-            timestamp: now,
-          })
-        }
-      }
+      await applyPesticideRule(ctx, device, activePlant, sensorState, deviceUpdates, now, pesticide)
     } else {
       // V1-specific: lighting
       const currentLightDesired = typeof deviceUpdates.lightEnabled === 'boolean'
         ? Boolean(deviceUpdates.lightEnabled)
         : device.lightEnabled
-      const lighting = evaluateLightingRule(device, activePlant, sensorState, currentLightDesired)
-      if (lighting.shouldActivate) {
-        deviceUpdates.lightEnabled = lighting.nextLightEnabled
-        deviceUpdates.lastLightChange = now
-        Object.assign(
-          deviceUpdates,
-          buildQueuedLightAction(device, lighting.nextLightEnabled, stagedQueuedCommands(deviceUpdates, device)),
-        )
-
-        if (activePlant) {
-          const lightValue = lighting.lightValue
-          if (lightValue === undefined) {
-            throw new ConvexError('lightValue tidak tersedia untuk automation lampu tumbuh')
-          }
-          await recordAutomationEvent(ctx, {
-            deviceId: device._id,
-            plantId: activePlant._id,
-            action: lighting.nextLightEnabled ? 'light_on' : 'light_off',
-            lightValue,
-            threshold: lighting.effectiveThreshold,
-            timestamp: now,
-          })
-
-          await recordGrowEvent(ctx, {
-            deviceId: device._id,
-            plantId: activePlant._id,
-            source: 'automation',
-            entityType: 'automation',
-            eventType: 'automation_action_executed',
-            title: 'Status lampu tumbuh diperbarui',
-            detail: lighting.nextLightEnabled
-              ? `${device.name} meminta lampu tumbuh menyala karena cahaya lingkungan terlalu rendah.`
-              : `${device.name} meminta lampu tumbuh mati karena cahaya lingkungan sudah pulih.`,
-            data: {
-              lightValue,
-              threshold: lighting.effectiveThreshold,
-              hysteresis: device.lightingHysteresis,
-            },
-            timestamp: now,
-          })
-        }
-      }
+      const lighting: LightingDecision = evaluateLightingRule(device, activePlant, sensorState, currentLightDesired)
+      await applyLightingRule(ctx, device, activePlant, sensorState, deviceUpdates, now, lighting)
     }
 
-    // Merge queuedCommands field-wise against a fresh read: staged (this
-    // ingest) wins per-key when present, otherwise keep the stored value
-    // (concurrent manual trigger). Prevents last-writer-wins wiping commands.
-    if (Object.prototype.hasOwnProperty.call(deviceUpdates, 'queuedCommands')) {
-      const staged = stagedQueuedCommands(deviceUpdates, device)
-      const fresh = (await ctx.db.get(device._id)) as DeviceDoc | null
-      const stored = fresh ? getQueuedDeviceCommands(fresh) : getQueuedDeviceCommands(device)
-      deviceUpdates.queuedCommands = {
-        pump: staged.pump ?? stored.pump ?? null,
-        light: staged.light ?? stored.light ?? null,
-        fertilizer: staged.fertilizer ?? stored.fertilizer ?? null,
-        pesticide: staged.pesticide ?? stored.pesticide ?? null,
-      }
-    }
-
-    await ctx.db.patch(device._id, deviceUpdates)
-
-    const nextQueuedCommands = Object.prototype.hasOwnProperty.call(deviceUpdates, 'queuedCommands')
-      ? (deviceUpdates.queuedCommands as unknown as DeviceDoc['queuedCommands'])
-      : getQueuedDeviceCommands(device)
-
-    const commands = buildDeviceCommandList({
-      ...device,
-      queuedCommands: nextQueuedCommands,
-    })
-
-    if (opts.ack && commands.length > 0) {
-      // Ack-clear only the keys that were returned; preserve concurrently
-      // queued commands for other keys (delayed ack after new queue).
-      const freshBeforeAck = (await ctx.db.get(device._id)) as DeviceDoc | null
-      const storedBeforeAck = freshBeforeAck
-        ? getQueuedDeviceCommands(freshBeforeAck)
-        : getQueuedDeviceCommands({ ...device, queuedCommands: nextQueuedCommands } as DeviceDoc)
-      const returnedKinds = new Set(commands.map((c) => c.kind))
-      await ctx.db.patch(device._id, {
-        queuedCommands: {
-          pump: returnedKinds.has('pump') ? null : (storedBeforeAck.pump ?? null),
-          light: returnedKinds.has('light') ? null : (storedBeforeAck.light ?? null),
-          fertilizer: returnedKinds.has('fertilizer') ? null : (storedBeforeAck.fertilizer ?? null),
-          pesticide: returnedKinds.has('pesticide') ? null : (storedBeforeAck.pesticide ?? null),
-        },
-        updatedAt: Date.now(),
-      })
-    }
+    const { commands } = await finalizeIngest(ctx, device, deviceUpdates, opts)
 
     return { success: true, updated, commands }
 }

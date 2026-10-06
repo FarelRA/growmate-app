@@ -1,271 +1,37 @@
-import { v, ConvexError } from 'convex/values'
+import { v } from 'convex/values'
 import { paginationOptsValidator } from 'convex/server'
 import { mutation, query } from './_generated/server'
-import type { Doc, Id } from './_generated/dataModel'
-import type { QueryCtx } from './_generated/server'
 import { requireAdmin } from './helpers/auth'
-import {
-  getDeviceWateringDuration, getDeviceWateringCooldown, getDeviceLightingHysteresis,
-  getDeviceFertilizingDuration, getDeviceFertilizingCooldown,
-  getDevicePesticideDuration, getDevicePesticideCooldown,
-  getDeviceByExternalId, getDefaultDeviceName,
-} from './helpers/devices'
-import { normalizePlantSensorProfile } from './helpers/sensors'
-import { normalizeLifecycleProfile } from './helpers/plants'
-import { getSupportMessages } from './helpers/events'
-import { enrichMarketplaceProduct } from './helpers/marketplace'
-import { enrichBlogPost } from './helpers/blog'
-import { formatTimestamp, isDeviceOnline } from './helpers/generic'
 import { plantSensorProfile, lifecycleProfileValidator } from './schema'
+import { fetchAdminStats, fetchAdminRecentEvents } from './admin/stats'
 import {
-  DEFAULT_FERTILIZING_THRESHOLD, DEFAULT_FERTILIZING_DURATION, DEFAULT_FERTILIZING_COOLDOWN,
-  DEFAULT_PESTICIDE_THRESHOLD, DEFAULT_PESTICIDE_DURATION, DEFAULT_PESTICIDE_COOLDOWN,
-  DEFAULT_TANK_CAPACITY, DEFAULT_TANK_MIN_LEVEL,
-} from './types'
+  fetchAdminDevices, fetchAdminDevicesPaginated, saveAdminDevice, deleteAdminDevice,
+} from './admin/devices'
+import { fetchAdminSupport, fetchAdminSupportPaginated } from './admin/support'
+import {
+  fetchAdminProducts, saveOfficialProduct, updateOfficialProductStatus, deleteOfficialProduct,
+} from './admin/products'
+import { fetchAdminPlantCatalog, savePlantPreset, deletePlantPreset } from './admin/plants'
+import { fetchAdminBlogPosts } from './admin/blog'
+import { fetchAdminUsers, fetchAdminUsersPaginated, updateUserAccess } from './admin/users'
 
-function normalizePlantPresetKey(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '_')
-    .replace(/-+/g, '_')
-}
-
-async function batchGetUsers(ctx: QueryCtx, ids: (Id<'users'> | undefined | null)[]): Promise<Map<string, Doc<'users'> | null>> {
-  const uniqueIds = [...new Set(ids.filter((id): id is Id<'users'> => id != null).map(String))]
-  const userDocs = await Promise.all(uniqueIds.map((id) => ctx.db.get(id as Id<'users'>)))
-  const map = new Map<string, Doc<'users'> | null>()
-  uniqueIds.forEach((id, i) => map.set(id, userDocs[i] ?? null))
-  return map
-}
-
-async function batchGetPlants(ctx: QueryCtx, ids: (Id<'plants'> | undefined | null)[]): Promise<Map<string, Doc<'plants'> | null>> {
-  const uniqueIds = [...new Set(ids.filter((id): id is Id<'plants'> => id != null).map(String))]
-  const plantDocs = await Promise.all(uniqueIds.map((id) => ctx.db.get(id as Id<'plants'>)))
-  const map = new Map<string, Doc<'plants'> | null>()
-  uniqueIds.forEach((id, i) => map.set(id, plantDocs[i] ?? null))
-  return map
-}
-
-type CountableTable = 'users' | 'devices' | 'plants' | 'communityPosts' | 'products' | 'blogPosts' | 'supportRequests'
-
-async function countAllPaginated<TableName extends CountableTable>(
-  ctx: QueryCtx,
-  table: TableName,
-  filter?: (doc: Doc<TableName>) => boolean,
-) {
-  let total = 0
-  let cursor: string | null = null
-  while (true) {
-    const page = await ctx.db.query(table).paginate({ cursor, numItems: 500 })
-    if (filter) {
-      for (const doc of page.page) {
-        if (filter(doc)) total += 1
-      }
-    } else {
-      total += page.page.length
-    }
-    if (page.isDone) break
-    cursor = page.continueCursor
-  }
-  return total
-}
-
-async function fetchAdminStats(ctx: QueryCtx) {
-  const [
-    totalUsers,
-    totalDevices,
-    claimedDevices,
-    totalPlants,
-    activePlants,
-    communityPosts,
-    totalProducts,
-    communityListings,
-    officialProducts,
-    blogPosts,
-    totalTickets,
-    openTickets,
-  ] = await Promise.all([
-    countAllPaginated(ctx, 'users'),
-    countAllPaginated(ctx, 'devices'),
-    countAllPaginated(ctx, 'devices', (d: Doc<'devices'>) => Boolean(d.userId)),
-    countAllPaginated(ctx, 'plants'),
-    countAllPaginated(ctx, 'plants', (p: Doc<'plants'>) => !p.archived),
-    countAllPaginated(ctx, 'communityPosts'),
-    countAllPaginated(ctx, 'products'),
-    countAllPaginated(ctx, 'products', (p: Doc<'products'>) => p.type === 'community'),
-    countAllPaginated(
-      ctx,
-      'products',
-      (p: Doc<'products'>) => p.type === 'official' && p.status === 'active',
-    ),
-    countAllPaginated(ctx, 'blogPosts'),
-    countAllPaginated(ctx, 'supportRequests'),
-    countAllPaginated(ctx, 'supportRequests', (r: Doc<'supportRequests'>) => {
-      return r.status === 'open' || r.status === 'in_progress'
-    }),
-  ])
-  void totalPlants
-  void totalProducts
-  void totalTickets
-
-  return {
-    totalUsers,
-    totalDevices,
-    claimedDevices,
-    activePlants,
-    openTickets,
-    officialProducts,
-    communityListings,
-    communityPosts,
-    blogPosts,
-  }
-}
-
-async function fetchAdminDevices(ctx: QueryCtx) {
-  const devices = await ctx.db.query('devices').withIndex('by_createdAt').order('desc').take(40)
-  const allPlantIds = devices.map((d) => d.plantId)
-  const plantMap = await batchGetPlants(ctx, allPlantIds)
-
-  const allUserIds = devices.map((d) => d.userId)
-  const userMap = await batchGetUsers(ctx, allUserIds)
-
-  return devices.map((device) => {
-    const owner = device.userId ? userMap.get(String(device.userId)) : null
-    const plant = device.plantId ? plantMap.get(String(device.plantId)) : null
-    return {
-      _id: device._id,
-      deviceId: device.deviceId,
-      name: device.name,
-      ownerName: owner?.name ?? null,
-      ownerEmail: owner?.email ?? null,
-      firmwareVersion: device.firmwareVersion ?? '',
-      isClaimed: Boolean(device.userId),
-      plantName: plant && !plant.archived ? plant.name : null,
-      autoWatering: device.autoWatering,
-      autoLighting: device.autoLighting,
-      wateringThreshold: device.wateringThreshold,
-      wateringDuration: getDeviceWateringDuration(device),
-      wateringCooldown: getDeviceWateringCooldown(device),
-      lightingThreshold: device.lightingThreshold,
-      lightingHysteresis: getDeviceLightingHysteresis(device),
-      lastSeen: device.lastSeen,
-      lastSeenLabel: formatTimestamp(device.lastSeen),
-      isOnline: isDeviceOnline(device.lastSeen),
-      version: device.version ?? 'v1',
-      autoFertilizing: device.autoFertilizing,
-      autoPesticide: device.autoPesticide,
-      fertilizingThreshold: device.fertilizingThreshold,
-      fertilizingDuration: getDeviceFertilizingDuration(device),
-      fertilizingCooldown: getDeviceFertilizingCooldown(device),
-      pesticideThreshold: device.pesticideThreshold,
-      pesticideDuration: getDevicePesticideDuration(device),
-      pesticideCooldown: getDevicePesticideCooldown(device),
-      streamUrl: device.streamUrl,
-      tankCapacity: device.tankCapacity,
-      tankMinLevel: device.tankMinLevel,
-      batteryCapacityAh: device.batteryCapacityAh,
-      batterySoC: device.batterySoC,
-      batteryCurrent: device.batteryCurrent,
-      reportedTankSwitchOpen: device.reportedTankSwitchOpen,
-      reportedDrawerSwitchOpen: device.reportedDrawerSwitchOpen,
-      modemImei: device.modemImei,
-      solarPanelWatts: device.solarPanelWatts,
-      hasModem: device.hasModem,
-      hasSolarPanel: device.hasSolarPanel,
-    }
-  })
-}
-
-async function fetchAdminSupport(ctx: QueryCtx) {
-  const supportRequests = await ctx.db.query('supportRequests').withIndex('by_createdAt').order('desc').take(30)
-  const allUserIds = [
-    ...supportRequests.map((r) => r.userId),
-    ...supportRequests.map((r) => r.handledBy),
-  ]
-  const userMap = await batchGetUsers(ctx, allUserIds)
-
-  return Promise.all(
-    supportRequests.map(async (request) => {
-      const owner = userMap.get(String(request.userId))
-      const handledBy = request.handledBy ? userMap.get(String(request.handledBy)) : null
-      const messages = await getSupportMessages(ctx, request._id, 24)
-      return {
-        ...request,
-        userName: owner?.name ?? owner?.email ?? 'Pengguna tidak diketahui',
-        userEmail: owner?.email ?? '',
-        handledByName: handledBy?.name ?? null,
-        createdAtLabel: formatTimestamp(request.createdAt),
-        updatedAtLabel: formatTimestamp(request.updatedAt),
-        messages: messages.map((message) => ({
-          ...message,
-          senderName:
-            message.senderRole === 'admin'
-              ? 'Admin'
-              : message.senderRole === 'system'
-                ? 'Sistem'
-                : (owner?.name ?? owner?.email ?? 'Pengguna'),
-          createdAtLabel: formatTimestamp(message.createdAt),
-        })),
-      }
-    }),
-  )
-}
-
-async function fetchAdminProducts(ctx: QueryCtx, adminId: Id<'users'>) {
-  const officialProducts = await ctx.db
-    .query('products')
-    .withIndex('by_type', (q) => q.eq('type', 'official'))
-    .order('desc')
-    .take(20)
-
-  return Promise.all(
-    officialProducts.map((product) => enrichMarketplaceProduct(ctx, product, adminId)),
-  )
-}
-
-async function fetchAdminPlantCatalog(ctx: QueryCtx) {
-  const plantCatalog = await ctx.db.query('plantCatalog').take(64)
-
-  return Promise.all(
-    plantCatalog.map(async (preset) => ({
-      ...preset,
-      imageUrl: preset.imageUrl ?? null,
-    })),
-  )
-}
-
-async function fetchAdminBlogPosts(ctx: QueryCtx) {
-  const blogPosts = await ctx.db.query('blogPosts').withIndex('by_createdAt').order('desc').take(24)
-  return Promise.all(blogPosts.map((post) => enrichBlogPost(ctx, post)))
-}
-
-async function fetchAdminUsers(ctx: QueryCtx) {
-  const users = await ctx.db.query('users').take(100)
-
-  return users
-    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
-    .slice(0, 24)
-    .map((user) => ({
-      _id: user._id,
-      name: user.name ?? user.email ?? 'Pengguna tanpa nama',
-      email: user.email ?? '',
-      handle: user.handle ?? '',
-      tier: user.tier ?? 'basic',
-      role: user.role ?? 'grower',
-      setupComplete: Boolean(user.setupComplete),
-    }))
-}
-
-async function fetchAdminRecentEvents(ctx: QueryCtx) {
-  const recentEvents = await ctx.db.query('growEvents').withIndex('by_timestamp').order('desc').take(10)
-
-  return recentEvents.map((event) => ({
-    ...event,
-    timestampLabel: formatTimestamp(event.timestamp),
-  }))
-}
+// ADMIN MODULE MAP (pre-alpha extraction, zero API change — every
+// `api.admin.*` path stays byte-identical):
+//   convex/admin/stats.ts    — batchGetUsers/batchGetPlants, countAllPaginated,
+//                              fetchAdminStats, fetchAdminRecentEvents
+//   convex/admin/devices.ts  — fetchAdminDevices(+Paginated), save/delete device
+//   convex/admin/support.ts  — fetchAdminSupport(+Paginated)
+//   convex/admin/products.ts — fetchAdminProducts, save/status/delete official product
+//   convex/admin/plants.ts   — normalizePlantPresetKey, fetchAdminPlantCatalog,
+//                              save/delete plant preset
+//   convex/admin/blog.ts     — fetchAdminBlogPosts
+//   convex/admin/users.ts    — fetchAdminUsers(+Paginated), updateUserAccess
+// AUTH POLICY: `requireAdmin` gates live ONLY in the thin delegates below
+// (auth stays at the API boundary). Cores in convex/admin/* perform pure DB
+// logic and never call requireAdmin themselves; where a core needs the admin
+// identity as data (sellerId, self-demotion guard), the delegate passes the
+// already-authorized `admin._id`. The adminOverview/adminConsole compositions
+// stay here as fan-out over the cores.
 
 export const adminOverview = query({
   args: {},
@@ -334,32 +100,7 @@ export const adminDevicesPaginated = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
-    const result = await ctx.db
-      .query('devices')
-      .withIndex('by_createdAt')
-      .order('desc')
-      .paginate(args.paginationOpts)
-    const allPlantIds = result.page.map((d) => d.plantId)
-    const plantMap = await batchGetPlants(ctx, allPlantIds)
-    const allUserIds = result.page.map((d) => d.userId)
-    const userMap = await batchGetUsers(ctx, allUserIds)
-    return {
-      ...result,
-      page: result.page.map((device) => ({
-        _id: device._id,
-        deviceId: device.deviceId,
-        name: device.name,
-        ownerName: device.userId ? (userMap.get(String(device.userId))?.name ?? null) : null,
-        ownerEmail: device.userId ? (userMap.get(String(device.userId))?.email ?? null) : null,
-        plantName:
-          device.plantId && !plantMap.get(String(device.plantId))?.archived
-            ? (plantMap.get(String(device.plantId))?.name ?? null)
-            : null,
-        version: device.version ?? 'v1',
-        isClaimed: Boolean(device.userId),
-        lastSeen: device.lastSeen,
-      })),
-    }
+    return fetchAdminDevicesPaginated(ctx, args.paginationOpts)
   },
 })
 
@@ -367,11 +108,7 @@ export const adminSupportPaginated = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
-    return await ctx.db
-      .query('supportRequests')
-      .withIndex('by_createdAt')
-      .order('desc')
-      .paginate(args.paginationOpts)
+    return fetchAdminSupportPaginated(ctx, args.paginationOpts)
   },
 })
 
@@ -379,7 +116,7 @@ export const adminUsersPaginated = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
-    return await ctx.db.query('users').paginate(args.paginationOpts)
+    return fetchAdminUsersPaginated(ctx, args.paginationOpts)
   },
 })
 
@@ -442,101 +179,7 @@ export const adminSaveDevice = mutation({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
-    const now = Date.now()
-
-    const existingByDeviceId = await getDeviceByExternalId(ctx, args.deviceId.trim())
-    if (existingByDeviceId && String(existingByDeviceId._id) !== String(args.existingDeviceId)) {
-       throw new ConvexError('ID perangkat tersebut sudah digunakan')
-    }
-
-    const payload = {
-      deviceId: args.deviceId.trim(),
-      name: args.name?.trim() || getDefaultDeviceName(args.deviceId),
-      firmwareVersion: args.firmwareVersion?.trim() || undefined,
-      autoWatering: args.autoWatering,
-      autoLighting: args.autoLighting,
-      wateringThreshold: args.wateringThreshold,
-      wateringDuration: args.wateringDuration,
-      wateringCooldown: args.wateringCooldown,
-      lightingThreshold: args.lightingThreshold,
-      lightingHysteresis: args.lightingHysteresis,
-      updatedAt: now,
-    }
-
-    const optional: {
-      version?: 'v1' | 'v2'
-      autoFertilizing?: boolean
-      autoPesticide?: boolean
-      fertilizingThreshold?: number
-      fertilizingDuration?: number
-      fertilizingCooldown?: number
-      pesticideThreshold?: number
-      pesticideDuration?: number
-      pesticideCooldown?: number
-      streamUrl?: string
-      tankCapacity?: number
-      tankMinLevel?: number
-      batteryCapacityAh?: number
-      hasModem?: boolean
-      hasSolarPanel?: boolean
-    } = {}
-    if (args.version !== undefined) optional.version = args.version
-    if (args.autoFertilizing !== undefined) optional.autoFertilizing = args.autoFertilizing
-    if (args.autoPesticide !== undefined) optional.autoPesticide = args.autoPesticide
-    if (args.fertilizingThreshold !== undefined) optional.fertilizingThreshold = args.fertilizingThreshold
-    if (args.fertilizingDuration !== undefined) optional.fertilizingDuration = args.fertilizingDuration
-    if (args.fertilizingCooldown !== undefined) optional.fertilizingCooldown = args.fertilizingCooldown
-    if (args.pesticideThreshold !== undefined) optional.pesticideThreshold = args.pesticideThreshold
-    if (args.pesticideDuration !== undefined) optional.pesticideDuration = args.pesticideDuration
-    if (args.pesticideCooldown !== undefined) optional.pesticideCooldown = args.pesticideCooldown
-    if (args.streamUrl !== undefined) optional.streamUrl = args.streamUrl
-    if (args.tankCapacity !== undefined) optional.tankCapacity = args.tankCapacity
-    if (args.tankMinLevel !== undefined) optional.tankMinLevel = args.tankMinLevel
-    if (args.batteryCapacityAh !== undefined) optional.batteryCapacityAh = args.batteryCapacityAh
-    if (args.hasModem !== undefined) optional.hasModem = args.hasModem
-    if (args.hasSolarPanel !== undefined) optional.hasSolarPanel = args.hasSolarPanel
-
-    if (args.existingDeviceId) {
-      const existing = await ctx.db.get(args.existingDeviceId)
-      if (!existing) {
-         throw new ConvexError('Perangkat tidak ditemukan')
-      }
-
-      await ctx.db.patch(args.existingDeviceId, { ...payload, ...optional })
-      return { success: true, deviceId: args.existingDeviceId }
-    }
-
-    const deviceDocId = await ctx.db.insert('devices', {
-      version: 'v1' as const,
-      lightEnabled: false,
-      queuedCommands: {
-        pump: null,
-        light: null,
-        fertilizer: null,
-        pesticide: null,
-      },
-      autoFertilizing: false,
-      autoPesticide: false,
-      fertilizingThreshold: DEFAULT_FERTILIZING_THRESHOLD,
-      fertilizingDuration: DEFAULT_FERTILIZING_DURATION,
-      fertilizingCooldown: DEFAULT_FERTILIZING_COOLDOWN,
-      pesticideThreshold: DEFAULT_PESTICIDE_THRESHOLD,
-      pesticideDuration: DEFAULT_PESTICIDE_DURATION,
-      pesticideCooldown: DEFAULT_PESTICIDE_COOLDOWN,
-      tankCapacity: DEFAULT_TANK_CAPACITY,
-      tankMinLevel: DEFAULT_TANK_MIN_LEVEL,
-      batteryCapacityAh: 5,
-      batteryAccumulatedMah: 0,
-      batterySoC: 50,
-      hasModem: false,
-      hasSolarPanel: false,
-      lastSeen: now,
-      createdAt: now,
-      ...payload,
-      ...optional,
-    })
-
-    return { success: true, deviceId: deviceDocId }
+    return saveAdminDevice(ctx, args)
   },
 })
 
@@ -544,16 +187,7 @@ export const adminDeleteDevice = mutation({
   args: { deviceId: v.id('devices') },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
-    const device = await ctx.db.get(args.deviceId)
-    if (!device) {
-       throw new ConvexError('Perangkat tidak ditemukan')
-    }
-    if (device.userId || device.plantId) {
-       throw new ConvexError('Lepaskan klaim perangkat dan arsipkan tanaman aktif sebelum menghapus perangkat ini')
-    }
-
-    await ctx.db.delete(args.deviceId)
-    return { success: true }
+    return deleteAdminDevice(ctx, args)
   },
 })
 
@@ -578,50 +212,7 @@ export const adminSaveOfficialProduct = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx)
-    const now = Date.now()
-    let imageUrl = args.imageUrl
-
-    if (args.productId) {
-      const existing = await ctx.db.get(args.productId)
-      if (!existing || existing.type !== 'official') {
-        throw new ConvexError('Produk resmi tidak ditemukan')
-      }
-
-      imageUrl = imageUrl ?? existing.imageUrl
-    }
-
-    if (!imageUrl) {
-      throw new ConvexError('Gambar produk wajib diisi')
-    }
-
-    const payload = {
-      title: args.title.trim(),
-      description: args.description.trim(),
-      price: args.price,
-      category: args.category.trim(),
-      type: 'official' as const,
-      sellerId: admin._id,
-      status: args.status,
-      quantityAvailable: args.quantityAvailable,
-      priceUnit: args.priceUnit.trim(),
-      locationLabel: 'Shopee',
-      imageUrl,
-      featured: args.featured,
-      updatedAt: now,
-      ...(args.shopeeUrl?.trim() ? { shopeeUrl: args.shopeeUrl.trim() } : {}),
-    }
-
-    if (args.productId) {
-      await ctx.db.patch(args.productId, payload)
-      return { success: true, productId: args.productId }
-    }
-
-    const productId = await ctx.db.insert('products', {
-      ...payload,
-      createdAt: now,
-    })
-
-    return { success: true, productId }
+    return saveOfficialProduct(ctx, admin._id, args)
   },
 })
 
@@ -662,69 +253,7 @@ export const adminSavePlantPreset = mutation({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
-    const now = Date.now()
-    const key = normalizePlantPresetKey(args.key || args.name)
-    if (!key) {
-      throw new ConvexError('Kunci preset tanaman wajib diisi')
-    }
-
-    const existing = args.presetId ? await ctx.db.get(args.presetId) : null
-    if (args.presetId && (!existing || existing._id !== args.presetId)) {
-      throw new ConvexError('Preset tanaman tidak ditemukan')
-    }
-
-    const duplicate = await ctx.db
-      .query('plantCatalog')
-      .withIndex('by_key', (q) => q.eq('key', key))
-      .first()
-    if (duplicate && String(duplicate._id) !== String(args.presetId)) {
-      throw new ConvexError('Preset tanaman dengan kunci ini sudah ada')
-    }
-
-    const finalImageUrl = args.imageUrl ?? existing?.imageUrl
-    if (!finalImageUrl) {
-      throw new ConvexError('Gambar preset tanaman wajib diisi')
-    }
-
-    const payload = {
-      key,
-      name: args.name.trim(),
-      species: args.species.trim(),
-      growthStage: args.growthStage,
-      imageUrl: finalImageUrl,
-      description: args.description.trim(),
-      location: args.location.trim(),
-      category: args.category,
-      difficulty: args.difficulty,
-      wateringThreshold: args.wateringThreshold,
-      lightingThreshold: args.lightingThreshold,
-      sensorProfile: normalizePlantSensorProfile(args.sensorProfile),
-      lifecycleProfile: normalizeLifecycleProfile(args.lifecycleProfile),
-      updatedAt: now,
-    }
-
-    const optional: {
-      fertilizingThreshold?: number
-      fertilizerCadenceDays?: number
-      pesticideCadenceDays?: number
-      nutrientNotes?: string
-    } = {}
-    if (args.fertilizingThreshold !== undefined) optional.fertilizingThreshold = args.fertilizingThreshold
-    if (args.fertilizerCadenceDays !== undefined) optional.fertilizerCadenceDays = args.fertilizerCadenceDays
-    if (args.pesticideCadenceDays !== undefined) optional.pesticideCadenceDays = args.pesticideCadenceDays
-    if (args.nutrientNotes !== undefined) optional.nutrientNotes = args.nutrientNotes.trim()
-
-    if (existing) {
-      await ctx.db.patch(existing._id, { ...payload, ...optional })
-      return { success: true, presetId: existing._id }
-    }
-
-    const presetId = await ctx.db.insert('plantCatalog', {
-      ...payload,
-      ...optional,
-      createdAt: now,
-    })
-    return { success: true, presetId }
+    return savePlantPreset(ctx, args)
   },
 })
 
@@ -732,13 +261,7 @@ export const adminDeletePlantPreset = mutation({
   args: { presetId: v.id('plantCatalog') },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
-    const preset = await ctx.db.get(args.presetId)
-    if (!preset) {
-      throw new ConvexError('Preset tanaman tidak ditemukan')
-    }
-
-    await ctx.db.delete(args.presetId)
-    return { success: true }
+    return deletePlantPreset(ctx, args)
   },
 })
 
@@ -754,17 +277,7 @@ export const adminUpdateOfficialProductStatus = mutation({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
-    const product = await ctx.db.get(args.productId)
-    if (!product || product.type !== 'official') {
-      throw new ConvexError('Produk resmi tidak ditemukan')
-    }
-
-    await ctx.db.patch(args.productId, {
-      status: args.status,
-      updatedAt: Date.now(),
-    })
-
-    return { success: true }
+    return updateOfficialProductStatus(ctx, args)
   },
 })
 
@@ -772,13 +285,7 @@ export const adminDeleteOfficialProduct = mutation({
   args: { productId: v.id('products') },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
-    const product = await ctx.db.get(args.productId)
-    if (!product || product.type !== 'official') {
-      throw new ConvexError('Produk resmi tidak ditemukan')
-    }
-
-    await ctx.db.delete(args.productId)
-    return { success: true }
+    return deleteOfficialProduct(ctx, args)
   },
 })
 
@@ -790,21 +297,6 @@ export const adminUpdateUserAccess = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx)
-    const target = await ctx.db.get(args.userId)
-    if (!target) {
-      throw new ConvexError('Pengguna tidak ditemukan')
-    }
-
-    if (String(target._id) === String(admin._id) && args.role && args.role !== 'admin') {
-      throw new ConvexError('Admin tidak dapat menghapus peran admin miliknya sendiri dari halaman ini')
-    }
-
-    await ctx.db.patch(args.userId, {
-      tier: args.tier ?? target.tier,
-      role: args.role ?? target.role,
-      updatedAt: Date.now(),
-    })
-
-    return { success: true }
+    return updateUserAccess(ctx, admin._id, args)
   },
 })

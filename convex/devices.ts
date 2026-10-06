@@ -1,46 +1,23 @@
 import { v, ConvexError } from 'convex/values'
 import { paginationOptsValidator } from 'convex/server'
 import { mutation, query } from './_generated/server'
-import type { DeviceDoc, PlantStageValue, DeviceAutomationKey, SensorKind } from './types'
 import { getCurrentUser, requireUser } from './helpers/auth'
-import { recordGrowEvent, recordPlantImage, getRecentGrowEvents, getRecentAutomationLogs } from './helpers/events'
 import {
-  addUserActivity, getAutomationModeLabel, formatEventValue, formatTimestamp, getRelativeTime,
-} from './helpers/generic'
-import {
-  getSensorHistory, getPlantImageHistory, normalizePlantSensorProfile,
-  computePlantHealth, getSensorStatus, getSensorTarget,
-  getSensorLabel, getSensorAccent, getSensorSort, generateAlerts,
-} from './helpers/sensors'
-import {
-  getUserDevices, requireOwnedDevice, getSelectedDevice, archivePlant,
-  buildDeviceSummary, getDeviceByExternalId, computeWaterReservoirDays,
+  requireOwnedDevice, getSelectedDevice, getDeviceByExternalId,
 } from './helpers/devices'
 import {
-  buildPlantView, normalizeLifecycleProfile,
-  computePlantProgress, formatPlantStage, getHealthComputationGuide,
-} from './helpers/plants'
+  getUnclaimedDeviceCore, userDevicesCore,
+  assignPlantCore, removeDeviceCore, updateAutomationCore, dashboardCore,
+} from './devices/queries'
+import { deviceHistoryCore } from './devices/history'
 import { plantSensorProfile, lifecycleProfileValidator } from './schema'
-import { formatDeviceDetail } from './helpers/devices'
-import { formatScheduleSummary } from './care'
 
 export const getUnclaimedDevice = query({
   args: {
     deviceId: v.string(),
   },
   handler: async (ctx, args) => {
-    const device = await ctx.db
-      .query('devices')
-      .withIndex('by_deviceId', (q) => q.eq('deviceId', args.deviceId))
-      .first()
-
-    if (!device) return null
-    if (device.userId) return null
-
-    return {
-      deviceId: device.deviceId,
-      name: device.name,
-    }
+    return await getUnclaimedDeviceCore(ctx, args.deviceId)
   },
 })
 
@@ -50,8 +27,7 @@ export const userDevices = query({
     const user = await getCurrentUser(ctx)
     if (!user) return []
 
-    const devices = await getUserDevices(ctx, user._id)
-    return await Promise.all(devices.map((device) => buildDeviceSummary(ctx, device)))
+    return await userDevicesCore(ctx, user)
   },
 })
 
@@ -84,87 +60,7 @@ export const assignPlantToDevice = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
     const device = await requireOwnedDevice(ctx, user._id, args.deviceId)
-    const now = Date.now()
-    const previousPlant = device.plantId ? await ctx.db.get(device.plantId) : null
-
-    if (device.plantId) {
-      await archivePlant(ctx, device.plantId, now, user._id, 'Plant replaced')
-    }
-
-    const lifecycleProfile = normalizeLifecycleProfile(args.lifecycleProfile)
-    const wateringThreshold = args.wateringThreshold ?? device.wateringThreshold
-    const lightingThreshold = args.lightingThreshold ?? device.lightingThreshold
-    const sensorProfile = normalizePlantSensorProfile(args.sensorProfile)
-
-    const plantId = await ctx.db.insert('plants', {
-      deviceId: device._id,
-      name: args.plantName.trim(),
-      species: args.plantSpecies.trim(),
-      growthStage: args.growthStage ?? 'seed_dormancy',
-      wateringThreshold,
-      lightingThreshold,
-      fertilizingThreshold: args.fertilizingThreshold,
-      fertilizerCadenceDays: args.fertilizerCadenceDays,
-      pesticideCadenceDays: args.pesticideCadenceDays,
-      nutrientNotes: args.nutrientNotes?.trim(),
-      sensorProfile,
-      lifecycleProfile,
-      location: args.location?.trim() || device.name,
-      imageUrl: args.imageUrl || undefined,
-      archived: false,
-      plantedAt: now,
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    await ctx.db.patch(device._id, {
-      plantId,
-      wateringThreshold,
-      lightingThreshold,
-      updatedAt: now,
-    })
-
-    await recordGrowEvent(ctx, {
-      deviceId: device._id,
-      plantId,
-      userId: user._id,
-      source: 'user',
-      entityType: 'plant',
-      eventType: 'plant_assigned',
-      title: previousPlant ? 'Tanaman diganti' : 'Tanaman dipasang',
-      detail: `${args.plantName.trim()} sekarang menjadi tanaman aktif di ${device.name}.`,
-      data: {
-        growthStage: formatPlantStage((args.growthStage ?? 'seed_dormancy') as PlantStageValue),
-        wateringThreshold,
-        lightingThreshold,
-        previousPlant: previousPlant?.name ?? 'none',
-      },
-      timestamp: now,
-    })
-
-    if (args.imageUrl) {
-      await recordPlantImage(ctx, {
-        plantId,
-        deviceId: device._id,
-        imageUrl: args.imageUrl,
-        source: 'manual',
-        capturedAt: now,
-      })
-    }
-
-    await ctx.db.patch(user._id, {
-      setupComplete: true,
-      updatedAt: now,
-    })
-
-    await addUserActivity(ctx, {
-      userId: user._id,
-      activityType: 'plant_added',
-      relatedId: plantId,
-      createdAt: now,
-    })
-
-    return { success: true, plantId }
+    return await assignPlantCore(ctx, user, device, args)
   },
 })
 
@@ -175,37 +71,7 @@ export const removeDevice = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
     const device = await requireOwnedDevice(ctx, user._id, args.deviceId)
-    const now = Date.now()
-
-    if (device.plantId) {
-      await archivePlant(ctx, device.plantId, now, user._id, 'Tanaman diarsipkan saat perangkat dilepas')
-    }
-
-    await ctx.db.patch(device._id, {
-      userId: undefined,
-      plantId: undefined,
-      updatedAt: now,
-    })
-
-    await recordGrowEvent(ctx, {
-      deviceId: device._id,
-      userId: user._id,
-      source: 'user',
-      entityType: 'device',
-      eventType: 'device_unclaimed',
-      title: 'Perangkat dilepas dari akun',
-      detail: `${device.name} dikembalikan ke daftar perangkat yang belum diklaim.`,
-      data: { deviceId: device.deviceId },
-      timestamp: now,
-    })
-
-    const remainingDevices = await getUserDevices(ctx, user._id)
-    await ctx.db.patch(user._id, {
-      setupComplete: remainingDevices.some((ownedDevice) => Boolean(ownedDevice.plantId)),
-      updatedAt: now,
-    })
-
-    return { success: true }
+    return await removeDeviceCore(ctx, user, device)
   },
 })
 
@@ -221,127 +87,17 @@ export const dashboard = query({
     if (!device) return null
 
     const plant = device.plantId ? await ctx.db.get(device.plantId) : null
-    const notifications = await ctx.db
-      .query('notifications')
-      .withIndex('by_user', (q) => q.eq('userId', user._id))
-      .take(8)
-
-    if (!plant || plant.archived) {
-      const recentEvents = await getRecentGrowEvents(ctx, device._id, 10)
-      return {
-        user,
-        device: {
-          ...(await formatDeviceDetail(ctx, device)),
-        },
-        plant: null,
-        sensors: [],
-        schedules: [],
-        healthComputation: getHealthComputationGuide(),
-        notifications,
-        reservoirDays: 0,
-        alerts: [],
-        automationMode: getAutomationModeLabel(device),
-        recentEvents,
-        automationLogs: [],
-        imageHistory: [],
-      }
-    }
-
-    const plantView = await buildPlantView(ctx, plant)
-    const sensorProfile = normalizePlantSensorProfile(plant.sensorProfile)
     // Hard bound: exactly one row per sensor kind (soil/light/temperature/air/
     // water = 5 max). take(10) freezes the ≤5-rows invariant with 2x headroom —
-    // never an unbounded collect() on this per-plant read path.
-    const rawSensors = await ctx.db
-      .query('sensors')
-      .withIndex('by_plant', (q) => q.eq('plantId', plant._id))
-      .take(10)
-    const [sensorHistory, recentEvents, automationLogs, imageHistory] = await Promise.all([
-      getSensorHistory(ctx, plant._id, 24),
-      getRecentGrowEvents(ctx, device._id, 10),
-      getRecentAutomationLogs(ctx, plant._id, 8),
-      getPlantImageHistory(ctx, plant._id, 8),
-    ])
-
-    const sensors = rawSensors
-      .map((s) => ({
-        _id: s._id,
-        kind: s.kind,
-        value: s.value,
-        unit: s.unit,
-        label: getSensorLabel(s.kind as SensorKind, device.version as 'v1' | 'v2'),
-        status: getSensorStatus(s.kind as SensorKind, s.value, sensorProfile),
-        target: getSensorTarget(
-          s.kind as SensorKind,
-          s.value,
-          getSensorStatus(s.kind as SensorKind, s.value, sensorProfile),
-          sensorProfile,
-        ),
-        accent: getSensorAccent(s.kind as SensorKind),
-        sort: getSensorSort(s.kind as SensorKind),
-        history: sensorHistory[s.kind as SensorKind] ?? [],
-      }))
-      .sort((a, b) => a.sort - b.sort)
-
-    const plantHealth = computePlantHealth(
-      rawSensors.map((s) => ({ kind: s.kind as SensorKind, value: s.value })),
-      sensorProfile,
-    )
-    const plantProgress = computePlantProgress(plant)
-    const waterSensor = rawSensors.find((s) => s.kind === 'water')
-    const waterLevel = waterSensor?.value || 0
-    const dailyUsage = device.autoWatering ? 5 : 2
-    const reservoirDays = computeWaterReservoirDays(waterLevel, dailyUsage)
-
-    const alerts = generateAlerts(
-      rawSensors.map((s) => ({ kind: s.kind as SensorKind, value: s.value })),
-      { lastSeen: device.lastSeen, autoWatering: device.autoWatering, version: device.version },
-      sensorProfile,
-    )
-
-    const schedules = await ctx.db
-      .query('careSchedules')
-      .withIndex('by_plant', (q) => q.eq('plantId', plant._id))
-      .take(6)
-    const formattedSchedules = schedules.map((schedule) => {
-      const summary = formatScheduleSummary(schedule)
-      return {
-        ...schedule,
-        cadenceUnit: summary.cadence.unit,
-        cadenceValue: summary.cadence.value,
-        timeOfDayMinutes: summary.cadence.timeOfDayMinutes,
-        cadenceLabel: summary.cadenceLabel,
-        timeLabel: summary.timeLabel,
-        nextRunLabel: getRelativeTime(schedule.nextRunAt),
-        lastRunLabel: schedule.lastRunAt ? getRelativeTime(schedule.lastRunAt) : null,
-      }
-    })
-
-    return {
-      user,
-      plant: {
-        ...plantView,
-        health: plantHealth,
-        healthReason: rawSensors.length
-          ? `${rawSensors.filter((sensor) => getSensorStatus(sensor.kind as SensorKind, sensor.value, sensorProfile) === 'optimal').length} dari ${rawSensors.length} sensor berada pada rentang yang ideal.`
-          : 'Belum ada pembacaan sensor yang tersedia, sehingga kondisi tanaman sementara dianggap kurang stabil.',
-        growthStageLabel: formatPlantStage(plant.growthStage),
-        progress: plantProgress,
-      },
-      device: {
-        ...(await formatDeviceDetail(ctx, device)),
-      },
-      sensors,
-      schedules: formattedSchedules,
-      healthComputation: getHealthComputationGuide(sensorProfile),
-      notifications,
-      reservoirDays,
-      alerts,
-      automationMode: getAutomationModeLabel(device),
-      recentEvents,
-      automationLogs,
-      imageHistory,
-    }
+    // never an unbounded read on this per-plant read path. View assembly
+    // lives in ./devices/queries:dashboardCore.
+    const rawSensors = plant && !plant.archived
+      ? await ctx.db
+        .query('sensors')
+        .withIndex('by_plant', (q) => q.eq('plantId', plant._id))
+        .take(10)
+      : []
+    return await dashboardCore(ctx, user, device, plant, rawSensors)
   },
 })
 
@@ -357,97 +113,17 @@ export const deviceHistory = query({
     const device = await getSelectedDevice(ctx, user._id, args.deviceId)
     if (!device) return null
 
-    const currentPlant = device.plantId ? await ctx.db.get(device.plantId) : null
     // Cursor-paginated archive, 20/page desc — mirrors the adminDevicesPaginated
     // convention in convex/admin.ts (paginationOptsValidator + paginate()).
     // Pre-alpha: the legacy uncapped full-list path is demolished; no
-    // unpaginated export remains.
+    // unpaginated export remains. Page mapping lives in
+    // ./devices/history:deviceHistoryCore.
     const archivedPage = await ctx.db
       .query('plants')
       .withIndex('by_device_archived', (q) => q.eq('deviceId', device._id).eq('archived', true))
       .order('desc')
       .paginate(args.paginationOpts)
-    const archivedPlants = {
-      ...archivedPage,
-      page: archivedPage.page
-        .sort((a, b) => (b.archivedAt ?? b.updatedAt) - (a.archivedAt ?? a.updatedAt))
-        .map((plant) => ({
-          _id: plant._id,
-          name: plant.name,
-          species: plant.species,
-          growthStage: plant.growthStage,
-          location: plant.location,
-          plantedAtLabel: formatTimestamp(plant.plantedAt),
-          archivedAtLabel: plant.archivedAt ? formatTimestamp(plant.archivedAt) : null,
-        })),
-    }
-
-    const [timeline, imageHistory] = await Promise.all([
-      getRecentGrowEvents(ctx, device._id, 5),
-      currentPlant && !currentPlant.archived
-        ? getPlantImageHistory(ctx, currentPlant._id, 16)
-        : Promise.resolve([]),
-    ])
-
-    const recordings = await ctx.db
-      .query('videoRecordings')
-      .withIndex('by_device', (q) => q.eq('deviceId', device._id))
-      .order('desc')
-      .take(20)
-
-    if (!currentPlant || currentPlant.archived) {
-      return {
-        device: {
-          ...(await formatDeviceDetail(ctx, device)),
-        },
-        currentPlant: null,
-        archivedPlants,
-        metricHistory: {},
-        automationLogs: [],
-        timeline,
-        imageHistory,
-        recordings: recordings.map((r) => ({
-          _id: r._id,
-          fileName: r.fileName,
-          path: r.path,
-          size: r.size,
-          durationMs: r.durationMs,
-          capturedAt: r.capturedAt,
-          capturedAtLabel: formatTimestamp(r.capturedAt),
-        })),
-      }
-    }
-
-    const [metricHistory, automationLogs] = await Promise.all([
-      getSensorHistory(ctx, currentPlant._id, 60),
-      getRecentAutomationLogs(ctx, currentPlant._id, 20),
-    ])
-
-    return {
-      device: {
-        ...(await formatDeviceDetail(ctx, device)),
-      },
-      currentPlant: {
-        ...(await buildPlantView(ctx, currentPlant)),
-        plantedAtLabel: formatTimestamp(currentPlant.plantedAt),
-        growthStageLabel: formatPlantStage(currentPlant.growthStage),
-        progress: computePlantProgress(currentPlant),
-      },
-      archivedPlants,
-      metricHistory,
-      automationLogs,
-      timeline,
-      imageHistory,
-      recordings: recordings.map((r) => ({
-        _id: r._id,
-        fileName: r.fileName,
-        path: r.path,
-        size: r.size,
-        durationMs: r.durationMs,
-        capturedAt: r.capturedAt,
-        capturedAtLabel: formatTimestamp(r.capturedAt),
-      })),
-    }
+    return await deviceHistoryCore(ctx, device, archivedPage)
   },
 })
 
@@ -497,53 +173,6 @@ export const updateDeviceAutomation = mutation({
       throw new ConvexError('Hanya admin yang dapat mengubah pengaturan teknis otomatisasi perangkat')
     }
 
-    const updates: Partial<Pick<DeviceDoc, DeviceAutomationKey>> = {}
-    if (args.autoWatering !== undefined) updates.autoWatering = args.autoWatering
-    if (args.autoLighting !== undefined) updates.autoLighting = args.autoLighting
-    if (args.wateringThreshold !== undefined) updates.wateringThreshold = args.wateringThreshold
-    if (args.wateringDuration !== undefined) updates.wateringDuration = args.wateringDuration
-    if (args.wateringCooldown !== undefined) updates.wateringCooldown = args.wateringCooldown
-    if (args.lightingThreshold !== undefined) updates.lightingThreshold = args.lightingThreshold
-    if (args.lightingHysteresis !== undefined) updates.lightingHysteresis = args.lightingHysteresis
-    if (args.autoFertilizing !== undefined) updates.autoFertilizing = args.autoFertilizing
-    if (args.autoPesticide !== undefined) updates.autoPesticide = args.autoPesticide
-    if (args.fertilizingThreshold !== undefined) updates.fertilizingThreshold = args.fertilizingThreshold
-    if (args.fertilizingDuration !== undefined) updates.fertilizingDuration = args.fertilizingDuration
-    if (args.fertilizingCooldown !== undefined) updates.fertilizingCooldown = args.fertilizingCooldown
-    if (args.pesticideThreshold !== undefined) updates.pesticideThreshold = args.pesticideThreshold
-    if (args.pesticideDuration !== undefined) updates.pesticideDuration = args.pesticideDuration
-    if (args.pesticideCooldown !== undefined) updates.pesticideCooldown = args.pesticideCooldown
-
-    const changedFields = Object.entries(updates).reduce<Record<string, string | number | boolean>>(
-      (acc, [rawKey, value]) => {
-        const key = rawKey as DeviceAutomationKey
-        if (device[key] !== value) {
-          acc[`${key}Before`] = formatEventValue(device[key])
-          acc[`${key}After`] = formatEventValue(value)
-        }
-        return acc
-      },
-      {},
-    )
-
-    const now = Date.now()
-    await ctx.db.patch(device._id, { ...updates, updatedAt: now })
-
-    if (Object.keys(changedFields).length > 0) {
-      await recordGrowEvent(ctx, {
-        deviceId: device._id,
-        plantId: device.plantId,
-        userId: user._id,
-        source: 'user',
-        entityType: 'automation',
-        eventType: 'automation_settings_updated',
-        title: 'Pengaturan otomatisasi diperbarui',
-        detail: `${device.name} mengalami perubahan pada mode dan ambang otomatisasi.`,
-        data: changedFields,
-        timestamp: now,
-      })
-    }
-
-    return { success: true }
+    return await updateAutomationCore(ctx, user, device, args)
   },
 })

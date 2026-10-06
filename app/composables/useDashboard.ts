@@ -12,6 +12,10 @@ import {
   DEFAULT_TANK_CAPACITY,
   DEFAULT_TANK_MIN_LEVEL,
 } from '~~/convex/types'
+import { useDevicePanels } from '@/composables/dashboard/devicePanels'
+import { useDoseActions } from '@/composables/dashboard/doseActions'
+
+export type { DashboardPanel } from '@/composables/dashboard/devicePanels'
 
 // convex/types.ts has no battery/solar fallback constants (read-only check),
 // so the missing literals live next to their usage.
@@ -20,62 +24,22 @@ const DEFAULT_BATTERY_CURRENT = 0
 const DEFAULT_BATTERY_CAPACITY_AH = 5
 const DEFAULT_SOLAR_PANEL_WATTS = 0
 
-export type DashboardPanel = 'overview' | 'care' | 'devices' | 'history' | 'stream'
-
 /**
  * Dashboard facade: panel routing, device data subscriptions, derived
  * display state, and manual care actions. Selection/sync lives in
- * `useDeviceSelection`, schedule state/handlers in `useSchedules`, and V2
- * recordings loading in `useRecordings`.
+ * `useDeviceSelection`, schedule state/handlers in `useSchedules`, V2
+ * recordings loading in `useRecordings`, panel routing in
+ * `dashboard/devicePanels`, and dose/automation tables in
+ * `dashboard/doseActions`.
  */
 export function useDashboard() {
-  const route = useRoute()
-  const router = useRouter()
-
-  const panelOptions: Array<{ key: DashboardPanel; label: string; icon: string }> = [
-    { key: 'overview', label: 'Ringkasan', icon: 'dashboard' },
-    { key: 'care', label: 'Perawatan', icon: 'spa' },
-    { key: 'devices', label: 'Perangkat', icon: 'hub' },
-    { key: 'history', label: 'Riwayat', icon: 'timeline' },
-  ]
-
-  const iconMap: Record<string, string> = {
-    soil: 'opacity',
-    light: 'light_mode',
-    temperature: 'thermostat',
-    air: 'air',
-    water: 'water',
-  }
-
-  const accentMap: Record<string, string> = {
-    earth: 'bg-gm-secondary-soft/40 text-[#795548]',
-    sun: 'bg-[#94f990]/35 text-gm-primary',
-    warm: 'bg-[#ffdbcf] text-[#795548]',
-    air: 'bg-[#cae6ff]/50 text-[#006493]',
-    water: 'bg-[#00a4ed]/15 text-[#006493]',
-  }
-
-  function isPanel(value: string | null): value is DashboardPanel {
-    return value === 'overview' || value === 'care' || value === 'devices' || value === 'history' || value === 'stream'
-  }
-
   const { devices, currentDeviceId, handleSelectDevice, handleDeviceUnregistered } =
     useDeviceSelection()
 
-  const activePanel = computed<DashboardPanel>(() => {
-    const panel = typeof route.query.panel === 'string' ? route.query.panel : null
-    return isPanel(panel) ? panel : 'overview'
-  })
-
-  function setPanel(panel: DashboardPanel) {
-    void router.replace({
-      path: '/dashboard',
-      query: {
-        ...route.query,
-        panel: panel === 'overview' ? undefined : panel,
-      },
-    })
-  }
+  const {
+    panelOptions, iconMap, accentMap,
+    activePanel, setPanel, openSelectPlant,
+  } = useDevicePanels(currentDeviceId)
 
   const { data } = useConvexQuery(
     api.devices.dashboard,
@@ -111,6 +75,16 @@ export function useDashboard() {
     handleSaveSchedule,
     handleDeleteSchedule,
   } = useSchedules(currentDeviceId)
+
+  const deviceRef = computed(() => data.value?.device as { deviceId: string } | null | undefined)
+
+  const {
+    handleWater,
+    handleLight,
+    handleFertilize,
+    handlePesticide,
+    handleToggleAutomation,
+  } = useDoseActions(currentDeviceId, deviceRef)
 
   const streamUrl = computed(() => {
     if (!isV2.value) return null
@@ -167,11 +141,6 @@ export function useDashboard() {
     { kind: 'water', label: isV2.value ? 'Level Tangki Pupuk' : 'Level Air', unit: '%', accent: 'water' },
   ] as const)
 
-  const { mutate: triggerWater } = useConvexMutation(api.care.triggerWatering)
-  const { mutate: triggerLighting } = useConvexMutation(api.care.triggerLighting)
-  const { mutate: triggerFertilizing } = useConvexMutation(api.care.triggerFertilizing)
-  const { mutate: triggerPesticide } = useConvexMutation(api.care.triggerPesticide)
-  const { mutate: updateAutomation } = useConvexMutation(api.devices.updateDeviceAutomation)
   const { mutate: removeDevice } = useConvexMutation(api.devices.removeDevice)
 
   const removingDeviceId = ref<string | null>(null)
@@ -243,17 +212,6 @@ export function useDashboard() {
     })
   })
 
-  function openSelectPlant(deviceId?: string) {
-    void router.push({
-      path: '/select-plant',
-      query: {
-        deviceId: deviceId ?? currentDeviceId.value,
-        returnTo: '/dashboard',
-        panel: activePanel.value,
-      },
-    })
-  }
-
   function formatPlantHealthLabel(value: string) {
     switch (value) {
       case 'excellent':
@@ -277,117 +235,6 @@ export function useDashboard() {
     },
     { immediate: true },
   )
-
-  type DoseKind = 'water' | 'light' | 'fertilize' | 'pesticide'
-
-  const doseConfig: Record<
-    DoseKind,
-    {
-      run: (args: { deviceId: string; enabled: boolean }) => Promise<unknown>
-      success: (enabled: boolean) => string
-      failure: string
-    }
-  > = {
-    water: {
-      run: (args) => triggerWater({ deviceId: args.deviceId }),
-      success: () => 'Siklus penyiraman dimulai',
-      failure: 'Gagal memicu penyiraman',
-    },
-    light: {
-      run: (args) => triggerLighting({ deviceId: args.deviceId, enabled: args.enabled }),
-      success: (enabled) => (enabled ? 'Lampu tumbuh dinyalakan' : 'Lampu tumbuh dimatikan'),
-      failure: 'Gagal mengubah pencahayaan',
-    },
-    fertilize: {
-      run: (args) => triggerFertilizing({ deviceId: args.deviceId }),
-      success: () => 'Siklus pemupukan dimulai',
-      failure: 'Gagal memicu pemupukan',
-    },
-    pesticide: {
-      run: (args) => triggerPesticide({ deviceId: args.deviceId }),
-      success: () => 'Siklus pestisida dimulai',
-      failure: 'Gagal memicu pestisida',
-    },
-  }
-
-  async function handleDose(kind: DoseKind, enabled = false) {
-    if (!currentDeviceId.value) {
-      toast.error('Pilih perangkat terlebih dahulu')
-      return
-    }
-    const config = doseConfig[kind]
-    try {
-      await config.run({ deviceId: currentDeviceId.value, enabled })
-      toast.success(config.success(enabled))
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error, config.failure))
-    }
-  }
-
-  async function handleWater() {
-    await handleDose('water')
-  }
-
-  async function handleLight(enabled: boolean) {
-    await handleDose('light', enabled)
-  }
-
-  async function handleFertilize() {
-    await handleDose('fertilize')
-  }
-
-  async function handlePesticide() {
-    await handleDose('pesticide')
-  }
-
-  type AutomationType = 'watering' | 'lighting' | 'fertilizing' | 'pesticide'
-
-  const automationConfig: Record<
-    AutomationType,
-    {
-      field: 'autoWatering' | 'autoLighting' | 'autoFertilizing' | 'autoPesticide'
-      onToast: string
-      offToast: string
-    }
-  > = {
-    watering: {
-      field: 'autoWatering',
-      onToast: 'Penyiraman otomatis dinyalakan',
-      offToast: 'Penyiraman otomatis dimatikan',
-    },
-    lighting: {
-      field: 'autoLighting',
-      onToast: 'Pencahayaan otomatis dinyalakan',
-      offToast: 'Pencahayaan otomatis dimatikan',
-    },
-    fertilizing: {
-      field: 'autoFertilizing',
-      onToast: 'Pemupukan otomatis dinyalakan',
-      offToast: 'Pemupukan otomatis dimatikan',
-    },
-    pesticide: {
-      field: 'autoPesticide',
-      onToast: 'Pestisida otomatis dinyalakan',
-      offToast: 'Pestisida otomatis dimatikan',
-    },
-  }
-
-  async function handleToggleAutomation(type: AutomationType, enabled: boolean) {
-    if (!data.value?.device) {
-      toast.error('Pilih perangkat terlebih dahulu')
-      return
-    }
-    try {
-      const config = automationConfig[type]
-      await updateAutomation({
-        deviceId: data.value.device.deviceId,
-        [config.field]: !enabled,
-      } as Parameters<typeof updateAutomation>[0])
-      toast.success(enabled ? config.offToast : config.onToast)
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error, 'Gagal memperbarui otomasi'))
-    }
-  }
 
   async function handleRemoveDevice(deviceId: string, name: string) {
     if (

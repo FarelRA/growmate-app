@@ -3,50 +3,28 @@ import { useConvexMutation, useConvexQuery } from '@convex-vue/core'
 import { toast } from 'vue-sonner'
 import { api } from '~~/convex/_generated/api'
 import { getErrorMessage } from '~~/shared/utils/errors'
-import { readSelectedImage, uploadImageFile } from '@/utils/uploads'
+import { uploadImageFile } from '@/utils/uploads'
 import type { Id } from '@/utils/convex-types'
+import { filterCommunityItems, filterOfficialItems } from '@/composables/marketplace/filters'
+import type { MarketplaceCategoryFilter } from '@/composables/marketplace/filters'
+import { useMarketplaceForms } from '@/composables/marketplace/forms'
 
-export type MarketplaceCategoryFilter = 'all' | 'official' | 'community'
-
-interface MarketplaceSearchableItem {
-  title: string
-  description: string
-  category: string
-  sellerName?: string
-}
-
-/**
- * Single source for marketplace search filtering. Both the authenticated
- * `useMarketplace` computeds and the public `marketplace.vue` page filter
- * through these helpers so the query semantics stay identical.
- */
-function matchesQueryParts(query: string, ...parts: Array<string | null | undefined>) {
-  const normalized = query.trim().toLowerCase()
-  if (!normalized) return true
-  return parts.filter(Boolean).join(' ').toLowerCase().includes(normalized)
-}
-
-export function matchesMarketplaceQuery(item: MarketplaceSearchableItem, query: string) {
-  return matchesQueryParts(query, item.title, item.description, item.category, item.sellerName)
-}
-
-export function filterOfficialItems<T extends MarketplaceSearchableItem>(
-  items: T[],
-  query: string,
-  selectedCategory: MarketplaceCategoryFilter,
-) {
-  if (selectedCategory === 'community') return []
-  return items.filter((item) => matchesMarketplaceQuery(item, query))
-}
-
-export function filterCommunityItems<T extends MarketplaceSearchableItem>(
-  items: T[],
-  query: string,
-  selectedCategory: MarketplaceCategoryFilter,
-) {
-  if (selectedCategory === 'official') return []
-  return items.filter((item) => matchesMarketplaceQuery(item, query))
-}
+export {
+  filterCommunityItems,
+  filterOfficialItems,
+  matchesMarketplaceQuery,
+} from '@/composables/marketplace/filters'
+export type {
+  MarketplaceCategoryFilter,
+  MarketplaceSearchableItem,
+} from '@/composables/marketplace/filters'
+export { mapFormFields } from '@/composables/marketplace/forms'
+export type {
+  DraftFormSource,
+  DraftFormState,
+  EditableDraftSource,
+  EditableListingSource,
+} from '@/composables/marketplace/forms'
 
 export function useMarketplace() {
   const searchQuery = ref('')
@@ -62,18 +40,16 @@ export function useMarketplace() {
   const inquiryMessage = ref('')
   const replyMessage = ref('')
 
-  const draftForm = ref({
-    draftId: null as string | null,
-    title: '',
-    description: '',
-    category: 'Fresh Produce',
-    quantity: 1,
-    quantityUnit: 'bundle',
-    price: 5,
-    priceUnit: 'each',
-    locationLabel: 'Local pickup',
-    contactPreference: 'chat' as 'chat' | 'pickup' | 'delivery',
-  })
+  const {
+    draftForm,
+    editingListingId,
+    draftImageFile,
+    draftImagePreview,
+    resetDraftForm,
+    editDraft,
+    editListing,
+    handleDraftImageChange,
+  } = useMarketplaceForms()
 
   const { data } = useConvexQuery(api.marketplace.marketplace, {})
 
@@ -95,9 +71,6 @@ export function useMarketplace() {
   const deletingListingId = ref<string | null>(null)
   const sendingInquiry = ref(false)
   const sendingReply = ref(false)
-  const editingListingId = ref<string | null>(null)
-  const draftImageFile = ref<File | null>(null)
-  const draftImagePreview = ref<string | null>(null)
   const failedMarketplaceImages = ref<string[]>([])
 
   watch(
@@ -146,10 +119,6 @@ export function useMarketplace() {
     () => data.value?.threads.find((thread: { _id: string }) => thread._id === selectedThreadId.value) ?? null,
   )
 
-  type MarketplaceData = NonNullable<typeof data.value>
-  type MarketplaceDraft = MarketplaceData['listingDrafts'][number]
-  type MarketplaceListing = MarketplaceData['community'][number]
-
   function openExternal(url: string) {
     window.open(url, '_blank')
   }
@@ -164,80 +133,12 @@ export function useMarketplace() {
     }
   }
 
-  function resetDraftForm() {
-    editingListingId.value = null
-    draftForm.value = {
-      draftId: null,
-      title: '',
-      description: '',
-      category: 'Fresh Produce',
-      quantity: 1,
-      quantityUnit: 'bundle',
-      price: 5,
-      priceUnit: 'each',
-      locationLabel: 'Local pickup',
-      contactPreference: 'chat',
-    }
-    draftImageFile.value = null
-    draftImagePreview.value = null
-  }
-
-  interface DraftFormSource {
+  function openInquiry(listing: {
+    _id: string
+    sellerName: string
     title: string
-    description: string
-    category: string
-    quantity?: number
-    quantityAvailable?: number
-    quantityUnit?: string | null
-    price: number
-    priceUnit: string
-    locationLabel?: string | null
-    contactPreference?: 'chat' | 'pickup' | 'delivery' | null
-    imageUrl?: string | null
-  }
-
-  /**
-   * Single source for hydrating the draft form from either a saved draft
-   * (which carries `quantity`) or a published listing (which carries
-   * `quantityAvailable` plus nullable display fields).
-   */
-  function mapFormFields(source: DraftFormSource, draftId: string | null) {
-    return {
-      draftId,
-      title: source.title,
-      description: source.description,
-      category: source.category,
-      quantity: source.quantity ?? source.quantityAvailable ?? 1,
-      quantityUnit: source.quantityUnit ?? 'item',
-      price: source.price,
-      priceUnit: source.priceUnit,
-      locationLabel: source.locationLabel ?? '',
-      contactPreference: source.contactPreference ?? 'chat' as 'chat' | 'pickup' | 'delivery',
-    }
-  }
-
-  function editDraft(draft: MarketplaceDraft) {
-    editingListingId.value = null
-    draftForm.value = mapFormFields(draft, draft._id)
-    draftImageFile.value = null
-    draftImagePreview.value = draft.imageUrl
-  }
-
-  function editListing(listing: MarketplaceListing) {
-    editingListingId.value = listing._id
-    draftForm.value = mapFormFields(listing, null)
-    draftImageFile.value = null
-    draftImagePreview.value = listing.imageUrl
-  }
-
-  function handleDraftImageChange(event: Event) {
-    const input = event.target as HTMLInputElement
-    const file = input.files?.[0] ?? null
-    draftImageFile.value = file
-    draftImagePreview.value = readSelectedImage(file) ?? draftImagePreview.value
-  }
-
-  function openInquiry(listing: MarketplaceListing) {
+    contactThreadId: string | null
+  }) {
     inquiryListing.value = {
       _id: listing._id,
       sellerName: listing.sellerName,

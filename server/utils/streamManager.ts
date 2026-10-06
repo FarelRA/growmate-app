@@ -1,12 +1,15 @@
 import net from 'node:net'
 import fs from 'node:fs'
-import { mkdir, stat, readFile, unlink } from 'node:fs/promises'
-import path from 'node:path'
-import { api } from '~~/convex/_generated/api'
-import { useConvex } from './convex'
-import { RECORDINGS_BUCKET, uploadFile } from './storage'
+import { extractNalUnits, getNalType, isVclNal, isParameterSetNal, isKeyframeNal } from './stream/nalParser'
+import {
+  ensureSegmentDir,
+  segmentFilePath,
+  appendNalUnit,
+  closeFileWriter,
+  uploadSegmentFile,
+  discardSegmentFile,
+} from './stream/segmentStore'
 
-const SEGMENT_DIR = process.env.GROWMATE_SEGMENT_DIR ?? '/var/growmate/segments'
 const SEGMENT_INTERVAL_MS = 60_000
 const RECONNECT_DELAY_MS = 5_000
 
@@ -134,7 +137,7 @@ class StreamManager {
       })
     }, SEGMENT_INTERVAL_MS)
 
-    let nalBuffer = Buffer.alloc(0)
+    let nalBuffer: Buffer = Buffer.alloc(0)
 
     socket.on('data', (chunk: Buffer) => {
       if (!this.isCurrent(state)) return
@@ -148,53 +151,15 @@ class StreamManager {
         return
       }
 
-      const startCodes = [Buffer.from([0x00, 0x00, 0x00, 0x01]), Buffer.from([0x00, 0x00, 0x01])]
-      const findStart = (buf: Buffer, offset: number): { pos: number; len: number } | null => {
-        for (const sc of startCodes) {
-          const pos = buf.indexOf(sc, offset)
-          if (pos !== -1) return { pos, len: sc.length }
-        }
-        return null
-      }
+      const { units, rest } = extractNalUnits(nalBuffer)
+      nalBuffer = rest
 
-      const first = findStart(nalBuffer, 0)
-      if (!first) return
-      let nalStart = first.pos + first.len
-      let searchFrom = nalStart
-
-      while (searchFrom < nalBuffer.length) {
-        const next = findStart(nalBuffer, searchFrom)
-        if (!next) break
-
-        if (next.pos === nalStart) {
-          searchFrom = next.pos + next.len
-          nalStart = searchFrom
-          continue
-        }
-
-        const nalUnit = nalBuffer.subarray(nalStart, next.pos)
-        if (nalUnit.length === 0) {
-          searchFrom = next.pos + next.len
-          nalStart = searchFrom
-          continue
-        }
-        const firstByte = nalUnit.at(0)
-        if (firstByte === undefined) {
-          searchFrom = next.pos + next.len
-          nalStart = searchFrom
-          continue
-        }
-        const nalType = firstByte & 0x1F
+      for (const nalUnit of units) {
+        const nalType = getNalType(nalUnit)
+        if (nalType === undefined) continue
         const timestamp = state.frameCount * (1_000_000 / 15)
 
         this.processNalUnit(state, nalUnit, nalType, timestamp)
-
-        searchFrom = next.pos + next.len
-        nalStart = searchFrom
-      }
-
-      if (nalStart > 0) {
-        nalBuffer = nalBuffer.subarray(nalStart)
       }
     })
 
@@ -236,24 +201,20 @@ class StreamManager {
 
   private processNalUnit(state: StreamState, nalUnit: Buffer, nalType: number, timestamp: number) {
     if (!this.isCurrent(state)) return
-    const isVclNal = nalType === 1 || nalType === 5
-    if (isVclNal) {
+    if (isVclNal(nalType)) {
       state.frameCount++
     }
 
-    if (nalType === 7 || nalType === 8) {
+    if (isParameterSetNal(nalType)) {
       state.spsPpsCache.push(Buffer.from(nalUnit))
       if (state.spsPpsCache.length > 2) {
         state.spsPpsCache = state.spsPpsCache.slice(-2)
       }
     }
 
-    if (state.fileWriter) {
-      const startCode = Buffer.from([0x00, 0x00, 0x00, 0x01])
-      state.fileWriter.write(Buffer.concat([startCode, nalUnit]))
-    }
+    appendNalUnit(state.fileWriter, nalUnit)
 
-    const isKeyframe = nalType === 5
+    const isKeyframe = isKeyframeNal(nalType)
     const message = this.encodeWsMessage(nalUnit, isKeyframe, timestamp)
     const deviceViewers = this.viewers.get(state.deviceId)
     if (deviceViewers) {
@@ -338,14 +299,7 @@ class StreamManager {
     const writer = state.fileWriter
     state.fileWriter = null
     if (!writer) return
-    await Promise.race([
-      new Promise<void>((resolve) => {
-        writer.once('finish', () => resolve())
-        writer.once('error', () => resolve())
-        writer.end()
-      }),
-      new Promise<void>((resolve) => setTimeout(() => resolve(), 5_000)),
-    ])
+    await closeFileWriter(writer)
   }
 
   private async rotateSegment(state: StreamState): Promise<void> {
@@ -364,14 +318,10 @@ class StreamManager {
     if (!this.isCurrent(state)) return
     if (this.deviceGenerations.get(state.deviceId) !== generation) return
 
-    const now = new Date()
-    const pad = (n: number) => String(n).padStart(2, '0')
-    const fileName = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.h264`
-    const dir = `${SEGMENT_DIR}/${state.deviceId}`
-    await mkdir(dir, { recursive: true })
+    await ensureSegmentDir(state.deviceId)
     if (!this.isCurrent(state)) return
     if (this.deviceGenerations.get(state.deviceId) !== generation) return
-    state.currentFilePath = `${dir}/${fileName}`
+    state.currentFilePath = segmentFilePath(state.deviceId)
     state.fileWriter = fs.createWriteStream(state.currentFilePath)
     state.segmentStartTime = Date.now()
   }
@@ -379,35 +329,22 @@ class StreamManager {
   private async uploadSegment(deviceId: string, filePath: string, capturedAt: number, generation?: number): Promise<void> {
     try {
       if (generation !== undefined && this.deviceGenerations.get(deviceId) !== generation) {
-        await unlink(filePath).catch(() => {})
+        await discardSegmentFile(filePath)
         return
       }
       if (generation !== undefined) {
         const current = this.streams.get(deviceId)
         if (current && current.generation !== generation) {
-          await unlink(filePath).catch(() => {})
+          await discardSegmentFile(filePath)
           return
         }
       }
-      const stats = await stat(filePath)
-      const fileName = path.basename(filePath)
-      const s3Path = `${deviceId}/stream/${fileName}`
-
-      const buffer = await readFile(filePath)
-      await uploadFile(RECORDINGS_BUCKET, s3Path, buffer, 'video/h264', { publicRead: false })
-
-      const convex = useConvex()
-      await convex.mutation(api.streams.recordStreamSegment, {
+      await uploadSegmentFile({
         deviceId,
-        fileName,
-        path: s3Path,
-        size: stats.size,
-        durationMs: Date.now() - capturedAt,
+        filePath,
         capturedAt,
         deviceKey: readDeviceKey(),
       })
-
-      await unlink(filePath)
     } catch (err) {
       console.error(`[StreamManager] Failed to upload segment for ${deviceId}:`, err)
     }

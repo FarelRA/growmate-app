@@ -3,7 +3,15 @@ import { mutation, query } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
 import type { Ctx, CommunityPostDoc } from './types'
 import { getCurrentUser, requireUser } from './helpers/auth'
-import { getRelativeTime, addUserActivity } from './helpers/generic'
+import { getRelativeTime } from './helpers/generic'
+import { createPostCore, deletePostCore } from './community/posts'
+import { toggleLikeCore, createCommentCore } from './community/engagement'
+
+// Thin-delegate module: every export below keeps the api.community.* surface
+// identical. Auth (requireUser), input validation, post-exists guards, and the
+// post-ownership check stay VISIBLE here; pure DB logic lives in
+// ./community/posts.ts (post CRUD cores) and ./community/engagement.ts
+// (like/comment cores, incl. first-like-only reward semantics).
 
 const COMMUNITY_COMMENT_PAGE = 20
 const COMMUNITY_COMMENT_SHOWN = 6
@@ -131,23 +139,7 @@ export const createPost = mutation({
     if (!title || !body) {
       throw new ConvexError('Judul dan isi postingan wajib diisi')
     }
-    const postId = await ctx.db.insert('communityPosts', {
-      userId: user._id,
-      title,
-      body,
-      imageUrl: args.imageUrl ?? undefined,
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    await addUserActivity(ctx, {
-      userId: user._id,
-      activityType: 'post_created',
-      relatedId: postId,
-      createdAt: now,
-    })
-
-    return { success: true }
+    return createPostCore(ctx, user, title, body, args.imageUrl, now)
   },
 })
 
@@ -160,44 +152,7 @@ export const likePost = mutation({
     if (!post) {
       throw new ConvexError('Postingan tidak ditemukan')
     }
-    const existing = await ctx.db
-      .query('postLikes')
-      .withIndex('by_user_and_post', (q) => q.eq('userId', user._id).eq('postId', args.postId))
-      .first()
-
-    if (existing) {
-      await ctx.db.delete(existing._id)
-      return { success: true, liked: false }
-    }
-
-    const now = Date.now()
-    await ctx.db.insert('postLikes', {
-      postId: args.postId,
-      userId: user._id,
-      createdAt: now,
-    })
-
-    // Likes are a toggle: award post_liked points on the FIRST like only.
-    // Unlike awards nothing, and relike after unlike awards nothing, so
-    // unlike→relike loops can never farm leaderboard points.
-    const pastLikes = await ctx.db
-      .query('userActivities')
-      .withIndex('by_user', (q) => q.eq('userId', user._id))
-      .collect()
-    const alreadyRewarded = pastLikes.some(
-      (activity) =>
-        activity.activityType === 'post_liked' && String(activity.relatedId) === String(args.postId),
-    )
-    if (!alreadyRewarded) {
-      await addUserActivity(ctx, {
-        userId: user._id,
-        activityType: 'post_liked',
-        relatedId: args.postId,
-        createdAt: now,
-      })
-    }
-
-    return { success: true, liked: true }
+    return toggleLikeCore(ctx, user, args.postId)
   },
 })
 
@@ -215,22 +170,7 @@ export const createComment = mutation({
     if (!body) {
       throw new ConvexError('Komentar tidak boleh kosong')
     }
-    const commentId = await ctx.db.insert('postComments', {
-      postId: args.postId,
-      userId: user._id,
-      body,
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    await addUserActivity(ctx, {
-      userId: user._id,
-      activityType: 'comment_created',
-      relatedId: commentId,
-      createdAt: now,
-    })
-
-    return { success: true }
+    return createCommentCore(ctx, user, args.postId, body, now)
   },
 })
 
@@ -243,32 +183,6 @@ export const deletePost = mutation({
       throw new ConvexError('Postingan tidak ditemukan')
     }
 
-    // Paginated deletes until exhausted — no silent orphans.
-    while (true) {
-      const likes = await ctx.db
-        .query('postLikes')
-        .withIndex('by_post', (q) => q.eq('postId', args.postId))
-        .take(100)
-      if (likes.length === 0) break
-      for (const like of likes) {
-        await ctx.db.delete(like._id)
-      }
-      if (likes.length < 100) break
-    }
-
-    while (true) {
-      const comments = await ctx.db
-        .query('postComments')
-        .withIndex('by_post', (q) => q.eq('postId', args.postId))
-        .take(100)
-      if (comments.length === 0) break
-      for (const comment of comments) {
-        await ctx.db.delete(comment._id)
-      }
-      if (comments.length < 100) break
-    }
-
-    await ctx.db.delete(args.postId)
-    return { success: true }
+    return deletePostCore(ctx, args.postId)
   },
 })

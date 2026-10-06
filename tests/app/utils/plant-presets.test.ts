@@ -55,7 +55,7 @@ describe('backend threshold constants', () => {
     expect(DEFAULT_WATERING_THRESHOLD).toBe(35)
     expect(DEFAULT_WATERING_DURATION).toBe(8)
     expect(DEFAULT_WATERING_COOLDOWN).toBe(6 * 60 * 60)
-    expect(DEFAULT_LIGHTING_THRESHOLD).toBe(40)
+    expect(DEFAULT_LIGHTING_THRESHOLD).toBe(30)
     expect(DEFAULT_LIGHTING_HYSTERESIS).toBe(8)
   })
 

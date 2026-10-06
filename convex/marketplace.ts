@@ -1,35 +1,31 @@
 import { v, ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
-import type { Id } from './_generated/dataModel'
-import type { MutationCtx } from './types'
 import { getCurrentUser, requireUser } from './helpers/auth'
 import { formatCurrencyIdr } from './helpers/generic'
 import { enrichMarketplaceProduct, enrichMarketplaceProducts, getMarketplaceThreadsForUser } from './helpers/marketplace'
 import {
   LISTING_DRAFTS_PER_USER_CAP,
-  MARKETPLACE_MESSAGES_PER_THREAD_CAP,
-  overflowBeyondCap,
 } from './crons'
+import {
+  saveDraftCore,
+  publishDraftCore,
+  setListingStatusCore,
+  updateListingCore,
+  deleteDraftCore,
+  deleteListingCore,
+} from './marketplace/listings'
+import {
+  sendMessageCore,
+  replyThreadCore,
+  markThreadReadCore,
+} from './marketplace/threads'
 
-// Hard retention cap: 200 messages/thread, trim oldest. No grandfathering.
-export async function trimMarketplaceThreadToCap(
-  ctx: MutationCtx,
-  threadId: Id<'marketplaceThreads'>,
-) {
-  while (true) {
-    const newestFirst = await ctx.db
-      .query('marketplaceMessages')
-      .withIndex('by_thread_and_createdAt', (q) => q.eq('threadId', threadId))
-      .order('desc')
-      .take(500)
-    const overflow = overflowBeyondCap(newestFirst, MARKETPLACE_MESSAGES_PER_THREAD_CAP)
-    if (overflow.length === 0) break
-    for (const message of overflow) {
-      await ctx.db.delete(message._id)
-    }
-    if (newestFirst.length < 500) break
-  }
-}
+// Thin-delegate module: every export below keeps the api.marketplace.* surface
+// identical. Auth/ownership/cap gates stay VISIBLE here; pure DB logic lives in
+// ./marketplace/listings.ts (draft/listing CRUD) and ./marketplace/threads.ts
+// (thread/message/read cores). Re-exported so the `convex/marketplace` import
+// path keeps working (tests + internal callers).
+export { trimMarketplaceThreadToCap } from './marketplace/threads'
 
 export const marketplace = query({
   args: {},
@@ -153,24 +149,8 @@ export const saveMarketplaceDraft = mutation({
       throw new ConvexError('Gambar penawaran wajib diisi')
     }
 
-    const payload = {
-      userId: user._id,
-      title: args.title.trim(),
-      description: args.description.trim(),
-      category: args.category.trim(),
-      quantity: args.quantity,
-      quantityUnit: args.quantityUnit.trim(),
-      price: args.price,
-      priceUnit: args.priceUnit.trim(),
-      imageUrl,
-      locationLabel: args.locationLabel.trim(),
-      contactPreference: args.contactPreference,
-      updatedAt: now,
-    }
-
     if (args.draftId) {
-      await ctx.db.patch(args.draftId, payload)
-      return { success: true, draftId: args.draftId }
+      return saveDraftCore(ctx, user, args, imageUrl, now, args.draftId)
     }
 
     // Hard cap: 20 drafts/user — reject over cap, no grandfathering.
@@ -184,12 +164,7 @@ export const saveMarketplaceDraft = mutation({
       )
     }
 
-    const draftId = await ctx.db.insert('listingDrafts', {
-      ...payload,
-      status: 'draft',
-      createdAt: now,
-    })
-    return { success: true, draftId }
+    return saveDraftCore(ctx, user, args, imageUrl, now)
   },
 })
 
@@ -206,38 +181,7 @@ export const publishMarketplaceDraft = mutation({
     }
 
     const now = Date.now()
-    const productId = await ctx.db.insert('products', {
-      title: draft.title,
-      description: draft.description,
-      price: draft.price,
-      category: draft.category,
-      type: 'community',
-      sellerId: user._id,
-      status: 'active',
-      quantityAvailable: draft.quantity,
-      quantityUnit: draft.quantityUnit,
-      priceUnit: draft.priceUnit,
-      locationLabel: draft.locationLabel,
-      contactPreference: draft.contactPreference,
-      imageUrl: draft.imageUrl,
-      featured: false,
-      shopeeUrl: undefined,
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    await ctx.db.patch(args.draftId, { status: 'published', updatedAt: now })
-
-    await ctx.db.insert('notifications', {
-      userId: user._id,
-      title: 'Penawaran dipublikasikan',
-      detail: `${draft.title} kini tampil di marketplace GrowMate.`,
-      kind: 'commerce',
-      read: false,
-      createdAt: now,
-    })
-
-    return { success: true, productId }
+    return publishDraftCore(ctx, user, draft, now)
   },
 })
 
@@ -258,11 +202,7 @@ export const updateMarketplaceListingStatus = mutation({
       throw new ConvexError('Penawaran tidak ditemukan')
     }
 
-    await ctx.db.patch(args.productId, {
-      status: args.status,
-      updatedAt: Date.now(),
-    })
-    return { success: true }
+    return setListingStatusCore(ctx, args.productId, args.status, Date.now())
   },
 })
 
@@ -299,21 +239,7 @@ export const updateMarketplaceListing = mutation({
 
     const imageUrl = args.imageUrl ?? product.imageUrl
 
-    await ctx.db.patch(args.productId, {
-      title: args.title.trim(),
-      description: args.description.trim(),
-      category: args.category.trim(),
-      quantityAvailable: args.quantity,
-      quantityUnit: args.quantityUnit.trim(),
-      price: args.price,
-      priceUnit: args.priceUnit.trim(),
-      imageUrl,
-      locationLabel: args.locationLabel.trim(),
-      contactPreference: args.contactPreference,
-      updatedAt: Date.now(),
-    })
-
-    return { success: true }
+    return updateListingCore(ctx, args.productId, args, imageUrl, Date.now())
   },
 })
 
@@ -326,8 +252,7 @@ export const deleteMarketplaceDraft = mutation({
       throw new ConvexError('Draft tidak ditemukan')
     }
 
-    await ctx.db.delete(args.draftId)
-    return { success: true }
+    return deleteDraftCore(ctx, args.draftId)
   },
 })
 
@@ -340,32 +265,7 @@ export const deleteMarketplaceListing = mutation({
       throw new ConvexError('Penawaran tidak ditemukan')
     }
 
-    // Paginated deletes until exhausted — no silent orphans.
-    while (true) {
-      const threads = await ctx.db
-        .query('marketplaceThreads')
-        .withIndex('by_product', (q) => q.eq('productId', args.productId))
-        .take(50)
-      if (threads.length === 0) break
-      for (const thread of threads) {
-        while (true) {
-          const messages = await ctx.db
-            .query('marketplaceMessages')
-            .withIndex('by_thread_and_createdAt', (q) => q.eq('threadId', thread._id))
-            .take(100)
-          if (messages.length === 0) break
-          for (const message of messages) {
-            await ctx.db.delete(message._id)
-          }
-          if (messages.length < 100) break
-        }
-        await ctx.db.delete(thread._id)
-      }
-      if (threads.length < 50) break
-    }
-
-    await ctx.db.delete(args.productId)
-    return { success: true }
+    return deleteListingCore(ctx, args.productId)
   },
 })
 
@@ -391,7 +291,7 @@ export const sendMarketplaceMessage = mutation({
       throw new ConvexError('Pesan tidak boleh kosong')
     }
 
-    let thread = args.threadId ? await ctx.db.get(args.threadId) : null
+    const thread = args.threadId ? await ctx.db.get(args.threadId) : null
     if (thread) {
       if (
         String(thread.productId) !== String(args.productId) ||
@@ -400,65 +300,8 @@ export const sendMarketplaceMessage = mutation({
         throw new ConvexError('Percakapan tidak ditemukan')
       }
     }
-    if (!thread) {
-      thread = await ctx.db
-        .query('marketplaceThreads')
-        .withIndex('by_product_and_buyer', (q) =>
-          q.eq('productId', args.productId).eq('buyerId', user._id),
-        )
-        .first()
-    }
 
-    let threadId = thread?._id
-    if (!threadId) {
-      const [buyer, seller] = await Promise.all([
-        ctx.db.get(user._id),
-        ctx.db.get(product.sellerId),
-      ])
-      threadId = await ctx.db.insert('marketplaceThreads', {
-        productId: args.productId,
-        buyerId: user._id,
-        sellerId: product.sellerId,
-        buyerName: buyer?.name,
-        sellerName: seller?.name,
-        productTitle: product.title,
-        productImage: product.imageUrl,
-        productStatus: product.status,
-        lastMessagePreview: body.slice(0, 160),
-        lastMessageAt: now,
-        buyerUnreadCount: 0,
-        sellerUnreadCount: 1,
-        createdAt: now,
-        updatedAt: now,
-      })
-    } else {
-      await ctx.db.patch(threadId, {
-        lastMessagePreview: body.slice(0, 160),
-        lastMessageAt: now,
-        sellerUnreadCount: (thread?.sellerUnreadCount ?? 0) + 1,
-        updatedAt: now,
-      })
-    }
-
-    await ctx.db.insert('marketplaceMessages', {
-      threadId,
-      senderId: user._id,
-      body,
-      createdAt: now,
-    })
-
-    await trimMarketplaceThreadToCap(ctx, threadId)
-
-    await ctx.db.insert('notifications', {
-      userId: product.sellerId,
-      title: 'Pertanyaan marketplace baru',
-      detail: `${user.name ?? 'Seorang pembeli'} menghubungi Anda tentang ${product.title}.`,
-      kind: 'commerce',
-      read: false,
-      createdAt: now,
-    })
-
-    return { success: true, threadId }
+    return sendMessageCore(ctx, user, product, thread, body, now)
   },
 })
 
@@ -485,36 +328,8 @@ export const replyMarketplaceThread = mutation({
     if (!body) {
       throw new ConvexError('Pesan tidak boleh kosong')
     }
-    const isSeller = String(thread.sellerId) === String(user._id)
-    const receiverId = isSeller ? thread.buyerId : thread.sellerId
 
-    await ctx.db.insert('marketplaceMessages', {
-      threadId: args.threadId,
-      senderId: user._id,
-      body,
-      createdAt: now,
-    })
-
-    await trimMarketplaceThreadToCap(ctx, args.threadId)
-
-    await ctx.db.patch(args.threadId, {
-      lastMessagePreview: body.slice(0, 160),
-      lastMessageAt: now,
-      buyerUnreadCount: isSeller ? thread.buyerUnreadCount + 1 : 0,
-      sellerUnreadCount: isSeller ? 0 : thread.sellerUnreadCount + 1,
-      updatedAt: now,
-    })
-
-    await ctx.db.insert('notifications', {
-      userId: receiverId,
-      title: 'Balasan marketplace baru',
-      detail: `${user.name ?? 'Seseorang'} membalas percakapan marketplace Anda.`,
-      kind: 'commerce',
-      read: false,
-      createdAt: now,
-    })
-
-    return { success: true }
+    return replyThreadCore(ctx, user, thread, body, now)
   },
 })
 
@@ -533,28 +348,6 @@ export const markMarketplaceThreadRead = mutation({
       throw new ConvexError('Percakapan tidak ditemukan')
     }
 
-    await ctx.db.patch(args.threadId, {
-      buyerUnreadCount: isBuyer ? 0 : thread.buyerUnreadCount,
-      sellerUnreadCount: isSeller ? 0 : thread.sellerUnreadCount,
-      updatedAt: now,
-    })
-
-    // Paginated to cover all messages — no 40-row ceiling.
-    let cursor: string | null = null
-    while (true) {
-      const page = await ctx.db
-        .query('marketplaceMessages')
-        .withIndex('by_thread_and_createdAt', (q) => q.eq('threadId', args.threadId))
-        .paginate({ cursor, numItems: 100 })
-      for (const message of page.page) {
-        if (String(message.senderId) !== String(user._id) && !message.readAt) {
-          await ctx.db.patch(message._id, { readAt: now })
-        }
-      }
-      if (page.isDone) break
-      cursor = page.continueCursor
-    }
-
-    return { success: true }
+    return markThreadReadCore(ctx, user, thread, now)
   },
 })

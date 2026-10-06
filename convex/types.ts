@@ -130,7 +130,7 @@ export const defaultPlantSensorProfile: PlantSensorProfile = {
 }
 
 export const DEFAULT_WATERING_THRESHOLD = 35
-export const DEFAULT_LIGHTING_THRESHOLD = 40
+export const DEFAULT_LIGHTING_THRESHOLD = 30
 export const DEFAULT_WATERING_DURATION = 8
 export const DEFAULT_WATERING_COOLDOWN = 6 * 60 * 60
 export const DEFAULT_LIGHTING_HYSTERESIS = 8

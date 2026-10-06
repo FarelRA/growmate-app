@@ -95,7 +95,7 @@ export const marketplace = query({
         imageUrl: draft.imageUrl ?? null,
         quantityLabel: `${draft.quantity} ${draft.quantityUnit}`,
         priceLabel: `${formatCurrencyIdr(draft.price)} / ${draft.priceUnit}`,
-        statusLabel: draft.status[0]!.toUpperCase() + draft.status.slice(1),
+        statusLabel: draft.status.charAt(0).toUpperCase() + draft.status.slice(1),
       })),
       myListings,
       threads: marketplaceThreads,

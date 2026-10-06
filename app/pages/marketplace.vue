@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { api } from '~~/convex/_generated/api'
 import { createBreadcrumbSchema } from '~~/shared/utils/seo'
 import type { CommunityMarketplaceItem, OfficialMarketplaceItem } from '@/utils/convex-types'
+import { filterCommunityItems, filterOfficialItems } from '@/composables/useMarketplace'
 
 interface PublicMarketplaceData {
   official: OfficialMarketplaceItem[]
@@ -41,27 +42,13 @@ const { data } = await usePublicConvexQuery<Record<string, unknown>, PublicMarke
 
 const featured = computed(() => data.value?.featured ?? null)
 
-const filteredOfficial = computed(() => {
-  const official = data.value?.official ?? []
-  const search = query.value.trim().toLowerCase()
-  return official.filter((item) => {
-    if (selectedCategory.value === 'community') return false
-    if (!search) return true
-    return `${item.title} ${item.description} ${item.category}`.toLowerCase().includes(search)
-  })
-})
+const filteredOfficial = computed(() =>
+  filterOfficialItems(data.value?.official ?? [], query.value, selectedCategory.value),
+)
 
-const filteredCommunity = computed(() => {
-  const community = data.value?.community ?? []
-  const search = query.value.trim().toLowerCase()
-  return community.filter((item) => {
-    if (selectedCategory.value === 'official') return false
-    if (!search) return true
-    return `${item.title} ${item.description} ${item.category} ${item.sellerName}`
-      .toLowerCase()
-      .includes(search)
-  })
-})
+const filteredCommunity = computed(() =>
+  filterCommunityItems(data.value?.community ?? [], query.value, selectedCategory.value),
+)
 
 function openExternal(url: string) {
   if (url) window.open(url, '_blank')

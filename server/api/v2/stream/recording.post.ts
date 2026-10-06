@@ -12,13 +12,21 @@ export default defineEventHandler(async (event) => {
   }
 
   const convex = useConvex()
+  let capturedAt: number
+  if (body.capturedAt === undefined || body.capturedAt === null) {
+    capturedAt = Date.now()
+  } else if (typeof body.capturedAt !== 'number' || !Number.isFinite(body.capturedAt)) {
+    throw createError({ statusCode: 400, statusMessage: 'capturedAt must be a finite number' })
+  } else {
+    capturedAt = body.capturedAt
+  }
   await convex.mutation(api.streams.recordStreamSegment, {
     deviceId: body.deviceId,
     fileName: body.fileName,
     path: body.path,
     size: body.size,
     durationMs: body.durationMs,
-    capturedAt: body.capturedAt,
+    capturedAt,
     deviceKey,
   })
 

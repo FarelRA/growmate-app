@@ -56,7 +56,8 @@ export default defineSchema({
   })
     .index('by_handle', ['handle'])
     .index('by_email', ['email'])
-    .index('by_role', ['role']),
+    .index('by_role', ['role'])
+    .index('by_points', ['points']),
 
   plantCatalog: defineTable({
     key: v.string(),

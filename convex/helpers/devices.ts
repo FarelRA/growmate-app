@@ -212,10 +212,12 @@ export async function archivePlant(
 
 export async function buildDeviceSummary(ctx: Ctx, device: DeviceDoc) {
   const currentPlant = device.plantId ? await ctx.db.get(device.plantId) : null
+  // Mini-list only (full archives paginate via deviceHistory): bound the
+  // read to one more than the 3 displayed rows, then slice to most recent.
   const archivedPlants = await ctx.db
     .query('plants')
     .withIndex('by_device_archived', (q) => q.eq('deviceId', device._id).eq('archived', true))
-    .collect()
+    .take(4)
   const recentEvents = await getRecentGrowEvents(ctx, device._id, 4)
 
   const plantImageUrl =
@@ -316,15 +318,9 @@ export async function executeManualWatering(
     updatedAt: now,
   }
 
-  // V2 devices also queue fertilizer during manual watering (thread the
-  // staged pump entry as base so it isn't wiped).
-  if (device.version === 'v2') {
-    Object.assign(
-      updates,
-      buildQueuedFertilizerAction(device, durationSeconds, stagedQueuedCommands(updates, device)),
-    )
-  }
-
+  // Manual watering queues the pump only. Fertilizer/pesticide have their
+  // own explicit actions (executeManualFertilizing/executeManualPesticide);
+  // bundling them here would dose undisclosed chemicals on every watering.
   await ctx.db.patch(device._id, updates)
 
   if (plant && !plant.archived) {
@@ -414,33 +410,57 @@ export function getDevicePesticideCooldown(device: Pick<DeviceDoc, 'pesticideCoo
     : DEFAULT_PESTICIDE_COOLDOWN
 }
 
-export async function executeManualFertilizing(
+export type ManualDoseKind = 'fertilizer' | 'pesticide'
+
+const MANUAL_DOSE_META = {
+  fertilizer: {
+    automationAction: 'manual_fertilizer',
+    eventType: 'manual_fertilizing_triggered',
+    title: 'Pemupukan manual dipicu',
+    detail: (deviceName: string) => `${deviceName} memulai siklus pemupukan manual.`,
+  },
+  pesticide: {
+    automationAction: 'manual_pesticide',
+    eventType: 'manual_pesticide_triggered',
+    title: 'Pestisida manual dipicu',
+    detail: (deviceName: string) => `${deviceName} memulai siklus pestisida manual.`,
+  },
+} as const
+
+export async function executeManualDose(
   ctx: MutationCtx,
   user: { _id: Id<'users'>; name?: string },
   device: DeviceDoc,
-  now = Date.now(),
+  opts: { kind: ManualDoseKind; now?: number },
 ): Promise<void> {
-  const plant = device.plantId ? await ctx.db.get(device.plantId) : null
-  const durationSeconds = getDeviceFertilizingDuration(device)
+  const now = opts.now ?? Date.now()
+  const meta = MANUAL_DOSE_META[opts.kind]
+  const durationSeconds =
+    opts.kind === 'fertilizer'
+      ? getDeviceFertilizingDuration(device)
+      : getDevicePesticideDuration(device)
 
-  const fertilizingUpdates: Record<string, unknown> = {
-    ...buildQueuedFertilizerAction(device, durationSeconds),
+  const doseUpdates: Record<string, unknown> = {
+    ...(opts.kind === 'fertilizer'
+      ? buildQueuedFertilizerAction(device, durationSeconds)
+      : buildQueuedPesticideAction(device, durationSeconds)),
   }
   Object.assign(
-    fertilizingUpdates,
-    buildQueuedPumpAction(device, durationSeconds, stagedQueuedCommands(fertilizingUpdates, device)),
+    doseUpdates,
+    buildQueuedPumpAction(device, durationSeconds, stagedQueuedCommands(doseUpdates, device)),
   )
 
   await ctx.db.patch(device._id, {
-    ...fertilizingUpdates,
+    ...doseUpdates,
     updatedAt: now,
   })
 
+  const plant = device.plantId ? await ctx.db.get(device.plantId) : null
   if (plant && !plant.archived) {
     await recordAutomationEvent(ctx, {
       deviceId: device._id,
       plantId: plant._id,
-      action: 'manual_fertilizer',
+      action: meta.automationAction,
       duration: durationSeconds,
       timestamp: now,
     })
@@ -451,13 +471,22 @@ export async function executeManualFertilizing(
       userId: user._id,
       source: 'user',
       entityType: 'automation',
-      eventType: 'manual_fertilizing_triggered',
-      title: 'Pemupukan manual dipicu',
-      detail: `${device.name} memulai siklus pemupukan manual.`,
+      eventType: meta.eventType,
+      title: meta.title,
+      detail: meta.detail(device.name),
       data: { duration: durationSeconds },
       timestamp: now,
     })
   }
+}
+
+export async function executeManualFertilizing(
+  ctx: MutationCtx,
+  user: { _id: Id<'users'>; name?: string },
+  device: DeviceDoc,
+  now = Date.now(),
+): Promise<void> {
+  await executeManualDose(ctx, user, device, { kind: 'fertilizer', now })
 }
 
 export async function executeManualPesticide(
@@ -466,44 +495,7 @@ export async function executeManualPesticide(
   device: DeviceDoc,
   now = Date.now(),
 ): Promise<void> {
-  const plant = device.plantId ? await ctx.db.get(device.plantId) : null
-  const durationSeconds = getDevicePesticideDuration(device)
-
-  const pesticideUpdates: Record<string, unknown> = {
-    ...buildQueuedPesticideAction(device, durationSeconds),
-  }
-  Object.assign(
-    pesticideUpdates,
-    buildQueuedPumpAction(device, durationSeconds, stagedQueuedCommands(pesticideUpdates, device)),
-  )
-
-  await ctx.db.patch(device._id, {
-    ...pesticideUpdates,
-    updatedAt: now,
-  })
-
-  if (plant && !plant.archived) {
-    await recordAutomationEvent(ctx, {
-      deviceId: device._id,
-      plantId: plant._id,
-      action: 'manual_pesticide',
-      duration: durationSeconds,
-      timestamp: now,
-    })
-
-    await recordGrowEvent(ctx, {
-      deviceId: device._id,
-      plantId: plant._id,
-      userId: user._id,
-      source: 'user',
-      entityType: 'automation',
-      eventType: 'manual_pesticide_triggered',
-      title: 'Pestisida manual dipicu',
-      detail: `${device.name} memulai siklus pestisida manual.`,
-      data: { duration: durationSeconds },
-      timestamp: now,
-    })
-  }
+  await executeManualDose(ctx, user, device, { kind: 'pesticide', now })
 }
 
 export async function executeManualLighting(

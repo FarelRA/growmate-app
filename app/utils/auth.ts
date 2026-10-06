@@ -193,8 +193,10 @@ export async function signOutCurrentUser() {
     if (token.value) {
       await createClient(token.value).action(api.auth.signOut, {})
     }
-  } catch {
-    // Clearing local auth state is the important part here.
+  } catch (error) {
+    // Clearing local auth state is the important part here; warn because the
+    // server session may linger when the signOut call fails.
+    console.warn('[auth] signOut failed; clearing local tokens anyway, server session may linger', error)
   } finally {
     storeTokens(null)
   }

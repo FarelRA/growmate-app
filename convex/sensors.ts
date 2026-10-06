@@ -361,11 +361,15 @@ async function performIngest(
       )
 
       if (activePlant) {
+        const soilValue = watering.soilValue
+        if (soilValue === undefined) {
+          throw new ConvexError('soilValue tidak tersedia untuk automation penyiraman')
+        }
         await recordAutomationEvent(ctx, {
           deviceId: device._id,
           plantId: activePlant._id,
           action: 'pump_enabled',
-          soilValue: watering.soilValue!,
+          soilValue,
           threshold: watering.effectiveThreshold,
           duration: device.wateringDuration,
           timestamp: now,
@@ -375,7 +379,7 @@ async function performIngest(
           deviceId: device._id,
           plantId: activePlant._id,
           action: 'pump_disabled',
-          soilValue: watering.soilValue!,
+          soilValue,
           threshold: watering.effectiveThreshold,
           duration: device.wateringDuration,
           timestamp: now + device.wateringDuration * 1000,
@@ -390,7 +394,7 @@ async function performIngest(
           title: 'Penyiraman otomatis dijadwalkan',
           detail: `${device.name} menjadwalkan penyiraman karena kelembapan tanah di bawah ambang batas.`,
           data: {
-            soilValue: watering.soilValue!,
+            soilValue,
             threshold: watering.effectiveThreshold,
             duration: device.wateringDuration,
           },
@@ -415,11 +419,15 @@ async function performIngest(
         )
 
         if (activePlant) {
+          const soilValue = fertilizing.soilValue
+          if (soilValue === undefined) {
+            throw new ConvexError('soilValue tidak tersedia untuk automation pemupukan')
+          }
           await recordAutomationEvent(ctx, {
             deviceId: device._id,
             plantId: activePlant._id,
             action: 'fertilizer_opened',
-            soilValue: fertilizing.soilValue!,
+            soilValue,
             threshold: fertilizing.effectiveThreshold,
             duration: device.fertilizingDuration,
             timestamp: now,
@@ -428,7 +436,7 @@ async function performIngest(
             deviceId: device._id,
             plantId: activePlant._id,
             action: 'fertilizer_closed',
-            soilValue: fertilizing.soilValue!,
+            soilValue,
             threshold: fertilizing.effectiveThreshold,
             duration: device.fertilizingDuration,
             timestamp: now + device.fertilizingDuration * 1000,
@@ -442,7 +450,7 @@ async function performIngest(
             title: 'Pemupukan otomatis dijadwalkan',
             detail: `${device.name} menjadwalkan pemupukan karena kelembapan tanah di bawah ambang batas.`,
             data: {
-              soilValue: fertilizing.soilValue!,
+              soilValue,
               threshold: fertilizing.effectiveThreshold,
               duration: device.fertilizingDuration,
             },
@@ -512,11 +520,15 @@ async function performIngest(
         )
 
         if (activePlant) {
+          const lightValue = lighting.lightValue
+          if (lightValue === undefined) {
+            throw new ConvexError('lightValue tidak tersedia untuk automation lampu tumbuh')
+          }
           await recordAutomationEvent(ctx, {
             deviceId: device._id,
             plantId: activePlant._id,
             action: lighting.nextLightEnabled ? 'light_on' : 'light_off',
-            lightValue: lighting.lightValue!,
+            lightValue,
             threshold: lighting.effectiveThreshold,
             timestamp: now,
           })
@@ -532,7 +544,7 @@ async function performIngest(
               ? `${device.name} meminta lampu tumbuh menyala karena cahaya lingkungan terlalu rendah.`
               : `${device.name} meminta lampu tumbuh mati karena cahaya lingkungan sudah pulih.`,
             data: {
-              lightValue: lighting.lightValue!,
+              lightValue,
               threshold: lighting.effectiveThreshold,
               hysteresis: device.lightingHysteresis,
             },

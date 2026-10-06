@@ -6,9 +6,51 @@ import { getErrorMessage } from '~~/shared/utils/errors'
 import { readSelectedImage, uploadImageFile } from '@/utils/uploads'
 import type { Id } from '@/utils/convex-types'
 
+export type MarketplaceCategoryFilter = 'all' | 'official' | 'community'
+
+interface MarketplaceSearchableItem {
+  title: string
+  description: string
+  category: string
+  sellerName?: string
+}
+
+/**
+ * Single source for marketplace search filtering. Both the authenticated
+ * `useMarketplace` computeds and the public `marketplace.vue` page filter
+ * through these helpers so the query semantics stay identical.
+ */
+function matchesQueryParts(query: string, ...parts: Array<string | null | undefined>) {
+  const normalized = query.trim().toLowerCase()
+  if (!normalized) return true
+  return parts.filter(Boolean).join(' ').toLowerCase().includes(normalized)
+}
+
+export function matchesMarketplaceQuery(item: MarketplaceSearchableItem, query: string) {
+  return matchesQueryParts(query, item.title, item.description, item.category, item.sellerName)
+}
+
+export function filterOfficialItems<T extends MarketplaceSearchableItem>(
+  items: T[],
+  query: string,
+  selectedCategory: MarketplaceCategoryFilter,
+) {
+  if (selectedCategory === 'community') return []
+  return items.filter((item) => matchesMarketplaceQuery(item, query))
+}
+
+export function filterCommunityItems<T extends MarketplaceSearchableItem>(
+  items: T[],
+  query: string,
+  selectedCategory: MarketplaceCategoryFilter,
+) {
+  if (selectedCategory === 'official') return []
+  return items.filter((item) => matchesMarketplaceQuery(item, query))
+}
+
 export function useMarketplace() {
   const searchQuery = ref('')
-  const selectedCategory = ref<'all' | 'official' | 'community'>('all')
+  const selectedCategory = ref<MarketplaceCategoryFilter>('all')
   const selectedThreadId = ref<string | null>(null)
   const showInquiryModal = ref(false)
   const inquiryListing = ref<null | {
@@ -69,7 +111,10 @@ export function useMarketplace() {
         !selectedThreadId.value ||
         !threads.some((thread: { _id: string }) => thread._id === selectedThreadId.value)
       ) {
-        selectedThreadId.value = threads[0]!._id
+        const first = threads[0]
+        if (first) {
+          selectedThreadId.value = first._id
+        }
       }
     },
     { immediate: true },
@@ -79,34 +124,23 @@ export function useMarketplace() {
     if (!threadId) return
     try {
       await markMarketplaceThreadRead({ threadId: threadId as Id<'marketplaceThreads'> })
-    } catch {
-      // no-op
+    } catch (error) {
+      // Best-effort read receipt: the watcher must not break thread selection
+      // when the mark-read write fails (offline/race with deletion), so the
+      // failure stays silent to the user and is only logged for diagnostics.
+      console.warn('[marketplace] markMarketplaceThreadRead failed', error)
     }
   })
 
   const featured = computed(() => data.value?.featured ?? null)
 
-  const filteredOfficial = computed(() => {
-    const official = data.value?.official ?? []
-    const query = searchQuery.value.trim().toLowerCase()
-    return official.filter((item: { title: string; description: string; category: string }) => {
-      if (selectedCategory.value === 'community') return false
-      if (!query) return true
-      return `${item.title} ${item.description} ${item.category}`.toLowerCase().includes(query)
-    })
-  })
+  const filteredOfficial = computed(() =>
+    filterOfficialItems(data.value?.official ?? [], searchQuery.value, selectedCategory.value),
+  )
 
-  const filteredCommunity = computed(() => {
-    const community = data.value?.community ?? []
-    const query = searchQuery.value.trim().toLowerCase()
-    return community.filter((item: { title: string; description: string; category: string; sellerName: string }) => {
-      if (selectedCategory.value === 'official') return false
-      if (!query) return true
-      return `${item.title} ${item.description} ${item.category} ${item.sellerName}`
-        .toLowerCase()
-        .includes(query)
-    })
-  })
+  const filteredCommunity = computed(() =>
+    filterCommunityItems(data.value?.community ?? [], searchQuery.value, selectedCategory.value),
+  )
 
   const selectedThread = computed(
     () => data.value?.threads.find((thread: { _id: string }) => thread._id === selectedThreadId.value) ?? null,
@@ -148,38 +182,50 @@ export function useMarketplace() {
     draftImagePreview.value = null
   }
 
+  interface DraftFormSource {
+    title: string
+    description: string
+    category: string
+    quantity?: number
+    quantityAvailable?: number
+    quantityUnit?: string | null
+    price: number
+    priceUnit: string
+    locationLabel?: string | null
+    contactPreference?: 'chat' | 'pickup' | 'delivery' | null
+    imageUrl?: string | null
+  }
+
+  /**
+   * Single source for hydrating the draft form from either a saved draft
+   * (which carries `quantity`) or a published listing (which carries
+   * `quantityAvailable` plus nullable display fields).
+   */
+  function mapFormFields(source: DraftFormSource, draftId: string | null) {
+    return {
+      draftId,
+      title: source.title,
+      description: source.description,
+      category: source.category,
+      quantity: source.quantity ?? source.quantityAvailable ?? 1,
+      quantityUnit: source.quantityUnit ?? 'item',
+      price: source.price,
+      priceUnit: source.priceUnit,
+      locationLabel: source.locationLabel ?? '',
+      contactPreference: source.contactPreference ?? 'chat' as 'chat' | 'pickup' | 'delivery',
+    }
+  }
+
   function editDraft(draft: MarketplaceDraft) {
     editingListingId.value = null
-    draftForm.value = {
-      draftId: draft._id,
-      title: draft.title,
-      description: draft.description,
-      category: draft.category,
-      quantity: draft.quantity,
-      quantityUnit: draft.quantityUnit,
-      price: draft.price,
-      priceUnit: draft.priceUnit,
-      locationLabel: draft.locationLabel,
-      contactPreference: draft.contactPreference,
-    }
+    draftForm.value = mapFormFields(draft, draft._id)
     draftImageFile.value = null
     draftImagePreview.value = draft.imageUrl
   }
 
   function editListing(listing: MarketplaceListing) {
     editingListingId.value = listing._id
-    draftForm.value = {
-      draftId: null,
-      title: listing.title,
-      description: listing.description,
-      category: listing.category,
-      quantity: listing.quantityAvailable,
-      quantityUnit: listing.quantityUnit ?? 'item',
-      price: listing.price,
-      priceUnit: listing.priceUnit,
-      locationLabel: listing.locationLabel ?? '',
-      contactPreference: listing.contactPreference ?? 'chat',
-    }
+    draftForm.value = mapFormFields(listing, null)
     draftImageFile.value = null
     draftImagePreview.value = listing.imageUrl
   }
@@ -251,11 +297,18 @@ export function useMarketplace() {
     }
   }
 
+  const listingStatusToast: Record<'active' | 'reserved' | 'sold' | 'archived', string> = {
+    active: 'Listing diaktifkan',
+    reserved: 'Listing dipesan',
+    sold: 'Listing terjual',
+    archived: 'Listing diarsipkan',
+  }
+
   async function handleUpdateListingStatus(productId: string, status: 'active' | 'reserved' | 'sold' | 'archived') {
     updatingListingId.value = productId
     try {
       await updateMarketplaceListingStatus({ productId: productId as Id<'products'>, status })
-      toast.success(`Listing marked ${status}`)
+      toast.success(listingStatusToast[status])
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, 'Gagal memperbarui listing'))
     } finally {

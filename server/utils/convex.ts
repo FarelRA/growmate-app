@@ -46,8 +46,13 @@ export function withConvexTimeout<T>(
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new ConvexTimeoutError(timeoutMs)), timeoutMs)
     // Don't hold the process open just for a timeout handle (Node only).
-    if (typeof timer === 'object' && timer !== null && 'unref' in timer) {
-      ;(timer as unknown as { unref: () => void }).unref()
+    if (
+      typeof timer === 'object' &&
+      timer !== null &&
+      'unref' in timer &&
+      typeof timer.unref === 'function'
+    ) {
+      timer.unref()
     }
   })
   return Promise.race([promise, timeout]).finally(() => {

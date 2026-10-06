@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { api } from '~~/convex/_generated/api'
 import { getImageUrl } from '@/utils/images'
 import { createBreadcrumbSchema } from '~~/shared/utils/seo'
+import type { CommunityMarketplaceItem, OfficialMarketplaceItem } from '@/utils/convex-types'
 
 definePageMeta({ public: true })
 
@@ -28,27 +29,10 @@ usePublicSeo({
   ],
 })
 
-interface MarketplaceProduct {
-  _id: string
-  title: string
-  description: string
-  category: string
-  imageUrl: string | null
-  featured: boolean
-  price: number
-  status: string
-  type: 'official' | 'community'
-  priceLabel: string
-  quantityLabel: string
-  statusLabel: string
-  sellerName: string
-  shopeeUrl?: string | null
-}
-
 interface MarketplaceResponse {
-  official: MarketplaceProduct[]
-  community: MarketplaceProduct[]
-  featured: MarketplaceProduct | null
+  official: OfficialMarketplaceItem[]
+  community: CommunityMarketplaceItem[]
+  featured: OfficialMarketplaceItem | null
 }
 
 const query = ref('')

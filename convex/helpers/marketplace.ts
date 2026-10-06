@@ -1,5 +1,5 @@
 import type { Ctx, ProductDoc } from '../types'
-import type { Id } from '../_generated/dataModel'
+import type { Doc, Id } from '../_generated/dataModel'
 import { formatTimestamp, formatCurrencyIdr } from './generic'
 
 function formatMarketplaceStatus(status: 'active' | 'reserved' | 'sold' | 'archived') {
@@ -33,7 +33,7 @@ export async function enrichMarketplaceProducts(
   const sellerMap = new Map(sellerIds.map((id, i) => [id, sellerDocs[i] ?? null]))
 
   // Batch thread lookups: collect-then-map, no await-in-loop.
-  let threadMap = new Map<string, { _id: unknown }>()
+  let threadMap = new Map<string, Doc<'marketplaceThreads'> | null>()
   if (viewerId) {
     const communityProducts = products.filter((p) => p.type === 'community')
     const threadDocs = await Promise.all(
@@ -47,7 +47,7 @@ export async function enrichMarketplaceProducts(
       ),
     )
     threadMap = new Map(
-      communityProducts.map((p, i) => [String(p._id), threadDocs[i] as unknown as { _id: unknown }]),
+      communityProducts.map((p, i) => [String(p._id), threadDocs[i] ?? null] as const),
     )
   }
 
@@ -94,19 +94,19 @@ export async function getMarketplaceThreadsForUser(ctx: Ctx, userId: Id<'users'>
   const [productMap, buyerMap, sellerMap] = await Promise.all([
     needsProduct.length
       ? Promise.all(needsProduct.map((t) => ctx.db.get(t.productId))).then((docs) =>
-          new Map(docs.filter(Boolean).map((d) => [String(d!._id), d!])),
+          new Map(docs.filter((d): d is Doc<'products'> => d !== null).map((d) => [String(d._id), d])),
         )
-      : Promise.resolve(new Map()),
+      : Promise.resolve(new Map<string, Doc<'products'>>()),
     needsBuyer.length
       ? Promise.all(needsBuyer.map((t) => ctx.db.get(t.buyerId))).then((docs) =>
-          new Map(docs.filter(Boolean).map((d) => [String(d!._id), d!])),
+          new Map(docs.filter((d): d is Doc<'users'> => d !== null).map((d) => [String(d._id), d])),
         )
-      : Promise.resolve(new Map()),
+      : Promise.resolve(new Map<string, Doc<'users'>>()),
     needsSeller.length
       ? Promise.all(needsSeller.map((t) => ctx.db.get(t.sellerId))).then((docs) =>
-          new Map(docs.filter(Boolean).map((d) => [String(d!._id), d!])),
+          new Map(docs.filter((d): d is Doc<'users'> => d !== null).map((d) => [String(d._id), d])),
         )
-      : Promise.resolve(new Map()),
+      : Promise.resolve(new Map<string, Doc<'users'>>()),
   ])
 
   // Batch message reads: collect all pages first, then map (no await-in-loop).

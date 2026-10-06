@@ -28,6 +28,7 @@ const loaded = ref(false)
 let decoder: VideoDecoder | null = null
 const frames: { data: Uint8Array; type: 'key' | 'delta'; timestamp: number }[] = []
 let currentFrame = 0
+let droppedFrames = 0
 let playbackTimer: ReturnType<typeof setTimeout> | null = null
 let canvasCtx: CanvasRenderingContext2D | null = null
 let spsNal: Uint8Array | null = null
@@ -140,8 +141,9 @@ onMounted(async () => {
 
     loaded.value = true
     startPlayback()
-  } catch {
-    error.value = 'Gagal memuat rekaman'
+  } catch (loadError) {
+    const detail = loadError instanceof Error ? loadError.message : String(loadError)
+    error.value = `Gagal memuat rekaman: ${detail}`
   }
 })
 
@@ -170,7 +172,12 @@ function playFrame() {
 
   try {
     decoder.decode(chunk)
-  } catch { /* drop */ }
+  } catch (decodeError) {
+    // Per-frame drops stay silent to the user so playback continues with the
+    // next frame; keep a counter + debug log for diagnosability.
+    droppedFrames += 1
+    console.debug(`[recording] dropped frame ${currentFrame} (${droppedFrames} total)`, decodeError)
+  }
 
   progress.value = (currentFrame / frames.length) * 100
   currentTime.value = formatDuration(Math.round(frame.timestamp / 1000))

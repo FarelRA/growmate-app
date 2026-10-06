@@ -48,22 +48,20 @@ async function batchGetPlants(ctx: QueryCtx, ids: (Id<'plants'> | undefined | nu
   return map
 }
 
-async function countAllPaginated(
+type CountableTable = 'users' | 'devices' | 'plants' | 'communityPosts' | 'products' | 'blogPosts' | 'supportRequests'
+
+async function countAllPaginated<TableName extends CountableTable>(
   ctx: QueryCtx,
-  table: 'users' | 'devices' | 'plants' | 'communityPosts' | 'products' | 'blogPosts' | 'supportRequests',
-  filter?: (doc: never) => boolean,
+  table: TableName,
+  filter?: (doc: Doc<TableName>) => boolean,
 ) {
   let total = 0
   let cursor: string | null = null
   while (true) {
-    const page = await ctx.db.query(table as 'users').paginate({ cursor, numItems: 500 }) as unknown as {
-      page: never[]
-      isDone: boolean
-      continueCursor: string
-    }
+    const page = await ctx.db.query(table).paginate({ cursor, numItems: 500 })
     if (filter) {
       for (const doc of page.page) {
-        if ((filter as (d: never) => boolean)(doc)) total += 1
+        if (filter(doc)) total += 1
       }
     } else {
       total += page.page.length
@@ -91,25 +89,21 @@ async function fetchAdminStats(ctx: QueryCtx) {
   ] = await Promise.all([
     countAllPaginated(ctx, 'users'),
     countAllPaginated(ctx, 'devices'),
-    countAllPaginated(ctx, 'devices', (d: never) => Boolean((d as { userId?: unknown }).userId)),
+    countAllPaginated(ctx, 'devices', (d: Doc<'devices'>) => Boolean(d.userId)),
     countAllPaginated(ctx, 'plants'),
-    countAllPaginated(ctx, 'plants', (p: never) => !(p as { archived?: boolean }).archived),
+    countAllPaginated(ctx, 'plants', (p: Doc<'plants'>) => !p.archived),
     countAllPaginated(ctx, 'communityPosts'),
     countAllPaginated(ctx, 'products'),
-    countAllPaginated(ctx, 'products', (p: never) => (p as { type?: string }).type === 'community'),
+    countAllPaginated(ctx, 'products', (p: Doc<'products'>) => p.type === 'community'),
     countAllPaginated(
       ctx,
       'products',
-      (p: never) => {
-        const doc = p as { type?: string; status?: string }
-        return doc.type === 'official' && doc.status === 'active'
-      },
+      (p: Doc<'products'>) => p.type === 'official' && p.status === 'active',
     ),
     countAllPaginated(ctx, 'blogPosts'),
     countAllPaginated(ctx, 'supportRequests'),
-    countAllPaginated(ctx, 'supportRequests', (r: never) => {
-      const status = (r as { status?: string }).status
-      return status === 'open' || status === 'in_progress'
+    countAllPaginated(ctx, 'supportRequests', (r: Doc<'supportRequests'>) => {
+      return r.status === 'open' || r.status === 'in_progress'
     }),
   ])
   void totalPlants
@@ -467,9 +461,25 @@ export const adminSaveDevice = mutation({
       lightingThreshold: args.lightingThreshold,
       lightingHysteresis: args.lightingHysteresis,
       updatedAt: now,
-    } satisfies Record<string, unknown>
+    }
 
-    const optional: Record<string, unknown> = {}
+    const optional: {
+      version?: 'v1' | 'v2'
+      autoFertilizing?: boolean
+      autoPesticide?: boolean
+      fertilizingThreshold?: number
+      fertilizingDuration?: number
+      fertilizingCooldown?: number
+      pesticideThreshold?: number
+      pesticideDuration?: number
+      pesticideCooldown?: number
+      streamUrl?: string
+      tankCapacity?: number
+      tankMinLevel?: number
+      batteryCapacityAh?: number
+      hasModem?: boolean
+      hasSolarPanel?: boolean
+    } = {}
     if (args.version !== undefined) optional.version = args.version
     if (args.autoFertilizing !== undefined) optional.autoFertilizing = args.autoFertilizing
     if (args.autoPesticide !== undefined) optional.autoPesticide = args.autoPesticide
@@ -691,9 +701,14 @@ export const adminSavePlantPreset = mutation({
       sensorProfile: normalizePlantSensorProfile(args.sensorProfile),
       lifecycleProfile: normalizeLifecycleProfile(args.lifecycleProfile),
       updatedAt: now,
-    } satisfies Record<string, unknown>
+    }
 
-    const optional: Record<string, unknown> = {}
+    const optional: {
+      fertilizingThreshold?: number
+      fertilizerCadenceDays?: number
+      pesticideCadenceDays?: number
+      nutrientNotes?: string
+    } = {}
     if (args.fertilizingThreshold !== undefined) optional.fertilizingThreshold = args.fertilizingThreshold
     if (args.fertilizerCadenceDays !== undefined) optional.fertilizerCadenceDays = args.fertilizerCadenceDays
     if (args.pesticideCadenceDays !== undefined) optional.pesticideCadenceDays = args.pesticideCadenceDays

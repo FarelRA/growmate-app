@@ -200,8 +200,8 @@ function formatPlantHealthLabel(value: string) {
           </div>
           <div v-if="alerts?.length" class="mt-4 space-y-3">
             <div
-              v-for="(alert, index) in alerts.slice(0, 3)"
-              :key="index"
+              v-for="alert in alerts.slice(0, 3)"
+              :key="`${alert.type}:${alert.message}`"
               class="rounded-[1.5rem] p-4 text-sm"
               :class="alert.type === 'critical' ? 'bg-red-50 text-red-900' : alert.type === 'warning' ? 'bg-yellow-50 text-yellow-900' : 'bg-[#cae6ff]/40 text-[#006493]'"
             >

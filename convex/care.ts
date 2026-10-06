@@ -93,6 +93,19 @@ export function formatScheduleSummary(input: {
 
 type CoreUser = Pick<UserDoc, '_id'>
 
+// Single source for the schedule preamble: fetch the plant's device and
+// reject foreign devices with the same "not found" error (no existence
+// oracle). toggle/delete cores fetch schedule → plant, then delegate here.
+export async function requirePlantDevice(
+  ctx: MutationCtx,
+  user: CoreUser,
+  deviceId: Id<'devices'>,
+) {
+  const device = await ctx.db.get(deviceId)
+  if (!device || device.userId !== user._id) throw new ConvexError('Jadwal tidak ditemukan')
+  return device
+}
+
 export async function toggleScheduleCore(
   ctx: MutationCtx,
   user: CoreUser,
@@ -105,8 +118,7 @@ export async function toggleScheduleCore(
   const plant = await ctx.db.get(schedule.plantId)
   if (!plant) throw new ConvexError('Tanaman tidak ditemukan')
 
-  const device = await ctx.db.get(plant.deviceId)
-  if (!device || device.userId !== user._id) throw new ConvexError('Jadwal tidak ditemukan')
+  const device = await requirePlantDevice(ctx, user, plant.deviceId)
 
   await ctx.db.patch(scheduleId, { enabled })
 
@@ -137,8 +149,7 @@ export async function deleteScheduleCore(
   const plant = await ctx.db.get(schedule.plantId)
   if (!plant) throw new ConvexError('Tanaman tidak ditemukan')
 
-  const device = await ctx.db.get(plant.deviceId)
-  if (!device || device.userId !== user._id) throw new ConvexError('Jadwal tidak ditemukan')
+  const device = await requirePlantDevice(ctx, user, plant.deviceId)
 
   await ctx.db.delete(scheduleId)
 

@@ -84,7 +84,12 @@ export const community = query({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx)
-    const users = await ctx.db.query('users').take(10)
+    // Indexed desc read: the old query('users').take(10) full-scan returned an
+    // arbitrary 10 users, so in-memory top-3 was wrong past 10 users.
+    // by_points is on optional points; docs missing points are skipped by the
+    // index, so this covers ranked users. take(6) feeds both leaderboard (3)
+    // and fullLeaderboard (6).
+    const topUsers = await ctx.db.query('users').withIndex('by_points').order('desc').take(6)
     const posts = await ctx.db
       .query('communityPosts')
       .withIndex('by_createdAt')
@@ -95,9 +100,7 @@ export const community = query({
       posts.map((post) => getCommunityPostView(ctx, post, user?._id)),
     )
 
-    const usersWithPoints = users
-      .map((u) => ({ ...u, points: u.points ?? 0 }))
-      .sort((a, b) => b.points - a.points)
+    const usersWithPoints = topUsers.map((u) => ({ ...u, points: u.points ?? 0 }))
 
     return {
       posts: postsWithCounts,

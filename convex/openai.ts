@@ -7,18 +7,53 @@ import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 
-const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
-const OPENAI_BASE_URL = env.OPENAI_BASE_URL ?? "https://gateway.farel.at.eu.org/v1";
-const OPENAI_MODEL = env.OPENAI_MODEL ?? "gemini/gemini-3.1-flash-lite";
+function readLiveEnv(): Record<string, string | undefined> {
+  return (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+}
+
+const DEFAULT_OPENAI_BASE_URL = "https://gateway.farel.at.eu.org/v1";
+const DEFAULT_OPENAI_MODEL = "gemini/gemini-3.1-flash-lite";
 
 const AI_BACKEND_ENV_KEYS = ["OPENAI_BASE_URL", "OPENAI_API_KEY", "OPENAI_MODEL"] as const;
 
 export type AiBackendEnvKey = (typeof AI_BACKEND_ENV_KEYS)[number];
 
 export function getAiBackendStatus(): { configured: boolean; missing: string[] } {
-  const live = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+  const live = readLiveEnv();
   const missing = AI_BACKEND_ENV_KEYS.filter((key) => !live[key]?.trim());
   return { configured: missing.length === 0, missing: [...missing] };
+}
+
+function getAiConfig(): { baseUrl: string; apiKey: string; model: string } {
+  const live = readLiveEnv();
+  return {
+    baseUrl: live.OPENAI_BASE_URL ?? DEFAULT_OPENAI_BASE_URL,
+    apiKey: live.OPENAI_API_KEY ?? "",
+    model: live.OPENAI_MODEL ?? DEFAULT_OPENAI_MODEL,
+  };
+}
+
+export function parseToolArguments(rawArguments: string): {
+  ok: true;
+  value: Record<string, unknown>;
+} | {
+  ok: false;
+  error: string;
+} {
+  if (!rawArguments) return { ok: true, value: {} };
+  try {
+    const value: unknown = JSON.parse(rawArguments);
+    if (value === null || typeof value !== "object" || Array.isArray(value)) {
+      return { ok: false, error: "Argumen tool harus berupa objek JSON." };
+    }
+    return { ok: true, value: value as Record<string, unknown> };
+  } catch {
+    return { ok: false, error: `Argumen tool bukan JSON valid: ${rawArguments.slice(0, 200)}` };
+  }
+}
+
+export function resolveClientTimezoneOffsetMinutes(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? Math.round(value) : undefined;
 }
 
 function buildSystemPrompt() {
@@ -151,13 +186,18 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   },
 ];
 
-async function executeTool(ctx: ActionCtx, args: {
+export async function executeTool(ctx: ActionCtx, args: {
   userId: string;
   deviceId?: string;
   name: string;
   rawArguments: string;
+  timezoneOffsetMinutes?: number;
 }) {
-  const parsed = args.rawArguments ? JSON.parse(args.rawArguments) : {};
+  const parsedResult = parseToolArguments(args.rawArguments);
+  if (!parsedResult.ok) {
+    throw new Error(parsedResult.error);
+  }
+  const parsed = parsedResult.value as Record<string, unknown>;
 
   switch (args.name) {
     case "trigger_watering":
@@ -179,7 +219,7 @@ async function executeTool(ctx: ActionCtx, args: {
         cadenceUnit: parsed.cadenceUnit === "hours" ? "hours" : "days",
         cadenceValue: Number(parsed.cadenceValue ?? 1),
         timeOfDayMinutes: typeof parsed.timeOfDayMinutes === "number" ? parsed.timeOfDayMinutes : undefined,
-        timezoneOffsetMinutes: -new Date().getTimezoneOffset(),
+        timezoneOffsetMinutes: resolveClientTimezoneOffsetMinutes(args.timezoneOffsetMinutes) ?? -new Date().getTimezoneOffset(),
       });
     case "toggle_schedule":
       return await ctx.runMutation(internal.assistant.assistantToggleSchedule, {
@@ -343,6 +383,7 @@ const assistantContextValidator = v.object({
       time: v.optional(v.string()),
     }),
   ),
+  clientTimezoneOffsetMinutes: v.optional(v.number()),
 });
 
 export const generateAIResponse = internalAction({
@@ -363,12 +404,13 @@ export const generateAIResponse = internalAction({
     if (!backend.configured) {
       throw new Error("Asisten Floral tidak tersedia karena OPENAI_API_KEY belum dikonfigurasi.");
     }
-    const apiKey = env.OPENAI_API_KEY as string;
+    const aiConfig = getAiConfig();
+    const apiKey = aiConfig.apiKey as string;
 
     try {
       const client = new OpenAI({
         apiKey,
-        baseURL: OPENAI_BASE_URL,
+        baseURL: aiConfig.baseUrl,
       });
 
       const messages: Array<OpenAI.Chat.Completions.ChatCompletionMessageParam> = [
@@ -379,7 +421,7 @@ export const generateAIResponse = internalAction({
 
       for (let step = 0; step < 4; step += 1) {
         const completion = await client.chat.completions.create({
-          model: OPENAI_MODEL,
+          model: aiConfig.model,
           messages,
           tools,
           tool_choice: "auto",
@@ -418,6 +460,9 @@ export const generateAIResponse = internalAction({
               deviceId: args.deviceId,
               name: toolCall.function.name,
               rawArguments: toolCall.function.arguments,
+              timezoneOffsetMinutes: resolveClientTimezoneOffsetMinutes(
+                (args.context as { clientTimezoneOffsetMinutes?: unknown }).clientTimezoneOffsetMinutes,
+              ),
             });
             messages.push({
               role: "tool",

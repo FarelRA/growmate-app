@@ -267,89 +267,112 @@ export function useDashboard() {
     { immediate: true },
   )
 
-  async function handleWater() {
+  type DoseKind = 'water' | 'light' | 'fertilize' | 'pesticide'
+
+  const doseConfig: Record<
+    DoseKind,
+    {
+      run: (args: { deviceId: string; enabled: boolean }) => Promise<unknown>
+      success: (enabled: boolean) => string
+      failure: string
+    }
+  > = {
+    water: {
+      run: (args) => triggerWater({ deviceId: args.deviceId }),
+      success: () => 'Siklus penyiraman dimulai',
+      failure: 'Gagal memicu penyiraman',
+    },
+    light: {
+      run: (args) => triggerLighting({ deviceId: args.deviceId, enabled: args.enabled }),
+      success: (enabled) => (enabled ? 'Lampu tumbuh dinyalakan' : 'Lampu tumbuh dimatikan'),
+      failure: 'Gagal mengubah pencahayaan',
+    },
+    fertilize: {
+      run: (args) => triggerFertilizing({ deviceId: args.deviceId }),
+      success: () => 'Siklus pemupukan dimulai',
+      failure: 'Gagal memicu pemupukan',
+    },
+    pesticide: {
+      run: (args) => triggerPesticide({ deviceId: args.deviceId }),
+      success: () => 'Siklus pestisida dimulai',
+      failure: 'Gagal memicu pestisida',
+    },
+  }
+
+  async function handleDose(kind: DoseKind, enabled = false) {
     if (!currentDeviceId.value) {
       toast.error('Pilih perangkat terlebih dahulu')
       return
     }
+    const config = doseConfig[kind]
     try {
-      await triggerWater({ deviceId: currentDeviceId.value })
-      toast.success('Siklus penyiraman dimulai')
+      await config.run({ deviceId: currentDeviceId.value, enabled })
+      toast.success(config.success(enabled))
     } catch (error: unknown) {
-      toast.error(getErrorMessage(error, 'Gagal memicu penyiraman'))
+      toast.error(getErrorMessage(error, config.failure))
     }
+  }
+
+  async function handleWater() {
+    await handleDose('water')
   }
 
   async function handleLight(enabled: boolean) {
-    if (!currentDeviceId.value) {
-      toast.error('Pilih perangkat terlebih dahulu')
-      return
-    }
-    try {
-      await triggerLighting({ deviceId: currentDeviceId.value, enabled })
-      toast.success(enabled ? 'Lampu tumbuh dinyalakan' : 'Lampu tumbuh dimatikan')
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error, 'Gagal mengubah pencahayaan'))
-    }
+    await handleDose('light', enabled)
   }
 
   async function handleFertilize() {
-    if (!currentDeviceId.value) {
-      toast.error('Pilih perangkat terlebih dahulu')
-      return
-    }
-    try {
-      await triggerFertilizing({ deviceId: currentDeviceId.value })
-      toast.success('Siklus pemupukan dimulai')
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error, 'Gagal memicu pemupukan'))
-    }
+    await handleDose('fertilize')
   }
 
   async function handlePesticide() {
-    if (!currentDeviceId.value) {
-      toast.error('Pilih perangkat terlebih dahulu')
-      return
-    }
-    try {
-      await triggerPesticide({ deviceId: currentDeviceId.value })
-      toast.success('Siklus pestisida dimulai')
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error, 'Gagal memicu pestisida'))
-    }
+    await handleDose('pesticide')
   }
 
-  async function handleToggleAutomation(type: 'watering' | 'lighting' | 'fertilizing' | 'pesticide', enabled: boolean) {
+  type AutomationType = 'watering' | 'lighting' | 'fertilizing' | 'pesticide'
+
+  const automationConfig: Record<
+    AutomationType,
+    {
+      field: 'autoWatering' | 'autoLighting' | 'autoFertilizing' | 'autoPesticide'
+      onToast: string
+      offToast: string
+    }
+  > = {
+    watering: {
+      field: 'autoWatering',
+      onToast: 'Penyiraman otomatis dinyalakan',
+      offToast: 'Penyiraman otomatis dimatikan',
+    },
+    lighting: {
+      field: 'autoLighting',
+      onToast: 'Pencahayaan otomatis dinyalakan',
+      offToast: 'Pencahayaan otomatis dimatikan',
+    },
+    fertilizing: {
+      field: 'autoFertilizing',
+      onToast: 'Pemupukan otomatis dinyalakan',
+      offToast: 'Pemupukan otomatis dimatikan',
+    },
+    pesticide: {
+      field: 'autoPesticide',
+      onToast: 'Pestisida otomatis dinyalakan',
+      offToast: 'Pestisida otomatis dimatikan',
+    },
+  }
+
+  async function handleToggleAutomation(type: AutomationType, enabled: boolean) {
     if (!data.value?.device) {
       toast.error('Pilih perangkat terlebih dahulu')
       return
     }
     try {
-      if (type === 'watering') {
-        await updateAutomation({
-          deviceId: data.value.device.deviceId,
-          autoWatering: !enabled,
-        })
-        toast.success(enabled ? 'Penyiraman otomatis dimatikan' : 'Penyiraman otomatis dinyalakan')
-      } else if (type === 'lighting') {
-        await updateAutomation({
-          deviceId: data.value.device.deviceId,
-          autoLighting: !enabled,
-        })
-        toast.success(enabled ? 'Pencahayaan otomatis dimatikan' : 'Pencahayaan otomatis dinyalakan')
-      } else if (type === 'fertilizing') {
-        await updateAutomation({
-          deviceId: data.value.device.deviceId,
-          autoFertilizing: !enabled,
-        })
-        toast.success(enabled ? 'Pemupukan otomatis dimatikan' : 'Pemupukan otomatis dinyalakan')
-      } else if (type === 'pesticide') {
-        await updateAutomation({
-          deviceId: data.value.device.deviceId,
-          autoPesticide: !enabled,
-        })
-        toast.success(enabled ? 'Pestisida otomatis dimatikan' : 'Pestisida otomatis dinyalakan')
-      }
+      const config = automationConfig[type]
+      await updateAutomation({
+        deviceId: data.value.device.deviceId,
+        [config.field]: !enabled,
+      } as Parameters<typeof updateAutomation>[0])
+      toast.success(enabled ? config.offToast : config.onToast)
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, 'Gagal memperbarui otomasi'))
     }

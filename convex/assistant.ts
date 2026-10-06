@@ -121,6 +121,7 @@ async function buildAssistantContext(
   user: UserDoc,
   device: DeviceDoc | null,
   plant: PlantDoc | null,
+  clientTimezoneOffsetMinutes?: number,
 ) {
   const activePlant = plant && !plant.archived ? plant : null
   const deviceWithPlant = plant && !plant.archived && device ? device : null
@@ -251,6 +252,9 @@ async function buildAssistantContext(
       duration: log.duration,
       time: log.relativeTime,
     })),
+    ...(typeof clientTimezoneOffsetMinutes === 'number' && Number.isFinite(clientTimezoneOffsetMinutes)
+      ? { clientTimezoneOffsetMinutes: Math.round(clientTimezoneOffsetMinutes) }
+      : {}),
   }
 }
 
@@ -569,6 +573,7 @@ export const sendAssistantMessage = mutation({
   args: {
     body: v.string(),
     deviceId: v.optional(v.string()),
+    timezoneOffsetMinutes: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
@@ -638,7 +643,7 @@ export const sendAssistantMessage = mutation({
     const plant = device?.plantId ? await ctx.db.get(device.plantId) : null
     const [chatHistory, assistantContext] = await Promise.all([
       getAssistantMessages(ctx, thread._id, 24),
-      buildAssistantContext(ctx, user, device, plant),
+      buildAssistantContext(ctx, user, device, plant, args.timezoneOffsetMinutes),
     ])
 
     await ctx.scheduler.runAfter(0, internal.openai.generateAIResponse, {

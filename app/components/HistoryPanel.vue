@@ -2,6 +2,7 @@
 import { getImageUrl } from '@/utils/images'
 import MetricLineChart from '@/components/MetricLineChart.vue'
 import PastRecordingViewer from '@/components/PastRecordingViewer.vue'
+import { toast } from 'vue-sonner'
 import { ref } from 'vue'
 
 const props = defineProps<{
@@ -69,11 +70,14 @@ async function playRecording(rec: {
     if (found) {
       selectedRecording.value = found
       showPlayback.value = true
+    } else {
+      toast.error('Rekaman tidak ditemukan')
     }
-  } catch {
-    // fallback: build URL manually
-    selectedRecording.value = { ...rec, downloadUrl: '' }
-    showPlayback.value = true
+  } catch (error) {
+    // Surface the failure: falling back to an empty downloadUrl would open a
+    // broken player, so toast instead and leave playback closed.
+    console.warn('[history] playRecording failed', error)
+    toast.error('Gagal memuat rekaman')
   } finally {
     recordingsLoading.value = false
   }

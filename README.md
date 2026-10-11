@@ -100,7 +100,7 @@ server/           # Nitro server layer
   api/v1/         # REST endpoints (camera, sensors, upload)
   api/v2/         # REST + WebSocket endpoints (sensors, recordings, stream)
   routes/         # sitemap.xml route
-  utils/          # Server utilities (Convex client, images, storage, streamManager, …)
+  utils/          # Server utilities (Convex client, images, storage, video relay, …)
 shared/           # Cross-context pure code (auto-imported app + server)
   utils/          # errors, glossary, images, seo, setup, streamUrl
 tests/            # Tests (mirror source tree)
@@ -328,7 +328,7 @@ The browser opens 3 connections: same-origin pages/API via Nitro, Convex queries
 
 - Device fleet API (firmware contract, no firmware edits needed): `POST api.growmate.bond/v1/sensors` + `/v1/camera` (compiled firmware paths) and the `/api/v1/*` aliases serve the same handlers. Auth is `Authorization: Bearer <DEVICE_API_KEY>` — the key MUST equal the firmware build token (pods `APP_API_TOKEN`, tech `APP_API_TOKEN` env), mirrored via `npx convex env set DEVICE_API_KEY`. Nitro `requireDeviceKey` fails closed (500 when unset) → Convex mutation re-checks `deviceKey` (`convex/sensors.ts`). Responses carry `{commands[] (always with id), config?, claim?, minFirmware?, firmwareUrl?}` under 3KB; telemetry dedups on `snapshotId`; commands redeliver until acked in `acceptedCommandIds`; pods pump/light are XOR-paced server-side. Tech live video: `POST /api/v1/video/live` (chunked MJPEG) → `GET /api/v1/video/live/:id` + `/api/v1/video/latest/:id.jpg` for viewers.
 - Nitro reaches Convex over `CONVEX_INTERNAL_URL` (`http://convex:3210`), never the public hairpin (`server/utils/convex.ts`).
-- Live video WS (`/api/v2/stream/:id/live`) requires `?token=` plus device ownership; recordings require `Bearer` plus ownership and are served as 1h presigned URLs from the private `recordings` bucket (signed against the public MinIO host, `server/utils/storage.ts`).
+- Live video (tech MJPEG push): device `POST /api/v1/video/live` while streaming → viewers `GET /api/v1/video/live/:id` (multipart, plain `<img>`) or `GET /api/v1/video/latest/:id.jpg`, both `?token=` + ownership-checked; recordings stay served as 1h presigned URLs from the private `recordings` bucket (signed against the public MinIO host, `server/utils/storage.ts`).
 - Stream registration runs an SSRF guard (`isBlockedStreamHost`): loopback / link-local / RFC-1918 / service names rejected, Tailscale `100.64/10` intentionally allowed.
 - Edge hardening (compose + Nuxt): `api-ratelimit` (100 avg / 200 burst) on the MinIO + Convex API routers, `www` → apex redirect, digest-pinned app + Convex images, healthchecks + `restart: unless-stopped`, tightened CSP (`connect-src` limited to self + Convex + storage hosts).
 

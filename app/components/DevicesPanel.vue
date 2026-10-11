@@ -1,6 +1,6 @@
 <script setup lang="ts">
 defineProps<{
-  devices: { deviceId: string; name: string; isOnline: boolean; version?: string; streamUrl?: string | null; plant: { name: string; species: string } | null; archivedPlants: { _id: string; name: string; archivedAtLabel: string | null }[] }[]
+  devices: { deviceId: string; name: string; isOnline: boolean; version?: string; lastStreaming?: boolean; plant: { name: string; species: string } | null; archivedPlants: { _id: string; name: string; archivedAtLabel: string | null }[] }[]
   currentDeviceId: string | undefined
   removingDeviceId: string | null
 }>()
@@ -57,8 +57,8 @@ defineEmits<{
               >
                 {{ (device.version ?? 'v1').toUpperCase() }}
               </span>
-              <span v-if="device.version === 'v2'" class="text-[10px] font-medium" :class="device.streamUrl ? 'text-green-600' : 'text-gray-400'">
-                {{ device.streamUrl ? 'Stream aktif' : 'Stream tidak tersedia' }}
+              <span v-if="device.version === 'v2'" class="text-[10px] font-medium" :class="device.lastStreaming ? 'text-green-600' : 'text-gray-400'">
+                {{ device.lastStreaming ? 'Stream aktif' : 'Stream tidak tersedia' }}
               </span>
             </div>
           </div>

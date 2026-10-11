@@ -53,6 +53,8 @@ export async function buildDeviceSummary(ctx: Ctx, device: DeviceDoc) {
     lastWatered: device.lastWatered,
     lastSeen: device.lastSeen,
     isOnline: isDeviceOnline(device.lastSeen),
+    lastStreaming: device.lastStreaming ?? false,
+    lastStreamFps: device.lastStreamFps ?? 0,
     hasPlant: Boolean(currentPlant && !currentPlant.archived),
     plant:
       currentPlant && !currentPlant.archived
@@ -99,7 +101,8 @@ export async function formatDeviceDetail(ctx: Ctx, device: DeviceDoc) {
     pesticideCooldown: device.pesticideCooldown,
     lastFertilized: device.lastFertilized,
     lastPesticideApplied: device.lastPesticideApplied,
-    streamUrl: device.streamUrl,
+    lastStreaming: device.lastStreaming ?? false,
+    lastStreamFps: device.lastStreamFps ?? 0,
     tankCapacity: device.tankCapacity,
     tankMinLevel: device.tankMinLevel,
     batterySoC: device.batterySoC,

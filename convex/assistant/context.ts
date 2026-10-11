@@ -106,7 +106,8 @@ export async function buildAssistantContext(
             ? formatTimestamp(device.lastPesticideApplied)
             : null,
           lastSeen: formatTimestamp(device.lastSeen),
-          streamUrl: device.streamUrl,
+          lastStreaming: device.lastStreaming ?? false,
+          lastStreamFps: device.lastStreamFps ?? 0,
           tankCapacity: device.tankCapacity,
           tankMinLevel: device.tankMinLevel,
           batterySoC: device.batterySoC,

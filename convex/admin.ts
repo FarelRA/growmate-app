@@ -121,7 +121,6 @@ export const adminSaveDevice = mutation({
     pesticideThreshold: v.optional(v.number()),
     pesticideDuration: v.optional(v.number()),
     pesticideCooldown: v.optional(v.number()),
-    streamUrl: v.optional(v.string()),
     tankCapacity: v.optional(v.number()),
     tankMinLevel: v.optional(v.number()),
     batteryCapacityAh: v.optional(v.number()),

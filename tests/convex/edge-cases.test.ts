@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest'
 import { estimateBatterySoC, evaluateFertilizingRule, evaluatePesticideRule } from '../../convex/helpers/v2sensors'
-import { parseStreamUrl } from '../../shared/utils/streamUrl'
 import {
   buildQueuedFertilizerAction,
   buildQueuedPesticideAction,
@@ -32,27 +31,6 @@ const baseDevice = {
   lastFertilized: undefined,
   lastPesticideApplied: undefined,
 } as unknown as DeviceDoc
-
-describe('parseStreamUrl', () => {
-  it('parses valid tcp URL', () => {
-    const result = parseStreamUrl('tcp://100.64.0.1:8554')
-    expect(result).toEqual({ protocol: 'tcp', host: '100.64.0.1', port: 8554 })
-  })
-
-  it('returns null for invalid URL', () => {
-    expect(parseStreamUrl('not-a-url')).toBeNull()
-  })
-
-  it('returns null for empty string', () => {
-    expect(parseStreamUrl('')).toBeNull()
-  })
-
-  it('parses tailscale IP', () => {
-    const result = parseStreamUrl('tcp://100.123.45.67:8554')
-    expect(result?.host).toBe('100.123.45.67')
-    expect(result?.port).toBe(8554)
-  })
-})
 
 describe('getDeviceFertilizingDuration', () => {
   it('returns valid duration when set', () => {

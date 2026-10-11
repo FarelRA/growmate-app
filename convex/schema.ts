@@ -235,6 +235,9 @@ export default defineSchema({
     lastFertilized: v.optional(v.number()),
     lastPesticideApplied: v.optional(v.number()),
     // V2 Stream
+    // NOTE: `streamUrl` (TCP relay registration) is retired — no firmware
+    // ever wrote it. The field stays in storage only so legacy rows still
+    // validate; nothing reads or writes it. Live state is `lastStreaming`.
     streamUrl: v.optional(v.string()),
     tankCapacity: v.optional(v.number()),
     tankMinLevel: v.optional(v.number()),

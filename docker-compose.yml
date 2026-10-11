@@ -51,10 +51,6 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET_IMAGE: ${MINIO_BUCKET_IMAGE}
       DEVICE_API_KEY: ${DEVICE_API_KEY}
-      # Spool dir for H.264 segments (server/utils/streamManager.ts, default /var/growmate/segments).
-      GROWMATE_SEGMENT_DIR: ${GROWMATE_SEGMENT_DIR:-/var/growmate/segments}
-    volumes:
-      - growmate-segments:${GROWMATE_SEGMENT_DIR:-/var/growmate/segments}
     depends_on:
       # convex stays service_started: convex-backend image contents are unverifiable
       # without pulling, so no in-container probe can be trusted (see convex service).
@@ -179,4 +175,3 @@ volumes:
   minio-data:
   traefik-data:
   convex-data:
-  growmate-segments:

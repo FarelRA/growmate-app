@@ -40,7 +40,8 @@ export interface AdminDeviceListItem {
   pesticideThreshold: number
   pesticideDuration: number
   pesticideCooldown: number
-  streamUrl?: string
+  lastStreaming?: boolean
+  lastStreamFps?: number
   tankCapacity?: number
   tankMinLevel?: number
   batteryCapacityAh?: number

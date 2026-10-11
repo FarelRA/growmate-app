@@ -85,6 +85,8 @@ function mapAdminDevice(
     batteryCapacityAh: device.batteryCapacityAh,
     batterySoC: device.batterySoC,
     batteryCurrent: device.batteryCurrent,
+    lastStreaming: device.lastStreaming ?? false,
+    lastStreamFps: device.lastStreamFps ?? 0,
     reportedTankSwitchOpen: device.reportedTankSwitchOpen,
     reportedDrawerSwitchOpen: device.reportedDrawerSwitchOpen,
     modemImei: device.modemImei,
@@ -115,7 +117,6 @@ export interface SaveAdminDeviceArgs {
   pesticideThreshold?: number
   pesticideDuration?: number
   pesticideCooldown?: number
-  streamUrl?: string
   tankCapacity?: number
   tankMinLevel?: number
   batteryCapacityAh?: number
@@ -155,7 +156,6 @@ export async function saveAdminDevice(ctx: MutationCtx, args: SaveAdminDeviceArg
     pesticideThreshold?: number
     pesticideDuration?: number
     pesticideCooldown?: number
-    streamUrl?: string
     tankCapacity?: number
     tankMinLevel?: number
     batteryCapacityAh?: number
@@ -171,7 +171,6 @@ export async function saveAdminDevice(ctx: MutationCtx, args: SaveAdminDeviceArg
   if (args.pesticideThreshold !== undefined) optional.pesticideThreshold = args.pesticideThreshold
   if (args.pesticideDuration !== undefined) optional.pesticideDuration = args.pesticideDuration
   if (args.pesticideCooldown !== undefined) optional.pesticideCooldown = args.pesticideCooldown
-  if (args.streamUrl !== undefined) optional.streamUrl = args.streamUrl
   if (args.tankCapacity !== undefined) optional.tankCapacity = args.tankCapacity
   if (args.tankMinLevel !== undefined) optional.tankMinLevel = args.tankMinLevel
   if (args.batteryCapacityAh !== undefined) optional.batteryCapacityAh = args.batteryCapacityAh

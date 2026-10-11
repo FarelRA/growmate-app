@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const {
   mockProcessImage,
@@ -7,7 +7,6 @@ const {
   mockUploadFile,
   mockS3Send,
   mockS3Client,
-  mockMutation,
   MockDeleteObjectCommand,
 } = vi.hoisted(() => ({
   mockProcessImage: vi.fn(),
@@ -15,7 +14,6 @@ const {
   mockUploadFile: vi.fn(),
   mockS3Send: vi.fn(),
   mockS3Client: vi.fn(),
-  mockMutation: vi.fn(),
   MockDeleteObjectCommand: vi.fn(function (this: any, input: any) {
     ;(this as any).input = input
   }),
@@ -35,23 +33,7 @@ vi.mock('@aws-sdk/client-s3', () => ({
   DeleteObjectCommand: MockDeleteObjectCommand,
 }))
 
-vi.mock('~~/convex/_generated/api', () => ({
-  api: { streams: { recordStreamSegment: 'recordStreamSegment' } },
-}))
-
-vi.mock('~~/server/utils/convex', () => ({
-  useConvex: () => ({ mutation: mockMutation }),
-}))
-
 import { runUploadPipeline, IMAGE_SIZES } from '../../../../server/utils/uploadPipeline'
-
-const RECORDING_SRC = '../../../../server/api/v2/stream/recording.post'
-
-function recordingEvent(bearerKey?: string) {
-  const event: any = { headers: new Headers() }
-  if (bearerKey !== undefined) event.headers.set('authorization', `Bearer ${bearerKey}`)
-  return event
-}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -67,11 +49,6 @@ beforeEach(() => {
   mockUploadFile.mockResolvedValue(undefined)
   mockS3Send.mockResolvedValue(undefined)
   mockS3Client.mockReturnValue({ send: mockS3Send })
-  mockMutation.mockResolvedValue({ success: true })
-})
-
-afterEach(() => {
-  delete process.env.DEVICE_API_KEY
 })
 
 describe('runUploadPipeline orphan rollback', () => {
@@ -125,63 +102,4 @@ describe('runUploadPipeline orphan rollback', () => {
     expect(mockS3Send).not.toHaveBeenCalled()
     expect(result.keys).toHaveLength(5)
   })
-})
-
-describe('POST /api/v2/stream/recording.post capturedAt', () => {
-  async function loadHandler() {
-    vi.resetModules()
-    process.env.DEVICE_API_KEY = 'test-key'
-    return (await import(RECORDING_SRC)).default
-  }
-
-  const baseBody = {
-    deviceId: 'dev-1',
-    fileName: 'a.h264',
-    path: 'dev-1/stream/a.h264',
-    size: 10,
-  }
-
-  it('defaults capturedAt to Date.now() when omitted', async () => {
-    const handler = await loadHandler()
-    const before = Date.now()
-    ;(globalThis as any).readBody = vi.fn().mockResolvedValue({ ...baseBody })
-
-    const result = await handler(recordingEvent('test-key'))
-
-    expect(result).toEqual({ success: true })
-    expect(mockMutation).toHaveBeenCalledTimes(1)
-    const args = mockMutation.mock.calls[0][1]
-    expect(typeof args.capturedAt).toBe('number')
-    expect(args.capturedAt).toBeGreaterThanOrEqual(before)
-    expect(args.capturedAt).toBeLessThanOrEqual(Date.now())
-  })
-
-  it('passes through an explicit finite capturedAt', async () => {
-    const handler = await loadHandler()
-    ;(globalThis as any).readBody = vi
-      .fn()
-      .mockResolvedValue({ ...baseBody, capturedAt: 1700000000000 })
-
-    await handler(recordingEvent('test-key'))
-
-    expect(mockMutation).toHaveBeenCalledWith(
-      'recordStreamSegment',
-      expect.objectContaining({ capturedAt: 1700000000000 }),
-    )
-  })
-
-  it.each([NaN, Infinity, -Infinity, '123', true, {}])(
-    'rejects non-finite/non-number capturedAt %p with 400',
-    async (capturedAt) => {
-      const handler = await loadHandler()
-      ;(globalThis as any).readBody = vi
-        .fn()
-        .mockResolvedValue({ ...baseBody, capturedAt })
-
-      await expect(handler(recordingEvent('test-key'))).rejects.toMatchObject({
-        statusCode: 400,
-      })
-      expect(mockMutation).not.toHaveBeenCalled()
-    },
-  )
 })

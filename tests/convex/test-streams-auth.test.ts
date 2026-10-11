@@ -9,11 +9,7 @@ vi.mock('@convex-dev/auth/server', async (importOriginal) => {
   }
 })
 
-import {
-  registerStream,
-  recordStreamSegment,
-  listRecordings,
-} from '../../convex/streams'
+import { listRecordings } from '../../convex/streams'
 import { createFakeCtx, callHandler, type FakeCtx } from './test-ingest-rules-fake'
 
 const DEVICE_KEY = 'test-device-key-123'
@@ -60,107 +56,6 @@ async function seedRecording(ctx: FakeCtx, deviceDocId: string, fileName: string
     uploadedAt: now,
   })
 }
-
-describe('streams device-key auth (registerStream / recordStreamSegment)', () => {
-  it('rejects registerStream when the server key is unset (fail-closed)', async () => {
-    delete process.env.DEVICE_API_KEY
-    const ctx = createFakeCtx(null)
-    await seedDevice(ctx, 'GM-A', undefined)
-
-    await expect(
-      callHandler(registerStream, ctx, {
-        deviceId: 'GM-A',
-        streamUrl: 'tcp://attacker.example:8554/x',
-        deviceKey: 'anything',
-      }),
-    ).rejects.toThrow('server misconfigured')
-  })
-
-  it('rejects registerStream with the wrong key and leaves the device untouched', async () => {
-    const ctx = createFakeCtx(null)
-    const deviceDocId = await seedDevice(ctx, 'GM-A', undefined)
-
-    await expect(
-      callHandler(registerStream, ctx, {
-        deviceId: 'GM-A',
-        streamUrl: 'tcp://attacker.example:8554/x',
-        deviceKey: 'wrong-key',
-      }),
-    ).rejects.toThrow('Unauthorized')
-
-    const device = await ctx.db.get(deviceDocId)
-    expect(device?.streamUrl).toBeUndefined()
-    expect(ctx.db.all('growEvents')).toHaveLength(0)
-  })
-
-  it('accepts registerStream with the correct device key', async () => {
-    const ctx = createFakeCtx(null)
-    const deviceDocId = await seedDevice(ctx, 'GM-A', undefined)
-
-    const res = await callHandler(registerStream, ctx, {
-      deviceId: 'GM-A',
-      streamUrl: 'tcp://cam.local:8554/stream',
-      deviceKey: DEVICE_KEY,
-    })
-    expect(res).toEqual({ success: true })
-
-    const device = await ctx.db.get(deviceDocId)
-    expect(device?.streamUrl).toBe('tcp://cam.local:8554/stream')
-    expect(ctx.db.all('growEvents')).toHaveLength(1)
-  })
-
-  it('rejects recordStreamSegment when the server key is unset (fail-closed)', async () => {
-    delete process.env.DEVICE_API_KEY
-    const ctx = createFakeCtx(null)
-    await seedDevice(ctx, 'GM-A', undefined)
-
-    await expect(
-      callHandler(recordStreamSegment, ctx, {
-        deviceId: 'GM-A',
-        fileName: 'evil.h264',
-        path: 'evil/stream/evil.h264',
-        size: 1,
-        capturedAt: now,
-        deviceKey: DEVICE_KEY,
-      }),
-    ).rejects.toThrow('server misconfigured')
-    expect(ctx.db.all('videoRecordings')).toHaveLength(0)
-  })
-
-  it('rejects recordStreamSegment with the wrong key and inserts nothing', async () => {
-    const ctx = createFakeCtx(null)
-    await seedDevice(ctx, 'GM-A', undefined)
-
-    await expect(
-      callHandler(recordStreamSegment, ctx, {
-        deviceId: 'GM-A',
-        fileName: 'evil.h264',
-        path: 'evil/stream/evil.h264',
-        size: 1,
-        capturedAt: now,
-        deviceKey: 'wrong-key',
-      }),
-    ).rejects.toThrow('Unauthorized')
-    expect(ctx.db.all('videoRecordings')).toHaveLength(0)
-  })
-
-  it('accepts recordStreamSegment with the correct device key', async () => {
-    const ctx = createFakeCtx(null)
-    await seedDevice(ctx, 'GM-A', undefined)
-
-    const res = await callHandler(recordStreamSegment, ctx, {
-      deviceId: 'GM-A',
-      fileName: '20240101_120000.h264',
-      path: 'GM-A/stream/20240101_120000.h264',
-      size: 2048,
-      capturedAt: now,
-      deviceKey: DEVICE_KEY,
-    })
-    expect(res.success).toBe(true)
-    expect(typeof res.recordingId).toBe('string')
-    expect(ctx.db.all('videoRecordings')).toHaveLength(1)
-  })
-})
 
 describe('streams listRecordings ownership', () => {
   it('denies anonymous callers with an empty list', async () => {

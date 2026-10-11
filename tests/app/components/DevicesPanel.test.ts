@@ -8,7 +8,6 @@ const baseDevice = {
   name: 'Pod #1',
   isOnline: true,
   version: 'v1',
-  streamUrl: null,
   plant: { name: 'Monstera', species: 'Monstera deliciosa' },
   archivedPlants: [],
 }
@@ -73,13 +72,18 @@ describe('DevicesPanel', () => {
       expect(wrapper.text()).toContain('V2')
     })
 
-    it('shows stream status for v2 devices', () => {
-      const wrapper = createWrapper({ devices: [{ ...baseDevice, version: 'v2', streamUrl: 'ws://stream' }] })
+    it('shows stream status for v2 devices with lastStreaming', () => {
+      const wrapper = createWrapper({ devices: [{ ...baseDevice, version: 'v2', lastStreaming: true }] })
       expect(wrapper.text()).toContain('Stream aktif')
     })
 
-    it('shows stream unavailable for v2 without streamUrl', () => {
-      const wrapper = createWrapper({ devices: [{ ...baseDevice, version: 'v2', streamUrl: null }] })
+    it('shows stream unavailable for v2 when lastStreaming is false', () => {
+      const wrapper = createWrapper({ devices: [{ ...baseDevice, version: 'v2', lastStreaming: false }] })
+      expect(wrapper.text()).toContain('Stream tidak tersedia')
+    })
+
+    it('shows stream unavailable for v2 when lastStreaming is null', () => {
+      const wrapper = createWrapper({ devices: [{ ...baseDevice, version: 'v2', lastStreaming: null }] })
       expect(wrapper.text()).toContain('Stream tidak tersedia')
     })
 

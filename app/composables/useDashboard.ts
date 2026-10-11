@@ -88,7 +88,7 @@ export function useDashboard() {
 
   const streamUrl = computed(() => {
     if (!isV2.value) return null
-    const baseUrl = `/api/v2/stream/${currentDeviceId.value}/live`
+    const baseUrl = `/api/v1/video/live/${currentDeviceId.value}`
     const token = authState.token.value
     return token ? `${baseUrl}?token=${encodeURIComponent(token)}` : baseUrl
   })

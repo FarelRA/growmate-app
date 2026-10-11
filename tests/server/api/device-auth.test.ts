@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-const { mockMutation, mockConnect, mockProcessImage, mockGenerateHash, mockUploadFile } =
+const { mockMutation, mockProcessImage, mockGenerateHash, mockUploadFile } =
   vi.hoisted(() => ({
     mockMutation: vi.fn(),
-    mockConnect: vi.fn(),
     mockProcessImage: vi.fn(),
     mockGenerateHash: vi.fn(),
     mockUploadFile: vi.fn(),
@@ -16,10 +15,6 @@ vi.mock('~~/convex/_generated/api', () => ({
       ingestAndAckSensorData: 'ingestAndAckSensorData',
       ingestCameraImage: 'ingestCameraImage',
     },
-    streams: {
-      registerStream: 'registerStream',
-      recordStreamSegment: 'recordStreamSegment',
-    },
   },
 }))
 
@@ -27,12 +22,6 @@ vi.mock('~~/server/utils/convex', () => ({
   useConvex: () => ({
     mutation: mockMutation,
   }),
-}))
-
-vi.mock('~~/server/utils/streamManager', () => ({
-  streamManager: {
-    connect: mockConnect,
-  },
 }))
 
 vi.mock('~~/server/utils/images', () => ({
@@ -47,19 +36,10 @@ vi.mock('~~/server/utils/storage', () => ({
 const REQUIRE_SRC = '../../../server/utils/requireDeviceKey'
 const INGEST_SRC = '../../../server/utils/ingestHandler'
 const CAMERA_SRC = '../../../server/api/v1/camera.post'
-const REGISTER_SRC = '../../../server/api/v2/stream/register.post'
-const RECORDING_SRC = '../../../server/api/v2/stream/recording.post'
 
 const VALID_BODY = {
   deviceId: 'dev-1',
   sensors: [{ kind: 'soil', unit: '%', raw: 100 }],
-}
-const VALID_STREAM = { deviceId: 'dev-1', streamUrl: 'tcp://100.64.0.1:8554' }
-const VALID_SEGMENT = {
-  deviceId: 'dev-1',
-  fileName: 'a.h264',
-  path: 'dev-1/stream/a.h264',
-  size: 10,
 }
 
 function mockEvent(bearerKey?: string) {
@@ -85,7 +65,6 @@ function cameraEvent(bearerKey?: string) {
 beforeEach(() => {
   vi.clearAllMocks()
   mockMutation.mockReset()
-  mockConnect.mockReset()
   mockProcessImage.mockReset()
   mockGenerateHash.mockReset()
   mockUploadFile.mockReset()
@@ -118,23 +97,12 @@ describe('requireDeviceKey fail-closed', () => {
     vi.resetModules()
     delete process.env.DEVICE_API_KEY
     const { default: cameraHandler } = await import(CAMERA_SRC)
-    const { default: registerHandler } = await import(REGISTER_SRC)
-    const { default: recordingHandler } = await import(RECORDING_SRC)
     mockCameraSuccess()
-    vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_STREAM })
 
     await expect(cameraHandler(cameraEvent('any-key'))).rejects.toMatchObject({
       statusCode: 500,
     })
-    await expect(registerHandler(mockEvent('any-key'))).rejects.toMatchObject({
-      statusCode: 500,
-    })
-    vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_SEGMENT })
-    await expect(recordingHandler(mockEvent('any-key'))).rejects.toMatchObject({
-      statusCode: 500,
-    })
     expect(mockMutation).not.toHaveBeenCalled()
-    expect(mockConnect).not.toHaveBeenCalled()
   })
 
   it('logs the misconfiguration only once', async () => {
@@ -163,8 +131,6 @@ describe('requireDeviceKey wrong/missing client key', () => {
     process.env.DEVICE_API_KEY = 'secret-key'
     const { default: handleSensorIngest } = await import(INGEST_SRC)
     const { default: cameraHandler } = await import(CAMERA_SRC)
-    const { default: registerHandler } = await import(REGISTER_SRC)
-    const { default: recordingHandler } = await import(RECORDING_SRC)
     mockCameraSuccess()
     vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_BODY })
 
@@ -174,16 +140,7 @@ describe('requireDeviceKey wrong/missing client key', () => {
     await expect(cameraHandler(cameraEvent('wrong-key'))).rejects.toMatchObject({
       statusCode: 401,
     })
-    vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_STREAM })
-    await expect(registerHandler(mockEvent('wrong-key'))).rejects.toMatchObject({
-      statusCode: 401,
-    })
-    vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_SEGMENT })
-    await expect(recordingHandler(mockEvent('wrong-key'))).rejects.toMatchObject({
-      statusCode: 401,
-    })
     expect(mockMutation).not.toHaveBeenCalled()
-    expect(mockConnect).not.toHaveBeenCalled()
   })
 
   it('returns 401 when the Authorization Bearer header is missing', async () => {
@@ -240,88 +197,4 @@ describe('valid Bearer key passes deviceKey through to Convex', () => {
       expect.objectContaining({ deviceId: 'device-1', deviceKey: 'test-key' }),
     )
   })
-
-  it('register passes deviceKey to registerStream', async () => {
-    vi.resetModules()
-    process.env.DEVICE_API_KEY = 'test-key'
-    const { default: registerHandler } = await import(REGISTER_SRC)
-    mockMutation.mockResolvedValue({ success: true })
-    vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_STREAM })
-
-    const result = await registerHandler(mockEvent('test-key'))
-    expect(result.success).toBe(true)
-    expect(mockMutation).toHaveBeenCalledWith(
-      'registerStream',
-      expect.objectContaining({ deviceId: 'dev-1', deviceKey: 'test-key' }),
-    )
-    expect(mockConnect).toHaveBeenCalledWith('dev-1', '100.64.0.1', 8554)
-  })
-
-  it('recording passes deviceKey to recordStreamSegment', async () => {
-    vi.resetModules()
-    process.env.DEVICE_API_KEY = 'test-key'
-    const { default: recordingHandler } = await import(RECORDING_SRC)
-    mockMutation.mockResolvedValue({ success: true })
-    vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_SEGMENT })
-
-    const result = await recordingHandler(mockEvent('test-key'))
-    expect(result).toEqual({ success: true })
-    expect(mockMutation).toHaveBeenCalledWith(
-      'recordStreamSegment',
-      expect.objectContaining({ deviceId: 'dev-1', deviceKey: 'test-key' }),
-    )
-  })
-})
-
-describe('register SSRF guard', () => {
-  const BLOCKED_URLS = [
-    'tcp://localhost:8554',
-    'tcp://127.0.0.1:8554',
-    'tcp://127.1.2.3:8554',
-    'tcp://0.0.0.0:8554',
-    'tcp://device.local:8554',
-    'tcp://169.254.169.254:80',
-    'tcp://10.0.0.5:8554',
-    'tcp://172.16.0.5:8554',
-    'tcp://172.31.255.1:8554',
-    'tcp://192.168.1.10:8554',
-    'tcp://minio:9000',
-    'tcp://convex:8000',
-    'tcp://traefik:8080',
-    'tcp://growmate:3000',
-  ]
-
-  it.each(BLOCKED_URLS)('rejects blocked host %s with 400 and logs the reason', async (streamUrl) => {
-    vi.resetModules()
-    process.env.DEVICE_API_KEY = 'test-key'
-    const { default: registerHandler } = await import(REGISTER_SRC)
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    vi.mocked(globalThis.readBody).mockResolvedValue({ deviceId: 'dev-1', streamUrl })
-
-    try {
-      await expect(registerHandler(mockEvent('test-key'))).rejects.toMatchObject({
-        statusCode: 400,
-      })
-      expect(mockMutation).not.toHaveBeenCalled()
-      expect(mockConnect).not.toHaveBeenCalled()
-      expect(warnSpy).toHaveBeenCalled()
-    } finally {
-      warnSpy.mockRestore()
-    }
-  })
-
-  it.each(['tcp://100.64.0.1:8554', 'tcp://172.15.0.1:8554', 'tcp://172.32.0.1:8554'])(
-    'allows non-blocked host %s',
-    async (streamUrl) => {
-      vi.resetModules()
-      process.env.DEVICE_API_KEY = 'test-key'
-      const { default: registerHandler } = await import(REGISTER_SRC)
-      mockMutation.mockResolvedValue({ success: true })
-      vi.mocked(globalThis.readBody).mockResolvedValue({ deviceId: 'dev-1', streamUrl })
-
-      const result = await registerHandler(mockEvent('test-key'))
-      expect(result.success).toBe(true)
-      expect(mockConnect).toHaveBeenCalledTimes(1)
-    },
-  )
 })

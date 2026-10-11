@@ -3288,32 +3288,6 @@
    975
   ]
  },
- "da85ec4bd756bd66": {
-  "for": "topic/product/pods",
-  "title": "Leafy Greens Hydroponics.jpg",
-  "page": "https://commons.wikimedia.org/wiki/File:Leafy_Greens_Hydroponics.jpg",
-  "author": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/14405058@N08\">Ryan Somma</a>",
-  "license": "CC BY-SA 2.0",
-  "source_url": "https://upload.wikimedia.org/wikipedia/commons/8/8e/Leafy_Greens_Hydroponics.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
-  "bytes_1200w": 166900,
-  "orig_size": [
-   1536,
-   1024
-  ]
- },
- "312eb90ade397184": {
-  "for": "topic/product/addon",
-  "title": "Field of Solar Panels near Ogwell.jpg",
-  "page": "https://commons.wikimedia.org/wiki/File:Field_of_Solar_Panels_near_Ogwell.jpg",
-  "author": "<a href=\"//commons.wikimedia.org/wiki/User:Partonez\" title=\"User:Partonez\">Partonez</a>",
-  "license": "CC BY-SA 4.0",
-  "source_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/48/Field_of_Solar_Panels_near_Ogwell.jpg/1920px-Field_of_Solar_Panels_near_Ogwell.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-  "bytes_1200w": 226832,
-  "orig_size": [
-   1920,
-   1440
-  ]
- },
  "b0b4152e1766e52d": {
   "for": "topic/listing/rockwool",
   "title": "Hydroponics - Seedlings",
@@ -3340,19 +3314,6 @@
    683
   ]
  },
- "2dad0ea8cd3677a0": {
-  "for": "topic/product/tech",
-  "title": "John Deere tractor between cabbage rows.jpg",
-  "page": "https://commons.wikimedia.org/wiki/File:John_Deere_tractor_between_cabbage_rows.jpg",
-  "author": "<a rel=\"nofollow\" class=\"external text\" href=\"https://flickr.com/people/7200789@N06\">Dick Rochester</a>",
-  "license": "CC BY-SA 2.0",
-  "source_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/93/John_Deere_tractor_between_cabbage_rows.jpg/1920px-John_Deere_tractor_between_cabbage_rows.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-  "bytes_1200w": 245380,
-  "orig_size": [
-   1920,
-   1187
-  ]
- },
  "c4cf1d5b4bd23438": {
   "for": "base/cabai-rawit",
   "title": "Chili pepper plant with ripe red peppers.jpg",
@@ -3377,6 +3338,45 @@
   "orig_size": [
    1920,
    1440
+  ]
+ },
+ "d8431df2f2c8bf85": {
+  "for": "topic/product/pods",
+  "title": "GrowMate Pods product photo",
+  "page": "",
+  "author": "GrowMate",
+  "license": "own work",
+  "source_url": "material:products/GM Pods.png",
+  "bytes_1200w": 137146,
+  "orig_size": [
+   1254,
+   1254
+  ]
+ },
+ "12e8556edf8eacab": {
+  "for": "topic/product/tech",
+  "title": "GrowMate Tech product photo",
+  "page": "",
+  "author": "GrowMate",
+  "license": "own work",
+  "source_url": "material:products/GM Tech.png",
+  "bytes_1200w": 159094,
+  "orig_size": [
+   1254,
+   1254
+  ]
+ },
+ "a36bd204b8961a8a": {
+  "for": "topic/product/addon",
+  "title": "GrowMate Tech Add-on product photo",
+  "page": "",
+  "author": "GrowMate",
+  "license": "own work",
+  "source_url": "material:products/GM Tech Add-on.png",
+  "bytes_1200w": 157876,
+  "orig_size": [
+   1254,
+   1254
   ]
  }
 }

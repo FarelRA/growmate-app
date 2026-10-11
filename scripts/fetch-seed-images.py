@@ -12,6 +12,7 @@ verifies each digest is unchanged.
 import hashlib
 import io
 import json
+import os
 import sys
 import urllib.parse
 import urllib.request
@@ -21,6 +22,22 @@ UA = {"User-Agent": "GrowMateSeedBot/1.0 (contact@growmate.bond)"}
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "public" / "seed-images"
 SIZES = [50, 200, 400, 800, 1200]
+
+# Own product photography (not downloadable — lives outside the repo).
+# Override with MATERIAL_DIR env when the folder moves. The generated webp
+# sets + ATTRIBUTION entries are committed, so deploys never need this path.
+MATERIAL_DIR = Path(
+    os.environ.get(
+        "MATERIAL_DIR",
+        str(Path.home() / "projects" / "personal" / "growmate" / "material" / "products"),
+    )
+)
+LOCAL_FILES = {
+    # job-id -> {file, title} (author GrowMate, license own work)
+    "topic/product/pods": {"file": "GM Pods.png", "title": "GrowMate Pods product photo"},
+    "topic/product/tech": {"file": "GM Tech.png", "title": "GrowMate Tech product photo"},
+    "topic/product/addon": {"file": "GM Tech Add-on.png", "title": "GrowMate Tech Add-on product photo"},
+}
 
 MANUAL_TITLES = {
     "base/melati": "Jasmine (Jasminum sambac).jpg",
@@ -138,6 +155,9 @@ def build_jobs():
                 jobs[jid] = {"title": hit["title"]}
             else:
                 print(f"NO SOURCE for {jid}", flush=True)
+    # Own product shots override any surveyed Commons picks for these topics.
+    for jid, local in LOCAL_FILES.items():
+        jobs[jid] = {"local": local}
     # original-10 plants.ts entries (mint/rosemary had no survey1 base)
     jobs["orig/kemangi"] = {"title": "Ocimum Basilicum leaf lighted by the left.jpg"}
     jobs["orig/selada"] = {"title": "Lactuca sativa 'Ashbrook'.jpg"}
@@ -184,14 +204,23 @@ def resolve_commons(titles):
 
 
 def fetch(url, timeout=90):
-    req = urllib.request.Request(url, headers=UA)
+    # staticflickr 403s non-browser UAs; keep the identifying bot UA for
+    # Wikimedia (good API etiquette) and send a browser UA there only.
+    host = urllib.parse.urlparse(url).hostname or ""
+    ua = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+          if host.endswith("staticflickr.com") else UA["User-Agent"])
+    req = urllib.request.Request(url, headers={"User-Agent": ua})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read()
 
 
 def process(job_id, src, attrib):
-    from PIL import Image
     raw = fetch(src["dl"])
+    return process_bytes(job_id, raw, src, attrib)
+
+
+def process_bytes(job_id, raw, src, attrib):
+    from PIL import Image
     img = Image.open(io.BytesIO(raw))
     img = img.convert("RGB")
     w0, h0 = img.size
@@ -242,10 +271,17 @@ def main():
         for jid, job in jobs.items():
             try:
                 entry = job["attrib"]
-                src = {"dl": entry["source_url"], "title": entry.get("title", ""),
-                       "page": entry.get("page", ""), "author": entry.get("author", ""),
-                       "license": entry.get("license", "")}
-                digest = process(jid, src, attrib)
+                if jid in LOCAL_FILES:
+                    local = LOCAL_FILES[jid]
+                    raw = (MATERIAL_DIR / local["file"]).read_bytes()
+                    src = {"title": local["title"], "page": "", "author": "GrowMate",
+                           "license": "own work", "dl": f"material:products/{local['file']}"}
+                    digest = process_bytes(jid, raw, src, attrib)
+                else:
+                    src = {"dl": entry["source_url"], "title": entry.get("title", ""),
+                           "page": entry.get("page", ""), "author": entry.get("author", ""),
+                           "license": entry.get("license", "")}
+                    digest = process(jid, src, attrib)
                 hashmap[jid] = digest
                 if digest != job["expect"]:
                     failures.append({"job": jid, "error": f"digest moved {job['expect']} -> {digest}"})
@@ -272,17 +308,23 @@ def main():
     attrib, hashmap, failures = {}, {}, []
     for jid, job in jobs.items():
         try:
-            if "direct" in job:
+            if "local" in job:
+                raw = (MATERIAL_DIR / job["local"]["file"]).read_bytes()
+                src = {"title": job["local"]["title"], "page": "", "author": "GrowMate",
+                       "license": "own work", "dl": f"material:products/{job['local']['file']}"}
+                digest = process_bytes(jid, raw, src, attrib)
+            elif "direct" in job:
                 dd = job["direct"]
                 src = {"dl": dd["url"], "title": dd["title"], "page": dd["page"],
                        "author": dd["author"], "license": dd["license"]}
+                digest = process(jid, src, attrib)
             else:
                 r = resolved.get(job["title"])
                 if not r or not r.get("dl"):
                     raise ValueError(f"unresolved: {job['title']}")
                 src = {"dl": r["dl"], "title": job["title"], "page": r.get("page", ""),
                        "author": r.get("author", ""), "license": r.get("license", "")}
-            digest = process(jid, src, attrib)
+                digest = process(jid, src, attrib)
             hashmap[jid] = digest
             print(f"OK {jid} -> {digest}", flush=True)
         except Exception as e:

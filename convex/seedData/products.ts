@@ -13,7 +13,7 @@ const seedData: ProductSeedData[] = [
     quantityAvailable: 100,
     priceUnit: "IDR",
     shopeeUrl: "https://shopee.co.id/growmate-pods",
-    image: { hash: "da85ec4bd756bd66" },
+    image: { hash: "d8431df2f2c8bf85" },
   },
   {
     title: "GrowMate Tech",
@@ -25,7 +25,7 @@ const seedData: ProductSeedData[] = [
     quantityAvailable: 100,
     priceUnit: "IDR",
     shopeeUrl: "https://shopee.co.id/growmate-tech",
-    image: { hash: "2dad0ea8cd3677a0" },
+    image: { hash: "12e8556edf8eacab" },
   },
   {
     title: "GrowMate Tech Add-on",
@@ -37,7 +37,7 @@ const seedData: ProductSeedData[] = [
     quantityAvailable: 100,
     priceUnit: "IDR",
     shopeeUrl: "https://shopee.co.id/growmate-tech-addon",
-    image: { hash: "312eb90ade397184" },
+    image: { hash: "a36bd204b8961a8a" },
   },
   {
     title: "GrowMate Advance Subscription",

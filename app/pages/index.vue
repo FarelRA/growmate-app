@@ -121,8 +121,7 @@ function orderByTitles<T extends { title: string }>(items: T[], titles: string[]
 const heroImages = computed(() => {
   const presetByKey = (key: string) => presets.value.find((preset) => preset.key === key)?.imageUrl
   const pool = [
-    presetByKey('selada'),
-    presetByKey('tomat-ceri'),
+    ...HERO_PRESET_KEYS.map(presetByKey),
     officialProducts.value.find((product) => product.title === HERO_PRODUCT_TITLE)?.imageUrl,
     communityProducts.value.find((product) => product.title === HERO_LISTING_TITLE)?.imageUrl,
     featuredProduct.value?.imageUrl,

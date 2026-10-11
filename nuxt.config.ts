@@ -81,6 +81,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Server-only: in-cluster Convex URL so SSR never hairpins through the
     // public origin (closed networks, slow TLS, timeouts). Never exposed.
+    // NOTE: private keys inline process.env at BUILD time — the container
+    // must provide NITRO_CONVEX_INTERNAL_URL (Nitro runtime override), not
+    // the bare name, or this bakes as '' and SSR falls back to public.
     convexInternalUrl: process.env.CONVEX_INTERNAL_URL ?? '',
     public: {
       convexUrl: process.env.NUXT_PUBLIC_CONVEX_URL ?? process.env.VITE_CONVEX_URL ?? '',

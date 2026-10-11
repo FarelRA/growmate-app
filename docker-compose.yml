@@ -45,7 +45,11 @@ services:
       NUXT_PUBLIC_CONVEX_URL: ${NUXT_PUBLIC_CONVEX_URL}
       CONVEX_SITE_URL: ${CONVEX_SITE_URL}
       # In-cluster Convex API (server/utils/convex.ts prefers this over the public hairpin).
+      # Two names on purpose: server code reads process.env at runtime (plain
+      # name works), but nuxt.config private keys inline at BUILD time, so the
+      # running server only sees the NITRO_ runtime override (see nuxt.config.ts).
       CONVEX_INTERNAL_URL: http://convex:3210
+      NITRO_CONVEX_INTERNAL_URL: http://convex:3210
       RUSTFS_ENDPOINT: http://rustfs:9000
       RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY}
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}

@@ -6,7 +6,7 @@ const seedData: ProductSeedData[] = [
   {
     title: "GrowMate Pods",
     description:
-      "GrowMate Pods (v1) adalah perangkat hidroponik indoor otomatis untuk satu tanaman. Dilengkapi sensor kelembaban tanah, sensor cahaya, dan pompa air otomatis dengan kontrol penyiraman serta pencahayaan berbasis threshold. Tanpa modem dan panel surya — cukup sambungkan ke Wi-Fi rumah. Cocok untuk dapur, ruang tamu, dan apartemen.",
+      "GrowMate Pods adalah perangkat hidroponik indoor otomatis untuk satu tanaman. Dilengkapi sensor kelembaban tanah, sensor cahaya, dan pompa air otomatis dengan kontrol penyiraman serta pencahayaan berbasis threshold. Tanpa modem dan panel surya — cukup sambungkan ke Wi-Fi rumah. Cocok untuk dapur, ruang tamu, dan apartemen.",
     category: "hardware",
     featured: true,
     price: 803000,
@@ -18,7 +18,7 @@ const seedData: ProductSeedData[] = [
   {
     title: "GrowMate Tech",
     description:
-      "GrowMate Tech (v2) adalah perangkat lahan outdoor untuk kebun dan sawah. Sensor multi-spektrum, tangki besar, dan otomatisasi penuh untuk penyiraman serta pemantauan nutrisi real-time via aplikasi. Ideal untuk cabai, jagung, kacang-kacangan, dan hortikultura pada Musim Tanam Pertama.",
+      "GrowMate Tech adalah perangkat lahan outdoor untuk kebun dan sawah. Sensor multi-spektrum, tangki besar, dan otomatisasi penuh untuk penyiraman serta pemantauan nutrisi real-time via aplikasi. Ideal untuk cabai, jagung, kacang-kacangan, dan hortikultura pada Musim Tanam Pertama.",
     category: "hardware",
     featured: true,
     price: 2083000,
@@ -30,7 +30,7 @@ const seedData: ProductSeedData[] = [
   {
     title: "GrowMate Tech Add-on",
     description:
-      "GrowMate Tech Add-on (v2) adalah varian lapangan lengkap dengan modem seluler dan panel surya terintegrasi plus baterai berkapasitas besar. Tetap online dan menyiram di lahan tanpa listrik maupun Wi-Fi. Pilihan tepat untuk greenhouse desa, kebun surya, dan stasiun irigasi terpencil.",
+      "GrowMate Tech Add-on adalah varian lapangan lengkap dengan modem seluler dan panel surya terintegrasi plus baterai berkapasitas besar. Tetap online dan menyiram di lahan tanpa listrik maupun Wi-Fi. Pilihan tepat untuk greenhouse desa, kebun surya, dan stasiun irigasi terpencil.",
     category: "hardware",
     featured: true,
     price: 2409000,

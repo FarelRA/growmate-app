@@ -341,7 +341,7 @@ const seedData: SeedUser[] = [
 ]
 
 export const demoUser: SeedUser = {
-  email: "demogrowmate@gmail.com",
+  email: "demo@growmate.bond",
   password: "GrowMateDemo2026!",
   name: "Demo GrowMate",
   handle: "demo.growmate",

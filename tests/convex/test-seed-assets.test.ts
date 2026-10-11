@@ -101,7 +101,7 @@ describe('seed fleet shape (36 users + demo, 41 devices)', () => {
     }
     expect(demoUser.tier).toBe('advanced')
     expect(demoUser.role).toBe('grower')
-    expect(demoUser.email).toMatch(/^[^@\s]+@gmail\.com$/)
+    expect(demoUser.email).toBe('demo@growmate.bond')
     expect(emails).not.toContain(demoUser.email)
   })
 

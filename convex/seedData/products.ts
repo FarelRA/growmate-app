@@ -6,7 +6,7 @@ const seedData: ProductSeedData[] = [
   {
     title: "GrowMate Pods",
     description:
-      "GrowMate Pods adalah perangkat hidroponik indoor otomatis untuk satu tanaman. Dilengkapi sensor kelembaban tanah, sensor cahaya, dan pompa air otomatis dengan kontrol penyiraman serta pencahayaan berbasis threshold. Tanpa modem dan panel surya — cukup sambungkan ke Wi-Fi rumah. Cocok untuk dapur, ruang tamu, dan apartemen.",
+      "GrowMate Pods adalah perangkat hidroponik indoor otomatis untuk satu tanaman. Dilengkapi sensor kelembaban tanah, sensor cahaya, dan pompa air otomatis dengan kontrol penyiraman serta pencahayaan berbasis threshold. Tanpa modem dan panel surya, cukup sambungkan ke Wi-Fi rumah. Cocok untuk dapur, ruang tamu, dan apartemen.",
     category: "hardware",
     featured: true,
     price: 803000,

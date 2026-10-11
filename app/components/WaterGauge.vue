@@ -14,7 +14,7 @@ defineProps<{
         <p class="text-xs font-bold uppercase tracking-[0.2em]" :class="minLevel !== undefined ? 'text-emerald-700' : 'text-[#006493]'">{{ label }}</p>
         <h2 class="mt-2 font-headline text-2xl font-black tracking-tight text-gm-text">{{ level }}%</h2>
         <p class="mt-2 text-sm leading-relaxed text-gm-muted">Kapasitas {{ capacity }}L</p>
-        <p v-if="minLevel !== undefined && level <= minLevel" class="mt-1 text-xs font-semibold text-red-500">Level rendah — isi ulang tangki</p>
+        <p v-if="minLevel !== undefined && level <= minLevel" class="mt-1 text-xs font-semibold text-red-500">Level rendah, isi ulang tangki</p>
       </div>
       <div class="relative h-28 w-16 overflow-hidden rounded-[1.25rem] bg-white shadow-inner">
         <div

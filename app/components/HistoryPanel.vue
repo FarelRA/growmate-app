@@ -2,6 +2,7 @@
 import { getImageUrl } from '@/utils/images'
 import MetricLineChart from '@/components/MetricLineChart.vue'
 import PastRecordingViewer from '@/components/PastRecordingViewer.vue'
+import { getAuthToken } from '@/utils/auth'
 import { toast } from 'vue-sonner'
 import { ref } from 'vue'
 
@@ -64,7 +65,14 @@ async function playRecording(rec: {
   recordingsLoading.value = true
   try {
     const deviceId = rec.path.split('/')[0] ?? ''
-    const resp = await fetch(`/api/v2/recordings/${encodeURIComponent(deviceId)}`)
+    const token = await getAuthToken()
+    const resp = await fetch(`/api/v2/recordings/${encodeURIComponent(deviceId)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!resp.ok) {
+      toast.error(`Gagal memuat rekaman (HTTP ${resp.status})`)
+      return
+    }
     const json = await resp.json()
     const found = json.recordings?.find((r: { _id: string; path: string }) => r._id === rec._id)
     if (found) {

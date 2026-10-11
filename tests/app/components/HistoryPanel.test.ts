@@ -7,6 +7,10 @@ vi.mock('@/utils/images', () => ({
   getImageUrl: vi.fn(() => '/mock-image.jpg'),
 }))
 
+vi.mock('@/utils/auth', () => ({
+  getAuthToken: vi.fn(async () => 'test-token'),
+}))
+
 function makeHistoryData(overrides = {}) {
   return {
     timeline: [],
@@ -169,6 +173,9 @@ describe('HistoryPanel', () => {
 
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/v2/recordings/dev-1'),
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+        }),
       )
     })
   })

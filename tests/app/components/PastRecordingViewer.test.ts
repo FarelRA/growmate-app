@@ -195,4 +195,47 @@ describe('PastRecordingViewer', () => {
     await waitForTick()
     expect(wrapper.text()).toContain('Browser tidak mendukung pemutaran video')
   })
+
+  it('renders mjpeg live recordings as img without requiring VideoDecoder', async () => {
+    // Live spools skip decoder init entirely — remove the stub to prove it.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (globalThis as any).VideoDecoder
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (window as any).VideoDecoder
+    const wrapper = mount(PastRecordingViewer, {
+      props: {
+        recording: makeRecording({
+          fileName: 'vid.mjpeg',
+          path: 'TECH01/live/vid.mjpeg',
+          downloadUrl: 'https://x/vid.mjpeg',
+        }),
+      },
+    })
+    await waitForTick()
+    const img = wrapper.find('img')
+    expect(img.exists()).toBe(true)
+    expect(img.attributes('src')).toBe('https://x/vid.mjpeg')
+    expect(wrapper.find('canvas').exists()).toBe(false)
+    expect(vi.mocked(fetch)).not.toHaveBeenCalled()
+    const closeBtn = wrapper.find('button')
+    expect(closeBtn.exists()).toBe(true)
+    expect(closeBtn.text()).toContain('✕')
+    await closeBtn.trigger('click')
+    expect(wrapper.emitted('close')).toBeTruthy()
+  })
+
+  it('renders /live/ path recordings as img even with a legacy extension', async () => {
+    const wrapper = mount(PastRecordingViewer, {
+      props: {
+        recording: makeRecording({
+          fileName: 'vid.h264',
+          path: 'TECH01/live/vid.h264',
+          downloadUrl: 'https://x/vid.h264',
+        }),
+      },
+    })
+    await waitForTick()
+    expect(wrapper.find('img').attributes('src')).toBe('https://x/vid.h264')
+    expect(wrapper.find('canvas').exists()).toBe(false)
+  })
 })

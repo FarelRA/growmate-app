@@ -9,7 +9,7 @@ vi.mock('@convex-dev/auth/server', async (importOriginal) => {
   }
 })
 
-import { listRecordings } from '../../convex/streams'
+import { listRecordings, recordLiveSession } from '../../convex/streams'
 import { createFakeCtx, callHandler, type FakeCtx } from './test-ingest-rules-fake'
 
 const DEVICE_KEY = 'test-device-key-123'
@@ -111,5 +111,64 @@ describe('streams listRecordings ownership', () => {
 
     const rows = await callHandler(listRecordings, ctx, { deviceId: 'GM-NOPE' })
     expect(rows).toEqual([])
+  })
+})
+
+describe('streams recordLiveSession', () => {
+  it('fails closed when DEVICE_API_KEY is unset', async () => {
+    const ctx = createFakeCtx(null)
+    await seedDevice(ctx, 'GM-LIVE', undefined)
+    delete process.env.DEVICE_API_KEY
+    await expect(
+      callHandler(recordLiveSession, ctx, {
+        deviceKey: DEVICE_KEY,
+        deviceId: 'GM-LIVE',
+        fileName: 'vid.mjpeg',
+        path: 'GM-LIVE/live/vid.mjpeg',
+        size: 100,
+        capturedAt: now,
+      }),
+    ).rejects.toThrow('server misconfigured')
+  })
+
+  it('rejects a wrong deviceKey with 401', async () => {
+    const ctx = createFakeCtx(null)
+    await seedDevice(ctx, 'GM-LIVE', undefined)
+    await expect(
+      callHandler(recordLiveSession, ctx, {
+        deviceKey: 'wrong-key',
+        deviceId: 'GM-LIVE',
+        fileName: 'vid.mjpeg',
+        path: 'GM-LIVE/live/vid.mjpeg',
+        size: 100,
+        capturedAt: now,
+      }),
+    ).rejects.toThrow('Unauthorized')
+  })
+
+  it('inserts a videoRecordings row and returns success', async () => {
+    const ctx = createFakeCtx(null)
+    await seedDevice(ctx, 'GM-LIVE', undefined)
+    const res = await callHandler(recordLiveSession, ctx, {
+      deviceKey: DEVICE_KEY,
+      deviceId: 'GM-LIVE',
+      fileName: 'vid.mjpeg',
+      path: 'GM-LIVE/live/vid.mjpeg',
+      size: 1234,
+      durationMs: 5000,
+      capturedAt: now,
+    })
+    expect(res.success).toBe(true)
+    expect(typeof res.recordingId).toBe('string')
+    const rows = ctx.db.all('videoRecordings')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      fileName: 'vid.mjpeg',
+      path: 'GM-LIVE/live/vid.mjpeg',
+      size: 1234,
+      durationMs: 5000,
+      capturedAt: now,
+    })
+    expect(res.recordingId).toBe(rows[0]!._id)
   })
 })

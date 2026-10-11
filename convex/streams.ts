@@ -1,5 +1,5 @@
-import { v } from 'convex/values'
-import { query } from './_generated/server'
+import { v, ConvexError } from 'convex/values'
+import { mutation, query } from './_generated/server'
 import { getCurrentUser } from './helpers/auth'
 import { getDeviceByExternalId } from './helpers/devices'
 
@@ -28,6 +28,48 @@ export const getOwnedDevice = query({
       deviceId: device.deviceId,
       name: device.name,
     }
+  },
+})
+
+function assertDeviceKey(deviceKey: string) {
+  const expected = process.env.DEVICE_API_KEY
+  if (!expected) {
+    throw new ConvexError('server misconfigured')
+  }
+  if (deviceKey !== expected) {
+    throw new ConvexError('Unauthorized')
+  }
+}
+
+export const recordLiveSession = mutation({
+  args: {
+    deviceKey: v.string(),
+    deviceId: v.string(),
+    fileName: v.string(),
+    path: v.string(),
+    size: v.number(),
+    durationMs: v.optional(v.number()),
+    capturedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    assertDeviceKey(args.deviceKey)
+
+    const device = await getDeviceByExternalId(ctx, args.deviceId)
+    if (!device) {
+      throw new ConvexError('Perangkat tidak ditemukan')
+    }
+
+    const recordingId = await ctx.db.insert('videoRecordings', {
+      deviceId: device._id,
+      fileName: args.fileName,
+      path: args.path,
+      size: args.size,
+      durationMs: args.durationMs,
+      capturedAt: args.capturedAt,
+      uploadedAt: Date.now(),
+    })
+
+    return { success: true, recordingId }
   },
 })
 

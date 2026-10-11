@@ -102,6 +102,22 @@ export const cleanupVideoRecordings = internalMutation({
         await ctx.db.delete(r._id)
       }
     } while (batch.length === 500)
+
+    // Live sessions are tens of MB each: keep the newest 20 per device
+    // even within the TTL window.
+    const devices = await ctx.db.query('devices').take(1000)
+    for (const device of devices) {
+      const items = await ctx.db
+        .query('videoRecordings')
+        .withIndex('by_device', (q) => q.eq('deviceId', device._id))
+        .order('desc')
+        .take(500)
+      const overflow = overflowBeyondCap(items, 20)
+      for (const r of overflow) {
+        await ctx.scheduler.runAfter(0, internal.crons.deleteRecordingS3Object, { key: r.path })
+        await ctx.db.delete(r._id)
+      }
+    }
   },
 })
 

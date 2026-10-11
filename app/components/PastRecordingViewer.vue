@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps<{
   recording: {
@@ -16,6 +16,13 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
 }>()
+
+// Live sessions are stored verbatim as multipart MJPEG: the presigned URL
+// serves them behind the same content type, so a plain <img> replays them.
+// Legacy H.264 segments keep the WebCodecs canvas player below.
+const isMjpeg = computed(
+  () => props.recording.fileName.endsWith('.mjpeg') || props.recording.path.includes('/live/'),
+)
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const playing = ref(true)
@@ -39,6 +46,7 @@ function formatDuration(ms: number): string {
 }
 
 onMounted(async () => {
+  if (isMjpeg.value) return
   if (typeof VideoDecoder === 'undefined') {
     error.value = 'Browser tidak mendukung pemutaran video'
     return
@@ -227,6 +235,26 @@ onUnmounted(() => {
 
 <template>
   <div class="rounded-[1.5rem] bg-black overflow-hidden">
+    <template v-if="isMjpeg">
+      <img
+        :src="recording.downloadUrl"
+        alt="Putar ulang siaran langsung"
+        class="w-full aspect-video"
+      />
+      <div class="flex items-center justify-between px-4 py-3 bg-black/80">
+        <span class="text-white/70 text-xs tabular-nums whitespace-nowrap">
+          {{ recording.durationMs ? formatDuration(recording.durationMs) : '' }} · Siaran langsung
+        </span>
+        <button
+          type="button"
+          class="text-white/70 text-sm w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10"
+          @click="emit('close')"
+        >
+          ✕
+        </button>
+      </div>
+    </template>
+    <template v-else>
     <canvas
       ref="canvasRef"
       class="w-full aspect-video"
@@ -275,5 +303,6 @@ onUnmounted(() => {
         ✕
       </button>
     </div>
+    </template>
   </div>
 </template>

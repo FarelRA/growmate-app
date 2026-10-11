@@ -1,4 +1,5 @@
 import type { FunctionReference } from 'convex/server'
+import { onMounted } from 'vue'
 import { runSharedConvexQuery } from '@/utils/auth'
 
 type PublicConvexKey = string
@@ -36,7 +37,7 @@ export function usePublicConvexQuery<TArgs extends Record<string, unknown>, TRes
   // page renders and reactive queries take over on hydration.
   // Default 8s keeps SSR snappy while tolerating a slow backend.
   const timeoutMs = opts?.timeoutMs ?? 8000
-  return useAsyncData(key, async () => {
+  const asyncData = useAsyncData(key, async () => {
     let timer: ReturnType<typeof setTimeout> | undefined
     try {
       return await Promise.race([
@@ -53,4 +54,14 @@ export function usePublicConvexQuery<TArgs extends Record<string, unknown>, TRes
     lazy: false,
     default: () => null,
   })
+  // A null SSR payload hydrates as "loaded", so a failed first paint would
+  // stay empty until the next client-side navigation. Recover on mount with
+  // a single refetch instead (lookup queries that genuinely resolve null
+  // simply land on null again — no loop, onMounted fires once).
+  if (import.meta.client) {
+    onMounted(() => {
+      if (asyncData.data.value === null) void asyncData.refresh()
+    })
+  }
+  return asyncData
 }

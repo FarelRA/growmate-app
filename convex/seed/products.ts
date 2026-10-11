@@ -34,17 +34,26 @@ export const products = internalAction({
 
     let created = 0;
     let skipped = 0;
+    let updated = 0;
     for (const product of productsData) {
+      const imageUrl = await uploadSeedImageSet(bucket, product.image.hash);
       const existing = await ctx.runQuery(
         internal.seedInternal.lookupOfficialProductByTitle,
         { title: product.title },
       );
       if (existing) {
-        skipped += 1;
+        if (existing.imageUrl !== imageUrl || (existing.shopeeUrl ?? undefined) !== product.shopeeUrl) {
+          await ctx.runMutation(internal.seedInternal.updateOfficialProductMedia, {
+            productId: existing._id,
+            imageUrl,
+            shopeeUrl: product.shopeeUrl,
+          });
+          updated += 1;
+        } else {
+          skipped += 1;
+        }
         continue;
       }
-
-      const imageUrl = await uploadSeedImageSet(bucket, product.image.hash);
 
       await ctx.runMutation(internal.seedInternal.insertOfficialProduct, {
         title: product.title,
@@ -60,6 +69,6 @@ export const products = internalAction({
       });
       created += 1;
     }
-    console.log(`[seed] products: ${created} created, ${skipped} already present`);
+    console.log(`[seed] products: ${created} created, ${updated} updated, ${skipped} already present`);
   },
 });

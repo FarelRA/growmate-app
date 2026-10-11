@@ -128,6 +128,22 @@ export const insertOfficialProduct = internalMutation({
   },
 });
 
+// Reseed sync: refresh display fields when the dataset moved on.
+export const updateOfficialProductMedia = internalMutation({
+  args: {
+    productId: v.id("products"),
+    imageUrl: v.string(),
+    shopeeUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.productId, {
+      imageUrl: args.imageUrl,
+      shopeeUrl: args.shopeeUrl,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 // ─── Blog Posts ───────────────────────────────────────────
 
 export const lookupBlogPostByTitle = internalQuery({

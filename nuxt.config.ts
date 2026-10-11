@@ -79,6 +79,9 @@ export default defineNuxtConfig({
     server: false,
   },
   runtimeConfig: {
+    // Server-only: in-cluster Convex URL so SSR never hairpins through the
+    // public origin (closed networks, slow TLS, timeouts). Never exposed.
+    convexInternalUrl: process.env.CONVEX_INTERNAL_URL ?? '',
     public: {
       convexUrl: process.env.NUXT_PUBLIC_CONVEX_URL ?? process.env.VITE_CONVEX_URL ?? '',
       imageBaseUrl: process.env.NUXT_PUBLIC_RUSTFS_BASE_URL ?? 'https://storage.growmate.bond',

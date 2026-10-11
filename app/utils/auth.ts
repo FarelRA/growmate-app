@@ -20,7 +20,14 @@ function storageKey(key: string) {
 }
 
 function getConvexUrl() {
-  const convexUrl = useRuntimeConfig().public.convexUrl
+  const config = useRuntimeConfig()
+  // SSR must not hairpin through the public origin (closed networks, slow
+  // TLS, timeouts): prefer the in-cluster URL when the server provides one.
+  if (import.meta.server) {
+    const internal = config.convexInternalUrl
+    if (internal) return internal
+  }
+  const convexUrl = config.public.convexUrl
   if (!convexUrl) {
     throw new Error('NUXT_PUBLIC_CONVEX_URL is not configured')
   }

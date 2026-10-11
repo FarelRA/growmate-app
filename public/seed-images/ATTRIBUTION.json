@@ -3301,19 +3301,6 @@
    682
   ]
  },
- "bafcf1f2271d2c73": {
-  "for": "topic/product/subscription",
-  "title": "Sita Kumari, farmer, uses mobile phone apps to enhance her yields",
-  "page": "https://www.flickr.com/photos/cimmyt/49083382377",
-  "author": "CIMMYT (via Openverse)",
-  "license": "by-nc-sa",
-  "source_url": "https://live.staticflickr.com/65535/49083382377_f7e686940c_b.jpg",
-  "bytes_1200w": 192994,
-  "orig_size": [
-   1024,
-   683
-  ]
- },
  "c4cf1d5b4bd23438": {
   "for": "base/cabai-rawit",
   "title": "Chili pepper plant with ripe red peppers.jpg",
@@ -3377,6 +3364,19 @@
   "orig_size": [
    1254,
    1254
+  ]
+ },
+ "db5027facb49916a": {
+  "for": "topic/product/subscription",
+  "title": "GrowMate logo",
+  "page": "",
+  "author": "GrowMate",
+  "license": "own work",
+  "source_url": "material:Logo GrowMate.png",
+  "bytes_1200w": 19622,
+  "orig_size": [
+   4096,
+   4096
   ]
  }
 }

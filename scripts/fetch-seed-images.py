@@ -37,6 +37,12 @@ LOCAL_FILES = {
     "topic/product/pods": {"file": "GM Pods.png", "title": "GrowMate Pods product photo"},
     "topic/product/tech": {"file": "GM Tech.png", "title": "GrowMate Tech product photo"},
     "topic/product/addon": {"file": "GM Tech Add-on.png", "title": "GrowMate Tech Add-on product photo"},
+    "topic/product/subscription": {"file": "Logo GrowMate.png", "title": "GrowMate logo"},
+}
+# Sibling filename (under MATERIAL_DIR's parent) for jobs whose source is
+# not inside MATERIAL_DIR itself.
+LOCAL_SIBLINGS = {
+    "topic/product/subscription": "../Logo GrowMate.png",
 }
 
 MANUAL_TITLES = {
@@ -59,13 +65,6 @@ DIRECT_URLS = {
         "license": "by-nc-sa",
         "page": "https://www.flickr.com/photos/54778175@N00/2351924855",
     },
-    "topic/product/subscription": {
-        "url": "https://live.staticflickr.com/65535/49083382377_f7e686940c_b.jpg",
-        "title": "Sita Kumari, farmer, uses mobile phone apps to enhance her yields",
-        "author": "CIMMYT (via Openverse)",
-        "license": "by-nc-sa",
-        "page": "https://www.flickr.com/photos/cimmyt/49083382377",
-    },
 }
 
 ALIASES = {
@@ -82,6 +81,18 @@ ALIASES = {
     "bayam-bangkok": "bayam", "kangkung-serasi": "kangkung",
     "cabai-setan": "cabai-rawit",
 }
+
+
+def local_path(job_id):
+    local = LOCAL_FILES[job_id]
+    if job_id in LOCAL_SIBLINGS:
+        return (MATERIAL_DIR / LOCAL_SIBLINGS[job_id]).resolve(), local
+    return MATERIAL_DIR / local["file"], local
+
+def local_src(job_id):
+    path, local = local_path(job_id)
+    return path, {"title": local["title"], "page": "", "author": "GrowMate",
+                  "license": "own work", "dl": f"material:{path.name}"}
 
 
 def load_json(p):
@@ -143,10 +154,12 @@ def build_jobs():
         ("topic/listing/benih-kangkung", None), ("topic/listing/stroberi-petik", None),
         ("topic/listing/sekam-bakar", None), ("topic/listing/tomat-ceri-panen", None),
         ("topic/product/pods", "MANUAL"), ("topic/product/tech", None),
-        ("topic/product/addon", None), ("topic/product/subscription", "DIRECT"),
+        ("topic/product/addon", None), ("topic/product/subscription", "LOCAL"),
     ]:
         if pick == "DIRECT":
             jobs[jid] = {"direct": DIRECT_URLS[jid]}
+        elif pick == "LOCAL":
+            jobs[jid] = {"local": LOCAL_FILES[jid]}
         elif pick == "MANUAL":
             jobs[jid] = {"title": MANUAL_TITLES[jid]}
         else:
@@ -272,11 +285,8 @@ def main():
             try:
                 entry = job["attrib"]
                 if jid in LOCAL_FILES:
-                    local = LOCAL_FILES[jid]
-                    raw = (MATERIAL_DIR / local["file"]).read_bytes()
-                    src = {"title": local["title"], "page": "", "author": "GrowMate",
-                           "license": "own work", "dl": f"material:products/{local['file']}"}
-                    digest = process_bytes(jid, raw, src, attrib)
+                    path, src = local_src(jid)
+                    digest = process_bytes(jid, path.read_bytes(), src, attrib)
                 else:
                     src = {"dl": entry["source_url"], "title": entry.get("title", ""),
                            "page": entry.get("page", ""), "author": entry.get("author", ""),
@@ -309,10 +319,8 @@ def main():
     for jid, job in jobs.items():
         try:
             if "local" in job:
-                raw = (MATERIAL_DIR / job["local"]["file"]).read_bytes()
-                src = {"title": job["local"]["title"], "page": "", "author": "GrowMate",
-                       "license": "own work", "dl": f"material:products/{job['local']['file']}"}
-                digest = process_bytes(jid, raw, src, attrib)
+                path, src = local_src(jid)
+                digest = process_bytes(jid, path.read_bytes(), src, attrib)
             elif "direct" in job:
                 dd = job["direct"]
                 src = {"dl": dd["url"], "title": dd["title"], "page": dd["page"],

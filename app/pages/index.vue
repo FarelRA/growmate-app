@@ -93,11 +93,10 @@ const blogCards = computed(() => blogPosts.value ?? [])
 const carouselStories = computed(() => stories.value.slice(0, 5))
 
 // Hand-picked homepage imagery (stable catalog keys / listing titles,
-// each photo visually verified in public/seed-images). Missing picks fall
-// through to query order so slots never render empty after a reseed.
-const HERO_PRESET_KEYS = ['selada', 'tomat-ceri']
+// each photo visually verified in public/seed-images: lush, person-free).
+// Missing picks fall through to query order so slots never render empty.
+const HERO_PRESET_KEYS = ['selada', 'tomat-ceri', 'stroberi']
 const HERO_PRODUCT_TITLE = 'GrowMate Pods'
-const HERO_LISTING_TITLE = 'Jagung Manis Petik Sendiri'
 const POD_CARD_KEYS = ['selada', 'tomat-ceri', 'stroberi', 'cabai-rawit']
 const SALE_CARD_TITLES = [
   'Tomat Ceri Campur, Sekilo',
@@ -120,10 +119,11 @@ function orderByTitles<T extends { title: string }>(items: T[], titles: string[]
 
 const heroImages = computed(() => {
   const presetByKey = (key: string) => presets.value.find((preset) => preset.key === key)?.imageUrl
+  // Exactly one product slot (the Pods flagship); the rest are person-free
+  // crop close-ups, then query-order fallbacks.
   const pool = [
     ...HERO_PRESET_KEYS.map(presetByKey),
     officialProducts.value.find((product) => product.title === HERO_PRODUCT_TITLE)?.imageUrl,
-    communityProducts.value.find((product) => product.title === HERO_LISTING_TITLE)?.imageUrl,
     featuredProduct.value?.imageUrl,
     officialProducts.value[1]?.imageUrl,
     communityProducts.value[0]?.imageUrl,

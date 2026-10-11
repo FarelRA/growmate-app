@@ -27,6 +27,8 @@ export default defineEventHandler(async (event) => {
   if (!deviceId) {
     throw createError({ statusCode: 400, statusMessage: 'Missing deviceId' })
   }
+  const rawLimit = getQuery(event).limit
+  const limit = typeof rawLimit === 'string' && rawLimit !== '' ? Number(rawLimit) : undefined
 
   const device = await convex.query(api.streams.getOwnedDevice, { deviceId })
   if (!device) {
@@ -35,7 +37,7 @@ export default defineEventHandler(async (event) => {
 
   const recordings = await convex.query(api.streams.listRecordings, {
     deviceId,
-    limit: 50,
+    limit: Number.isFinite(limit) ? limit : 50,
   })
 
   const client = s3PublicClient()

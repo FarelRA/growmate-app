@@ -155,6 +155,7 @@ const displayPanelOptions = computed(() => {
 
     <HistoryPanel
       v-else-if="activePanel === 'history'"
+      :device-id="data.device?.deviceId ?? ''"
       :history-data="historyData"
       :history-metric-cards="historyMetricCards"
       :device-version="deviceVersion"

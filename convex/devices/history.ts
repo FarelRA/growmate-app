@@ -14,6 +14,28 @@ export type ArchivedPlantsPage = {
   continueCursor: string
 }
 
+export const GALLERY_IMAGES_CAP = 100
+
+export async function deviceGalleryImagesCore(
+  ctx: QueryCtx,
+  device: DeviceDoc,
+  limit: number,
+) {
+  const take = Math.min(Math.max(Math.floor(limit) || 0, 1), GALLERY_IMAGES_CAP)
+  const images = await ctx.db
+    .query('plantImages')
+    .withIndex('by_device', (q) => q.eq('deviceId', device._id))
+    .order('desc')
+    .take(take)
+  return images.map((image) => ({
+    _id: image._id,
+    imageUrl: image.imageUrl ?? null,
+    source: image.source,
+    capturedAt: image.capturedAt,
+    capturedAtLabel: formatTimestamp(image.capturedAt),
+  }))
+}
+
 export async function deviceHistoryCore(
   ctx: QueryCtx,
   device: DeviceDoc,

@@ -37,8 +37,8 @@ vi.mock('@aws-sdk/s3-request-presigner', () => ({
   getSignedUrl: (...args: unknown[]) => (mockGetSignedUrl as (...a: unknown[]) => unknown)(...args),
 }))
 
-function mockEvent(deviceId = 'dev-1', bearer = 'token-123') {
-  const event: any = { headers: new Headers(), params: { deviceId } }
+function mockEvent(deviceId = 'dev-1', bearer = 'token-123', query: Record<string, string> = {}) {
+  const event: any = { headers: new Headers(), params: { deviceId }, query }
   if (bearer) event.headers.set('authorization', `Bearer ${bearer}`)
   return event
 }
@@ -50,6 +50,7 @@ beforeEach(() => {
     (event: any, name: string) => event.headers?.get(name) ?? undefined,
   ) as any
   globalThis.getRouterParam = vi.fn((event: any, name: string) => event.params?.[name]) as any
+  globalThis.getQuery = vi.fn((event: any) => event.query ?? {}) as any
   mockQuery.mockImplementation(async (ref: string) => {
     if (ref === 'isAuthenticated') return true
     throw new Error(`unexpected query: ${ref}`)
@@ -118,5 +119,31 @@ describe('GET /api/v2/recordings/:deviceId auth', () => {
       expect.anything(),
       { expiresIn: 3600 },
     )
+  })
+
+  it('passes ?limit= through to listRecordings', async () => {
+    mockQuery.mockImplementation(async (ref: string) => {
+      if (ref === 'isAuthenticated') return true
+      if (ref === 'getOwnedDevice') return { deviceId: 'dev-1', name: 'GrowMate' }
+      if (ref === 'listRecordings') return []
+      throw new Error(`unexpected query: ${ref}`)
+    })
+    const handler = (await import(SRC)).default
+    const result = await handler(mockEvent('dev-1', 'token-123', { limit: '10' }))
+    expect(mockQuery).toHaveBeenCalledWith('listRecordings', { deviceId: 'dev-1', limit: 10 })
+    expect(result.recordings).toEqual([])
+  })
+
+  it('defaults to limit 50 when ?limit= is absent', async () => {
+    mockQuery.mockImplementation(async (ref: string) => {
+      if (ref === 'isAuthenticated') return true
+      if (ref === 'getOwnedDevice') return { deviceId: 'dev-1', name: 'GrowMate' }
+      if (ref === 'listRecordings') return []
+      throw new Error(`unexpected query: ${ref}`)
+    })
+    const handler = (await import(SRC)).default
+    const result = await handler(mockEvent('dev-1'))
+    expect(mockQuery).toHaveBeenCalledWith('listRecordings', { deviceId: 'dev-1', limit: 50 })
+    expect(result.recordings).toEqual([])
   })
 })

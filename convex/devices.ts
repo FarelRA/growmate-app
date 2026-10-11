@@ -9,7 +9,7 @@ import {
   getUnclaimedDeviceCore, userDevicesCore,
   assignPlantCore, removeDeviceCore, updateAutomationCore, dashboardCore,
 } from './devices/queries'
-import { deviceHistoryCore } from './devices/history'
+import { deviceHistoryCore, deviceGalleryImagesCore } from './devices/history'
 import { plantSensorProfile, lifecycleProfileValidator } from './schema'
 
 export const getUnclaimedDevice = query({
@@ -88,8 +88,8 @@ export const dashboard = query({
 
     const plant = device.plantId ? await ctx.db.get(device.plantId) : null
     // Hard bound: exactly one row per sensor kind (soil/light/temperature/air/
-    // water = 5 max). take(10) freezes the ≤5-rows invariant with 2x headroom —
-    // never an unbounded read on this per-plant read path. View assembly
+    // water/current = 6 max). take(10) freezes the ≤6-rows invariant with
+    // headroom — never an unbounded read on this per-plant read path. View assembly
     // lives in ./devices/queries:dashboardCore.
     const rawSensors = plant && !plant.archived
       ? await ctx.db
@@ -124,6 +124,22 @@ export const deviceHistory = query({
       .order('desc')
       .paginate(args.paginationOpts)
     return await deviceHistoryCore(ctx, device, archivedPage)
+  },
+})
+
+export const deviceGalleryImages = query({
+  args: {
+    deviceId: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx)
+    if (!user) return []
+
+    const device = await getSelectedDevice(ctx, user._id, args.deviceId)
+    if (!device) return []
+
+    return await deviceGalleryImagesCore(ctx, device, args.limit ?? 24)
   },
 })
 

@@ -3,10 +3,18 @@ import { getImageUrl } from '@/utils/images'
 import MetricLineChart from '@/components/MetricLineChart.vue'
 import PastRecordingViewer from '@/components/PastRecordingViewer.vue'
 import { getAuthToken } from '@/utils/auth'
+import { useConvexQuery } from '@convex-vue/core'
+import { api } from '~~/convex/_generated/api'
 import { toast } from 'vue-sonner'
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+
+const GALLERY_PAGE = 24
+const GALLERY_CAP = 100
+const RECORDINGS_PAGE = 20
+const RECORDINGS_CAP = 100
 
 const props = defineProps<{
+  deviceId: string
   historyData: {
     timeline: { _id: string; title: string; detail?: string; timestampLabel: string; relativeTime: string }[]
     currentPlant: { name: string; species: string } | null
@@ -41,7 +49,22 @@ const selectedRecording = ref<{
   downloadUrl: string
 } | null>(null)
 const showPlayback = ref(false)
-const recordingsLoading = ref(false)
+
+// Image gallery: scrollable grid backed by a growing limit (no fixed count).
+const imageLimit = ref(GALLERY_PAGE)
+const galleryArgs = computed(() => ({
+  deviceId: props.deviceId || undefined,
+  limit: imageLimit.value,
+}))
+const { data: galleryImages } = useConvexQuery(api.devices.deviceGalleryImages, galleryArgs)
+const imageExhausted = computed(() => (galleryImages.value?.length ?? 0) < imageLimit.value)
+
+function loadMoreImages() {
+  imageLimit.value = Math.min(imageLimit.value + GALLERY_PAGE, GALLERY_CAP)
+}
+
+// Recordings gallery: same growing-limit pattern over the signed-URL route.
+const recordingLimit = ref(RECORDINGS_PAGE)
 const recordingList = ref<{
   _id: string
   fileName: string
@@ -50,7 +73,54 @@ const recordingList = ref<{
   durationMs?: number
   capturedAt: number
   capturedAtLabel: string
-}[]>(props.historyData?.recordings ?? [])
+  downloadUrl?: string
+}[]>([])
+const recordingsLoading = ref(false)
+const recordingsExhausted = ref(false)
+
+async function refreshRecordings() {
+  if (!props.deviceId) return
+  recordingsLoading.value = true
+  try {
+    const token = await getAuthToken()
+    const resp = await fetch(
+      `/api/v2/recordings/${encodeURIComponent(props.deviceId)}?limit=${recordingLimit.value}`,
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+    )
+    if (!resp.ok) {
+      toast.error(`Gagal memuat rekaman (HTTP ${resp.status})`)
+      return
+    }
+    const json = await resp.json()
+    recordingList.value = json.recordings ?? []
+    recordingsExhausted.value =
+      recordingList.value.length < recordingLimit.value || recordingLimit.value >= RECORDINGS_CAP
+  } catch (error) {
+    console.warn('[history] refreshRecordings failed', error)
+    toast.error('Gagal memuat rekaman')
+  } finally {
+    recordingsLoading.value = false
+  }
+}
+
+function loadMoreRecordings() {
+  recordingLimit.value = Math.min(recordingLimit.value + RECORDINGS_PAGE, RECORDINGS_CAP)
+  void refreshRecordings()
+}
+
+watch(
+  () => props.deviceId,
+  () => {
+    imageLimit.value = GALLERY_PAGE
+    recordingLimit.value = RECORDINGS_PAGE
+    recordingList.value = []
+    recordingsExhausted.value = false
+    selectedRecording.value = null
+    showPlayback.value = false
+    void refreshRecordings()
+  },
+  { immediate: true },
+)
 
 const isV2 = () => props.deviceVersion === 'v2'
 
@@ -62,11 +132,17 @@ async function playRecording(rec: {
   durationMs?: number
   capturedAt: number
 }) {
+  // Items already carry a signed URL after refreshRecordings: play directly.
+  const direct = recordingList.value.find((r) => r._id === rec._id)
+  if (direct?.downloadUrl) {
+    selectedRecording.value = { ...rec, downloadUrl: direct.downloadUrl }
+    showPlayback.value = true
+    return
+  }
   recordingsLoading.value = true
   try {
-    const deviceId = rec.path.split('/')[0] ?? ''
     const token = await getAuthToken()
-    const resp = await fetch(`/api/v2/recordings/${encodeURIComponent(deviceId)}`, {
+    const resp = await fetch(`/api/v2/recordings/${encodeURIComponent(props.deviceId)}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
     if (!resp.ok) {
@@ -150,11 +226,11 @@ function formatDuration(ms?: number): string {
         <h2 class="font-headline text-xl font-black tracking-tight text-gm-text">Rekaman Video</h2>
         <p class="mt-1 text-sm text-gm-muted">Rekaman siaran kamera perangkat yang telah disimpan.</p>
 
-        <div v-if="recordingList.length === 0" class="mt-5 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted">
+        <div v-if="recordingList.length === 0 && !recordingsLoading" class="mt-5 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted">
           Belum ada rekaman.
         </div>
 
-        <div v-else class="mt-4 space-y-2">
+        <div v-else class="mt-4 grid max-h-[70vh] grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
           <article
             v-for="rec in recordingList"
             :key="rec._id"
@@ -163,7 +239,6 @@ function formatDuration(ms?: number): string {
             <div class="min-w-0">
               <div class="text-sm font-bold text-gm-text truncate">{{ rec.fileName }}</div>
               <div class="mt-1 flex gap-3 text-xs text-gm-muted">
-                <span>{{ rec.capturedAtLabel }}</span>
                 <span>{{ formatDuration(rec.durationMs) }}</span>
                 <span>{{ formatBytes(rec.size) }}</span>
               </div>
@@ -176,6 +251,16 @@ function formatDuration(ms?: number): string {
             >▶ Putar</button>
           </article>
         </div>
+
+        <button
+          v-if="!recordingsExhausted && recordingList.length > 0"
+          type="button"
+          class="mt-4 w-full rounded-full bg-[#f3f3f3] px-4 py-3 text-xs font-bold uppercase tracking-[0.15em] text-gm-muted hover:bg-[#e9e9e9]"
+          :disabled="recordingsLoading"
+          @click="loadMoreRecordings"
+        >
+          {{ recordingsLoading ? 'Memuat...' : `Muat lagi (${recordingList.length} ditampilkan)` }}
+        </button>
       </article>
     </div>
 
@@ -267,17 +352,34 @@ function formatDuration(ms?: number): string {
       </div>
     </section>
 
-    <div v-if="activeSubTab === 'images' && historyData" class="grid gap-4 sm:grid-cols-2">
-      <div v-if="historyData.imageHistory.length === 0" class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)] text-sm text-gm-muted">
-        Belum ada gambar yang tersedia.
-      </div>
-      <article
-        v-for="image in historyData.imageHistory"
-        :key="image._id"
-        class="overflow-hidden rounded-[2rem] bg-white shadow-[0_12px_32px_rgba(15,23,42,0.05)]"
-      >
-        <img :src="getImageUrl(image.imageUrl, 400) ?? undefined" :alt="'Snapshot tanaman'" class="w-full h-48 object-cover" />
-        <div class="p-4 text-sm text-gm-muted">{{ image.capturedAtLabel }}</div>
+    <div v-if="activeSubTab === 'images'">
+      <article class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
+        <h2 class="font-headline text-xl font-black tracking-tight text-gm-text">Galeri Gambar</h2>
+        <p class="mt-1 text-sm text-gm-muted">Jepretan kamera perangkat, terbaru dulu.</p>
+
+        <div v-if="(galleryImages?.length ?? 0) === 0" class="mt-4 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted">
+          Belum ada gambar yang tersedia.
+        </div>
+
+        <div v-else class="mt-4 grid max-h-[70vh] grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
+          <article
+            v-for="image in galleryImages"
+            :key="image._id"
+            class="overflow-hidden rounded-[1.5rem] bg-[#f3f3f3]"
+          >
+            <img :src="getImageUrl(image.imageUrl, 400) ?? undefined" :alt="'Snapshot tanaman'" class="h-36 w-full object-cover" loading="lazy" />
+            <div class="px-3 py-2 text-[11px] text-gm-muted">{{ image.capturedAtLabel }}</div>
+          </article>
+        </div>
+
+        <button
+          v-if="!imageExhausted && (galleryImages?.length ?? 0) > 0"
+          type="button"
+          class="mt-4 w-full rounded-full bg-[#f3f3f3] px-4 py-3 text-xs font-bold uppercase tracking-[0.15em] text-gm-muted hover:bg-[#e9e9e9]"
+          @click="loadMoreImages"
+        >
+          Muat lagi ({{ galleryImages?.length ?? 0 }} ditampilkan)
+        </button>
       </article>
     </div>
 

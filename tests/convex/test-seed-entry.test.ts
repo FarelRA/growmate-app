@@ -20,7 +20,7 @@
  *     orphans, no dual entry points).
  *  3. `convex:seed:all` is a single `convex run seed:comprehensive` (no
  *     npm-chained multi-invoke path duplicating `comprehensive`).
- *  4. `comprehensive` orchestrates all 8 dataset entries via runAction.
+ *  4. `comprehensive` orchestrates all 12 dataset entries via runAction.
  *  5. All seed.ts effective exports stay `internalAction` (CLI/dashboard-
  *     runnable but never client-callable over HTTP; widening to public
  *     `action` would let any client trigger seed writes).
@@ -57,10 +57,14 @@ const SCRIPT_TARGETS: Record<string, string> = {
   'convex:seed:products': 'seed:products',
   'convex:seed:community': 'seed:community',
   'convex:seed:blog': 'seed:blog',
+  'convex:seed:sensors': 'seed:sensors',
+  'convex:seed:threads': 'seed:threads',
+  'convex:seed:support': 'seed:support',
+  'convex:seed:engagement': 'seed:engagement',
   'convex:seed:all': 'seed:comprehensive',
 }
 
-/** The 8 dataset entries orchestrated by `comprehensive`, in run order. */
+/** The 12 dataset entries orchestrated by `comprehensive`, in run order. */
 const DATASET_FNS = [
   'admin',
   'plants',
@@ -70,6 +74,10 @@ const DATASET_FNS = [
   'products',
   'community',
   'blog',
+  'sensors',
+  'threads',
+  'support',
+  'engagement',
 ] as const
 
 const DEF_RE =
@@ -163,7 +171,7 @@ describe('seed entry wiring', () => {
     expect(pkg.scripts['convex:seed:all']).not.toContain('&&')
   })
 
-  it('comprehensive orchestrates all 8 dataset entries via runAction', () => {
+  it('comprehensive orchestrates all 12 dataset entries via runAction', () => {
     const body = seedSrc.slice(seedSrc.indexOf('export const comprehensive'))
     for (const fn of DATASET_FNS) {
       expect(body).toContain(`internal.seed.${fn}`)

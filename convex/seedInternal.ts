@@ -254,6 +254,13 @@ export const signUpUser = internalAction({
 
 // ─── Devices ─────────────────────────────────────────────
 
+export const lookupUserById = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    return await ctx.db.get(userId);
+  },
+});
+
 export const lookupDeviceById = internalQuery({
   args: { deviceId: v.string() },
   handler: async (ctx, { deviceId }) => {
@@ -574,5 +581,343 @@ export const insertUserActivity = internalMutation({
       relatedId: args.relatedId,
       createdAt: Date.now(),
     });
+  },
+});
+
+// ─── Community Products ────────────────────────────────
+
+export const lookupCommunityProductByTitle = internalQuery({
+  args: { title: v.string() },
+  handler: async (ctx, { title }) => {
+    return await ctx.db
+      .query("products")
+      .withIndex("by_type", (q) => q.eq("type", "community"))
+      .filter((q) => q.eq(q.field("title"), title))
+      .first();
+  },
+});
+
+// ─── Marketplace Threads ───────────────────────────────
+
+export const lookupThreadByProductBuyer = internalQuery({
+  args: { productId: v.id("products"), buyerId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("marketplaceThreads")
+      .withIndex("by_product_and_buyer", (q) =>
+        q.eq("productId", args.productId).eq("buyerId", args.buyerId),
+      )
+      .first();
+  },
+});
+
+export const seedThread = internalMutation({
+  args: {
+    productId: v.id("products"),
+    buyerId: v.id("users"),
+    sellerId: v.id("users"),
+    buyerName: v.optional(v.string()),
+    sellerName: v.optional(v.string()),
+    productTitle: v.optional(v.string()),
+    productImage: v.optional(v.string()),
+    productStatus: v.optional(
+      v.union(v.literal("active"), v.literal("reserved"), v.literal("sold"), v.literal("archived")),
+    ),
+    messages: v.array(
+      v.object({ senderId: v.id("users"), body: v.string(), createdAt: v.number() }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    if (args.messages.length === 0) throw new Error("[seed] thread needs messages");
+    const first = args.messages[0]!;
+    const last = args.messages[args.messages.length - 1]!;
+    const threadId = await ctx.db.insert("marketplaceThreads", {
+      productId: args.productId,
+      buyerId: args.buyerId,
+      sellerId: args.sellerId,
+      buyerName: args.buyerName,
+      sellerName: args.sellerName,
+      productTitle: args.productTitle,
+      productImage: args.productImage,
+      productStatus: args.productStatus ?? "active",
+      lastMessagePreview: last.body.slice(0, 160),
+      lastMessageAt: last.createdAt,
+      buyerUnreadCount: String(last.senderId) !== String(args.buyerId) ? 1 : 0,
+      sellerUnreadCount: String(last.senderId) !== String(args.sellerId) ? 1 : 0,
+      createdAt: first.createdAt,
+      updatedAt: last.createdAt,
+    });
+    for (const m of args.messages) {
+      await ctx.db.insert("marketplaceMessages", {
+        threadId,
+        senderId: m.senderId,
+        body: m.body,
+        createdAt: m.createdAt,
+      });
+    }
+    await ctx.db.insert("notifications", {
+      userId: args.sellerId,
+      title: "Pertanyaan marketplace baru",
+      detail: `${args.buyerName ?? "Seorang pembeli"} menghubungi Anda tentang ${args.productTitle ?? "produk Anda"}.`,
+      kind: "commerce",
+      read: false,
+      createdAt: first.createdAt,
+    });
+    return threadId;
+  },
+});
+
+// ─── Support Tickets ───────────────────────────────────
+
+export const hasTicket = internalQuery({
+  args: { userId: v.id("users"), topic: v.string() },
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("supportRequests")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.eq(q.field("topic"), args.topic))
+      .first();
+    return row !== null;
+  },
+});
+
+export const seedTicket = internalMutation({
+  args: {
+    userId: v.id("users"),
+    topic: v.string(),
+    status: v.union(
+      v.literal("open"), v.literal("in_progress"), v.literal("resolved"), v.literal("closed"),
+    ),
+    priority: v.union(v.literal("low"), v.literal("normal"), v.literal("high"), v.literal("urgent")),
+    handledBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+    messages: v.array(
+      v.object({
+        senderRole: v.union(v.literal("user"), v.literal("admin"), v.literal("system")),
+        senderUserId: v.optional(v.id("users")),
+        body: v.string(),
+        createdAt: v.number(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const requestId = await ctx.db.insert("supportRequests", {
+      userId: args.userId,
+      status: args.status,
+      priority: args.priority,
+      topic: args.topic,
+      handledBy: args.handledBy,
+      createdAt: args.createdAt,
+      updatedAt: args.createdAt,
+    });
+    for (const m of args.messages) {
+      await ctx.db.insert("supportMessages", {
+        requestId,
+        senderUserId: m.senderUserId,
+        senderRole: m.senderRole,
+        body: m.body,
+        createdAt: m.createdAt,
+      });
+    }
+    if (args.status === "closed") {
+      await ctx.db.insert("supportMessages", {
+        requestId,
+        senderUserId: undefined,
+        senderRole: "system",
+        body: "Tiket ditutup. Terima kasih telah menghubungi dukungan GrowMate.",
+        createdAt: Date.now(),
+      });
+    }
+    await ctx.db.insert("notifications", {
+      userId: args.userId,
+      title: "Tiket dukungan dibuat",
+      detail: `Permintaan Anda tentang ${args.topic.toLowerCase()} sudah kami catat dan masuk ke antrean dukungan.`,
+      kind: "system",
+      read: false,
+      createdAt: args.createdAt,
+    });
+    return requestId;
+  },
+});
+
+// ─── Notifications & Drafts ────────────────────────────
+
+export const hasNotification = internalQuery({
+  args: { userId: v.id("users"), title: v.string() },
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("notifications")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.eq(q.field("title"), args.title))
+      .first();
+    return row !== null;
+  },
+});
+
+export const seedNotification = internalMutation({
+  args: {
+    userId: v.id("users"),
+    title: v.string(),
+    detail: v.string(),
+    kind: v.union(v.literal("assistant"), v.literal("system"), v.literal("commerce"), v.literal("social")),
+    read: v.boolean(),
+    readAt: v.optional(v.number()),
+    createdAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("notifications", {
+      userId: args.userId,
+      title: args.title,
+      detail: args.detail,
+      kind: args.kind,
+      read: args.read,
+      readAt: args.readAt,
+      createdAt: args.createdAt,
+    });
+  },
+});
+
+export const hasDraft = internalQuery({
+  args: { userId: v.id("users"), title: v.string() },
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("listingDrafts")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.eq(q.field("title"), args.title))
+      .first();
+    return row !== null;
+  },
+});
+
+export const seedDraft = internalMutation({
+  args: {
+    userId: v.id("users"),
+    title: v.string(),
+    description: v.string(),
+    category: v.string(),
+    quantity: v.number(),
+    quantityUnit: v.string(),
+    price: v.number(),
+    priceUnit: v.string(),
+    locationLabel: v.string(),
+    contactPreference: v.union(v.literal("chat"), v.literal("pickup"), v.literal("delivery")),
+    status: v.union(v.literal("draft"), v.literal("published"), v.literal("archived")),
+    createdAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("listingDrafts", {
+      userId: args.userId,
+      title: args.title,
+      description: args.description,
+      category: args.category,
+      quantity: args.quantity,
+      quantityUnit: args.quantityUnit,
+      price: args.price,
+      priceUnit: args.priceUnit,
+      locationLabel: args.locationLabel,
+      contactPreference: args.contactPreference,
+      status: args.status,
+      createdAt: args.createdAt,
+      updatedAt: args.createdAt,
+    });
+  },
+});
+
+// ─── Activities ────────────────────────────────────────
+
+export const hasActivity = internalQuery({
+  args: { userId: v.id("users"), activityType: v.string(), relatedId: v.string() },
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("userActivities")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("activityType"), args.activityType),
+          q.eq(q.field("relatedId"), args.relatedId),
+        ),
+      )
+      .first();
+    return row !== null;
+  },
+});
+
+// ─── Sensor History ────────────────────────────────────
+
+const sensorKindValidator = v.union(
+  v.literal("soil"), v.literal("light"), v.literal("temperature"), v.literal("air"), v.literal("water"),
+);
+
+export const hasSensorHistory = internalQuery({
+  args: { deviceId: v.id("devices") },
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("sensorReadings")
+      .withIndex("by_device", (q) => q.eq("deviceId", args.deviceId))
+      .first();
+    return row !== null;
+  },
+});
+
+export const bulkInsertSensorReadings = internalMutation({
+  args: {
+    deviceId: v.id("devices"),
+    plantId: v.optional(v.id("plants")),
+    readings: v.array(
+      v.object({
+        kind: sensorKindValidator,
+        value: v.number(),
+        unit: v.string(),
+        measuredAt: v.number(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const latest = new Map<
+      "soil" | "light" | "temperature" | "air" | "water",
+      { value: number; unit: string; measuredAt: number }
+    >();
+    for (const r of args.readings) {
+      await ctx.db.insert("sensorReadings", {
+        deviceId: args.deviceId,
+        plantId: args.plantId,
+        kind: r.kind,
+        value: r.value,
+        unit: r.unit,
+        measuredAt: r.measuredAt,
+      });
+      const prev = latest.get(r.kind);
+      if (!prev || r.measuredAt > prev.measuredAt) {
+        latest.set(r.kind, { value: r.value, unit: r.unit, measuredAt: r.measuredAt });
+      }
+    }
+    for (const [kind, l] of latest) {
+      const existing = await ctx.db
+        .query("sensors")
+        .withIndex("by_device_and_kind", (q) =>
+          q.eq("deviceId", args.deviceId).eq("kind", kind),
+        )
+        .first();
+      if (existing) {
+        await ctx.db.patch(existing._id, {
+          plantId: args.plantId,
+          value: l.value,
+          unit: l.unit,
+          measuredAt: l.measuredAt,
+        });
+      } else {
+        await ctx.db.insert("sensors", {
+          deviceId: args.deviceId,
+          plantId: args.plantId,
+          kind,
+          value: l.value,
+          unit: l.unit,
+          measuredAt: l.measuredAt,
+          createdAt: now,
+        });
+      }
+    }
+    return args.readings.length;
   },
 });

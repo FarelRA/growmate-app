@@ -23,6 +23,10 @@ import seedUserPlants from '../../convex/seedData/userPlants'
 import seedPlants from '../../convex/seedData/plants'
 import seedFieldCrops from '../../convex/seedData/fieldCrops'
 import seedCommunityPosts from '../../convex/seedData/communityPosts'
+import seedCommunityListings from '../../convex/seedData/communityListings'
+import seedThreads from '../../convex/seedData/threads'
+import seedTickets from '../../convex/seedData/tickets'
+import seedDrafts from '../../convex/seedData/drafts'
 
 const root = process.cwd()
 const seedDataDir = join(root, 'convex/seedData')
@@ -192,6 +196,42 @@ describe('seed fleet shape (36 users + demo, 41 devices)', () => {
     }
     for (let i = 0; i < 36; i++) {
       expect(perUser.get(i) ?? 0, `user ${i} must post >= 2`).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('marketplace threads reference real listings and users', () => {
+    const titles = new Set(seedCommunityListings.map((l) => l.title))
+    expect(seedThreads.length).toBeGreaterThanOrEqual(10)
+    for (const t of seedThreads) {
+      expect(titles.has(t.productTitle), `unknown listing ${t.productTitle}`).toBe(true)
+      expect(t.buyerIndex).toBeGreaterThanOrEqual(0)
+      expect(t.buyerIndex).toBeLessThan(36)
+      expect(t.messages.length).toBeGreaterThanOrEqual(2)
+      for (const m of t.messages) {
+        expect(['buyer', 'seller']).toContain(m.from)
+        expect(m.body.length).toBeGreaterThan(3)
+        expect(m.dayAgo).toBeGreaterThanOrEqual(0)
+      }
+    }
+  })
+
+  it('support tickets and drafts are well-formed', () => {
+    expect(seedTickets.length).toBeGreaterThanOrEqual(8)
+    for (const t of seedTickets) {
+      expect(t.userIndex).toBeGreaterThanOrEqual(0)
+      expect(t.userIndex).toBeLessThan(36)
+      expect(['open', 'in_progress', 'resolved', 'closed']).toContain(t.status)
+      expect(['low', 'normal', 'high', 'urgent']).toContain(t.priority)
+      expect(t.messages.length).toBeGreaterThanOrEqual(1)
+      for (const m of t.messages) expect(['user', 'admin']).toContain(m.from)
+    }
+    expect(seedDrafts.length).toBeGreaterThanOrEqual(10)
+    for (const d of seedDrafts) {
+      expect(d.userIndex).toBeGreaterThanOrEqual(0)
+      expect(d.userIndex).toBeLessThan(36)
+      expect(['draft', 'published', 'archived']).toContain(d.status)
+      expect(['chat', 'pickup', 'delivery']).toContain(d.contactPreference)
+      expect(d.price).toBeGreaterThan(0)
     }
   })
 

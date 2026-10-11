@@ -3,7 +3,7 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import { authState, getAuthToken } from '@/utils/auth'
 
 // Live viewer for the tech MJPEG push (POST /api/v1/video/live).
-// A plain <img> renders the multipart/x-mixed-replace fan-out —
+// A plain <img> renders the multipart/x-mixed-replace fan-out:
 // no player code, per the device docs. onload fires on the first
 // frame; onerror on failure. Start/stop are user commands queued
 // server-side and delivered in the next sensor response.
@@ -60,6 +60,9 @@ watch(
     loading.value = true
     streamActive.value = false
     error.value = null
+    elapsed.value = '00:00'
+    stopTimer()
+    cacheBuster.value += 1
   },
 )
 

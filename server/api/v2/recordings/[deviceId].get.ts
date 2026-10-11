@@ -28,7 +28,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing deviceId' })
   }
   const rawLimit = getQuery(event).limit
-  const limit = typeof rawLimit === 'string' && rawLimit !== '' ? Number(rawLimit) : undefined
+  // Mirror convex `clampRecordingsLimit` (DEFAULT 50, MAX 100): floor the
+  // passthrough, clamp 0–100, fall back to 50 when absent/unparseable so a
+  // crafted ?limit= can neither fan out an unbounded take() nor smuggle a
+  // float/negative past the shared cap.
+  const parsed = typeof rawLimit === 'string' && rawLimit !== '' ? Number(rawLimit) : NaN
+  const limit = Number.isFinite(parsed) ? Math.min(Math.max(Math.floor(parsed), 0), 100) : 50
 
   const device = await convex.query(api.streams.getOwnedDevice, { deviceId })
   if (!device) {
@@ -37,7 +42,7 @@ export default defineEventHandler(async (event) => {
 
   const recordings = await convex.query(api.streams.listRecordings, {
     deviceId,
-    limit: Number.isFinite(limit) ? limit : 50,
+    limit,
   })
 
   const client = s3PublicClient()

@@ -24,14 +24,15 @@ const props = defineProps<{
       isDone: boolean
       continueCursor: string
     }
-    recordings?: {
+    automationLogs?: {
       _id: string
-      fileName: string
-      path: string
-      size: number
-      durationMs?: number
-      capturedAt: number
-      capturedAtLabel: string
+      action: string
+      timestampLabel: string
+      relativeTime: string
+      soilValue?: number
+      lightValue?: number
+      threshold?: number
+      duration?: number
     }[]
   } | null
   historyMetricCards: { key: string; label: string; unit: string; stroke: string; fill: string; points: { value: number; measuredAt: number }[]; latest: number | undefined }[]
@@ -57,7 +58,9 @@ const galleryArgs = computed(() => ({
   limit: imageLimit.value,
 }))
 const { data: galleryImages } = useConvexQuery(api.devices.deviceGalleryImages, galleryArgs)
-const imageExhausted = computed(() => (galleryImages.value?.length ?? 0) < imageLimit.value)
+const imageExhausted = computed(
+  () => (galleryImages.value?.length ?? 0) < imageLimit.value || imageLimit.value >= GALLERY_CAP,
+)
 
 function loadMoreImages() {
   imageLimit.value = Math.min(imageLimit.value + GALLERY_PAGE, GALLERY_CAP)
@@ -77,12 +80,17 @@ const recordingList = ref<{
 }[]>([])
 const recordingsLoading = ref(false)
 const recordingsExhausted = ref(false)
+let recordingsRequestId = 0
+
+const isV2 = computed(() => props.deviceVersion === 'v2')
 
 async function refreshRecordings() {
-  if (!props.deviceId) return
+  if (!props.deviceId || !isV2.value) return
+  const requestId = ++recordingsRequestId
   recordingsLoading.value = true
   try {
     const token = await getAuthToken()
+    if (requestId !== recordingsRequestId) return
     const resp = await fetch(
       `/api/v2/recordings/${encodeURIComponent(props.deviceId)}?limit=${recordingLimit.value}`,
       { headers: token ? { Authorization: `Bearer ${token}` } : {} },
@@ -92,14 +100,18 @@ async function refreshRecordings() {
       return
     }
     const json = await resp.json()
+    if (requestId !== recordingsRequestId) return
     recordingList.value = json.recordings ?? []
     recordingsExhausted.value =
       recordingList.value.length < recordingLimit.value || recordingLimit.value >= RECORDINGS_CAP
   } catch (error) {
+    if (requestId !== recordingsRequestId) return
     console.warn('[history] refreshRecordings failed', error)
     toast.error('Gagal memuat rekaman')
   } finally {
-    recordingsLoading.value = false
+    if (requestId === recordingsRequestId) {
+      recordingsLoading.value = false
+    }
   }
 }
 
@@ -109,7 +121,7 @@ function loadMoreRecordings() {
 }
 
 watch(
-  () => props.deviceId,
+  [() => props.deviceId, isV2],
   () => {
     imageLimit.value = GALLERY_PAGE
     recordingLimit.value = RECORDINGS_PAGE
@@ -117,12 +129,13 @@ watch(
     recordingsExhausted.value = false
     selectedRecording.value = null
     showPlayback.value = false
+    if (!isV2.value && activeSubTab.value === 'recordings') {
+      activeSubTab.value = 'metrics'
+    }
     void refreshRecordings()
   },
   { immediate: true },
 )
-
-const isV2 = () => props.deviceVersion === 'v2'
 
 async function playRecording(rec: {
   _id: string
@@ -142,9 +155,12 @@ async function playRecording(rec: {
   recordingsLoading.value = true
   try {
     const token = await getAuthToken()
-    const resp = await fetch(`/api/v2/recordings/${encodeURIComponent(props.deviceId)}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
+    const resp = await fetch(
+      `/api/v2/recordings/${encodeURIComponent(props.deviceId)}?limit=${RECORDINGS_CAP}`,
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      },
+    )
     if (!resp.ok) {
       toast.error(`Gagal memuat rekaman (HTTP ${resp.status})`)
       return
@@ -178,6 +194,35 @@ function formatDuration(ms?: number): string {
   const s = Math.floor(ms / 1000)
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 }
+
+const automationActionLabels: Record<string, string> = {
+  pump_enabled: 'Pompa dinyalakan',
+  pump_disabled: 'Pompa dimatikan',
+  light_on: 'Lampu dinyalakan',
+  light_off: 'Lampu dimatikan',
+  manual_pump: 'Penyiraman manual',
+  manual_light: 'Lampu manual',
+  schedule_completed: 'Jadwal selesai',
+  fertilizer_opened: 'Pupuk dibuka',
+  fertilizer_closed: 'Pupuk ditutup',
+  pesticide_opened: 'Pestisida dibuka',
+  pesticide_closed: 'Pestisida ditutup',
+  manual_fertilizer: 'Pemupukan manual',
+  manual_pesticide: 'Pestisida manual',
+}
+
+function automationLabel(action: string): string {
+  return automationActionLabels[action] ?? action
+}
+
+function automationDetail(log: { soilValue?: number; lightValue?: number; threshold?: number; duration?: number }): string {
+  const parts: string[] = []
+  if (log.soilValue !== undefined) parts.push(`Tanah ${log.soilValue}%`)
+  if (log.lightValue !== undefined) parts.push(`Cahaya ${log.lightValue}%`)
+  if (log.threshold !== undefined) parts.push(`Ambang ${log.threshold}%`)
+  if (log.duration !== undefined) parts.push(`${log.duration} dtk`)
+  return parts.join(' • ')
+}
 </script>
 
 <template>
@@ -200,7 +245,7 @@ function formatDuration(ms?: number): string {
           @click="activeSubTab = 'logs'"
         >Log</button>
         <button
-          v-if="isV2()"
+          v-if="isV2"
           type="button"
           class="flex-1 rounded-[1rem] px-3 py-2 text-center text-xs font-bold uppercase tracking-[0.15em] transition-all"
           :class="activeSubTab === 'recordings' ? 'bg-white text-gm-text shadow-sm' : 'text-gm-muted'"
@@ -287,6 +332,30 @@ function formatDuration(ms?: number): string {
     </template>
 
     <template v-if="activeSubTab === 'logs' && historyData">
+      <article class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
+        <p class="text-xs font-bold uppercase tracking-[0.2em] text-gm-primary">Log</p>
+        <h2 class="mt-2 font-headline text-2xl font-black tracking-tight text-gm-text">Log otomasi</h2>
+        <p class="mt-1 text-sm text-gm-muted">Catatan aksi otomatis dan manual pada tanaman aktif.</p>
+        <div v-if="(historyData.automationLogs?.length ?? 0) > 0" class="mt-5 space-y-3">
+          <article
+            v-for="log in historyData.automationLogs"
+            :key="log._id"
+            class="rounded-[1.5rem] bg-[#f3f3f3] p-4"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="text-sm font-bold text-gm-text">{{ automationLabel(log.action) }}</div>
+                <div v-if="automationDetail(log)" class="mt-1 text-sm text-gm-muted">{{ automationDetail(log) }}</div>
+              </div>
+              <div class="text-right text-[11px] text-gm-muted">
+                <div>{{ log.timestampLabel }}</div>
+                <div>{{ log.relativeTime }}</div>
+              </div>
+            </div>
+          </article>
+        </div>
+        <div v-else class="mt-5 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted">Belum ada log otomasi untuk tanaman ini.</div>
+      </article>
     </template>
 
     <section v-if="activeSubTab === 'timeline' && historyData" class="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">

@@ -4,6 +4,10 @@
 Sources: Wikimedia Commons (plants/topics) + 2 Openverse/Flickr direct URLs.
 Output: public/seed-images/<hash>/<size>w.webp + ATTRIBUTION.json + hashmap.
 Usage: python3 scripts/fetch-seed-images.py [--only <jobid-prefix>]
+       python3 scripts/fetch-seed-images.py --from-attribution [--only <prefix>]
+The --from-attribution mode rebuilds purely from the committed
+public/seed-images/ATTRIBUTION.json (no /tmp survey inputs needed) and
+verifies each digest is unchanged.
 """
 import hashlib
 import io
@@ -72,7 +76,13 @@ def load_json(p):
 
 def build_jobs():
     tmp = Path("/tmp/opencode")
-    bases = json.load(open(tmp / "crop-bases.json"))
+    try:
+        bases = json.load(open(tmp / "crop-bases.json"))
+    except FileNotFoundError:
+        bases = []
+        print("no /tmp/opencode/crop-bases.json: survey-sourced jobs skipped", flush=True)
+    if isinstance(bases, dict):
+        bases = list(bases.keys())
     s1 = load_json(tmp / "survey.json")
     s3 = load_json(tmp / "survey3.json")
     s4 = load_json(tmp / "survey4.json")
@@ -133,7 +143,8 @@ def build_jobs():
     jobs["orig/selada"] = {"title": "Lactuca sativa 'Ashbrook'.jpg"}
     jobs["orig/bayam"] = {"title": "Amaranthus hybridus 01.JPG"}
     jobs["orig/pakcoy"] = {"title": "Brassica rapa - April 2023 - Sarah Stierch 01.jpg"}
-    jobs["orig/cabai-rawit"] = {"title": "Capsicum frutescens Tabasco.jpg"}
+    # No orig/cabai-rawit job: convex/seedData/plants.ts reuses the
+    # base/cabai-rawit photo, so a separate orig asset would be orphaned.
     jobs["orig/mint"] = {"title": "-2019-07-21 Mint (Mentha spicata), Trimingham.JPG"}
     jobs["orig/rosemary"] = {"title": "Rosmarinus officinalis (1).jpg"}
     jobs["orig/lidah-mertua"] = {"title": "Sansevieria trifasciata Plant 3264px.jpg"}
@@ -213,6 +224,41 @@ def process(job_id, src, attrib):
 
 def main():
     only = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv else None
+    from_attribution = "--from-attribution" in sys.argv
+    if from_attribution:
+        # Reproducible rebuild from committed data only: re-download every
+        # asset recorded in public/seed-images/ATTRIBUTION.json and verify
+        # the digest matches. Needs no /tmp survey inputs.
+        attrib_path = OUT / "ATTRIBUTION.json"
+        recorded = json.load(open(attrib_path))
+        jobs = {}
+        for digest, entry in recorded.items():
+            jid = entry.get("for", "")
+            if only and not jid.startswith(only):
+                continue
+            jobs[jid] = {"expect": digest, "attrib": entry}
+        print(f"jobs: {len(jobs)} (from committed ATTRIBUTION.json)", flush=True)
+        attrib, hashmap, failures = {}, {}, []
+        for jid, job in jobs.items():
+            try:
+                entry = job["attrib"]
+                src = {"dl": entry["source_url"], "title": entry.get("title", ""),
+                       "page": entry.get("page", ""), "author": entry.get("author", ""),
+                       "license": entry.get("license", "")}
+                digest = process(jid, src, attrib)
+                hashmap[jid] = digest
+                if digest != job["expect"]:
+                    failures.append({"job": jid, "error": f"digest moved {job['expect']} -> {digest}"})
+                    print(f"MOVED {jid}: {job['expect']} -> {digest}", flush=True)
+                else:
+                    print(f"OK {jid} -> {digest} (verified)", flush=True)
+            except Exception as e:
+                failures.append({"job": jid, "error": str(e)[:200]})
+                print(f"FAIL {jid}: {e}", flush=True)
+        Path("/tmp/opencode/hashmap.json").write_text(json.dumps(hashmap, indent=1))
+        Path("/tmp/opencode/img-failures.json").write_text(json.dumps(failures, indent=1))
+        print(f"done: {len(hashmap)} ok, {len(failures)} failed", flush=True)
+        return
     jobs = build_jobs()
     if only:
         jobs = {k: v for k, v in jobs.items() if k.startswith(only)}

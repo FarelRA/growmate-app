@@ -9,6 +9,7 @@ crons.interval('cleanup-old-sensor-readings', { hours: 24 }, internal.crons.clea
 crons.interval('cleanup-old-grow-events', { hours: 24 }, internal.crons.cleanupGrowEvents)
 crons.interval('cleanup-old-automation-logs', { hours: 24 }, internal.crons.cleanupAutomationLogs)
 crons.interval('cleanup-old-video-recordings', { hours: 24 }, internal.crons.cleanupVideoRecordings)
+crons.interval('cleanup-old-device-snapshots', { hours: 24 }, internal.crons.cleanupDeviceSnapshots)
 crons.interval('cleanup-old-plant-images', { hours: 24 }, internal.crons.cleanupPlantImages)
 crons.interval('cleanup-old-notifications', { hours: 24 }, internal.crons.cleanupNotifications)
 crons.interval('cleanup-old-user-activities', { hours: 24 }, internal.crons.cleanupUserActivities)
@@ -104,20 +105,48 @@ export const cleanupVideoRecordings = internalMutation({
     } while (batch.length === 500)
 
     // Live sessions are tens of MB each: keep the newest 20 per device
-    // even within the TTL window.
+    // even within the TTL window. Loop until the cap holds: a single pass
+    // over take(500) cannot drain a device far past the cap.
     const devices = await ctx.db.query('devices').take(1000)
     for (const device of devices) {
-      const items = await ctx.db
-        .query('videoRecordings')
-        .withIndex('by_device', (q) => q.eq('deviceId', device._id))
-        .order('desc')
-        .take(500)
-      const overflow = overflowBeyondCap(items, 20)
-      for (const r of overflow) {
-        await ctx.scheduler.runAfter(0, internal.crons.deleteRecordingS3Object, { key: r.path })
-        await ctx.db.delete(r._id)
+      while (true) {
+        const items = await ctx.db
+          .query('videoRecordings')
+          .withIndex('by_device', (q) => q.eq('deviceId', device._id))
+          .order('desc')
+          .take(500)
+        if (items.length <= 20) break
+        const overflow = overflowBeyondCap(items, 20)
+        for (const r of overflow) {
+          await ctx.scheduler.runAfter(0, internal.crons.deleteRecordingS3Object, { key: r.path })
+          await ctx.db.delete(r._id)
+        }
+        if (items.length < 500) break
       }
     }
+  },
+})
+
+export const DEVICE_SNAPSHOTS_TTL_DAYS = 30
+
+export const cleanupDeviceSnapshots = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    // SnapshotId dedup rows would otherwise grow forever (~6k/day/device
+    // at pods cadence). 30d outlives any realistic queue-drain redelivery
+    // (offline dwell is flash-bound to hours/days, ack-loss redelivery to
+    // the next POST seconds later).
+    const cutoff = retentionCutoff(Date.now(), DEVICE_SNAPSHOTS_TTL_DAYS)
+    let batch
+    do {
+      batch = await ctx.db
+        .query('deviceSnapshots')
+        .withIndex('by_receivedAt', (q) => q.lte('receivedAt', cutoff))
+        .take(500)
+      for (const s of batch) {
+        await ctx.db.delete(s._id)
+      }
+    } while (batch.length === 500)
   },
 })
 
@@ -272,12 +301,13 @@ export const recordS3SkipWarning = internalMutation({
   handler: async (ctx, args) => {
     const now = args.now ?? Date.now()
     const dayStart = s3SkipWarningDayStart(now)
+    // Existence check only: bounded take, not a full-day collect.
     const candidates = await ctx.db
       .query('growEvents')
       .withIndex('by_eventType_and_timestamp', (q) =>
         q.eq('eventType', 'automation_action_executed').gte('timestamp', dayStart),
       )
-      .collect()
+      .take(500)
     const alreadyWarned = candidates.some(
       (event) => event.title === S3_SKIP_WARNING_TITLE && event.timestamp >= dayStart,
     )

@@ -1,6 +1,6 @@
 // Seed dataset — hand-maintained. Image bytes live in public/seed-images/<hash>/;
 // this module carries only content hashes (see convex/seed/images.ts).
-// (Listing photos are a deferred fix: all share one placeholder for now.)
+// Each listing carries its own content-matched photo hash.
 import type { SeedImage } from './types'
 
 interface SeedCommunityListing {

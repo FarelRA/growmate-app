@@ -276,6 +276,7 @@ export const insertDevice = internalMutation({
     deviceId: v.string(),
     name: v.string(),
     version: v.union(v.literal("v1"), v.literal("v2")),
+    variant: v.optional(v.union(v.literal("tech"), v.literal("tech-addon"))),
     lastSeen: v.number(),
     firmwareVersion: v.optional(v.string()),
     hasModem: v.optional(v.boolean()),
@@ -297,6 +298,7 @@ export const insertDevice = internalMutation({
       deviceId: args.deviceId,
       name: args.name,
       version: args.version,
+      variant: args.variant,
       autoWatering: args.autoWatering ?? false,
       autoLighting: args.autoLighting ?? false,
       wateringThreshold: args.wateringThreshold ?? 50,
@@ -331,6 +333,22 @@ export const claimDeviceByUser = internalMutation({
   handler: async (ctx, { deviceId, userId }) => {
     await ctx.db.patch(deviceId, {
       userId,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// Backfill the static v2 hardware variant on rows inserted before the
+// field existed (fresh inserts already carry it). Firmware versions are
+// intentionally NOT backfilled here: they change with OTA updates.
+export const patchDeviceVariant = internalMutation({
+  args: {
+    deviceId: v.id("devices"),
+    variant: v.optional(v.union(v.literal("tech"), v.literal("tech-addon"))),
+  },
+  handler: async (ctx, { deviceId, variant }) => {
+    await ctx.db.patch(deviceId, {
+      variant,
       updatedAt: Date.now(),
     });
   },
@@ -848,6 +866,7 @@ export const hasActivity = internalQuery({
 
 const sensorKindValidator = v.union(
   v.literal("soil"), v.literal("light"), v.literal("temperature"), v.literal("air"), v.literal("water"),
+  v.literal("current"),
 );
 
 export const hasSensorHistory = internalQuery({
@@ -877,7 +896,7 @@ export const bulkInsertSensorReadings = internalMutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const latest = new Map<
-      "soil" | "light" | "temperature" | "air" | "water",
+      "soil" | "light" | "temperature" | "air" | "water" | "current",
       { value: number; unit: string; measuredAt: number }
     >();
     for (const r of args.readings) {

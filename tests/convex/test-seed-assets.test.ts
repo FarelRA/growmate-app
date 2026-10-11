@@ -86,6 +86,13 @@ describe('seed image externalization', () => {
     expect(readSeedData('devices.ts')).not.toContain('Math.random')
   })
 
+  it('seed sensors include the current leg for v2 (tech-addon charging aware)', () => {
+    const src = readFileSync(join(seedDir, 'sensors.ts'), 'utf8')
+    expect(src).toContain('"current"')
+    expect(src).toContain('tech-addon')
+    expect(src).toContain('mA')
+  })
+
   it('community handler scales off actual user count', () => {
     const src = readFileSync(join(seedDir, 'community.ts'), 'utf8')
     expect(src).toContain('userIds.length')
@@ -116,32 +123,40 @@ describe('seed fleet shape (36 users + demo, 41 devices)', () => {
     expect(seedDevices).toHaveLength(41)
     const ids = seedDevices.map((d) => d.deviceId)
     expect(new Set(ids).size).toBe(41)
-    const pods = seedDevices.filter((d) => d.deviceId.startsWith('IAET-'))
-    const tech = seedDevices.filter((d) => d.deviceId.startsWith('IAFU-'))
-    const addon = seedDevices.filter((d) => d.deviceId.startsWith('IAFT-'))
+    // Fleet IDs are no-dash (firmware build defaults IAET01 / claim charset):
+    // IAET01..18 pods, IAFU01..09 tech, IAFT01..14 add-ons.
+    for (const id of ids) {
+      expect(id, `fleet id format ${id}`).toMatch(/^(IAET\d{2}|IAFU\d{2}|IAFT\d{2})$/)
+    }
+    const pods = seedDevices.filter((d) => d.deviceId.startsWith('IAET'))
+    const tech = seedDevices.filter((d) => d.deviceId.startsWith('IAFU'))
+    const addon = seedDevices.filter((d) => d.deviceId.startsWith('IAFT'))
     expect(pods).toHaveLength(18)
     expect(tech).toHaveLength(9)
     expect(addon).toHaveLength(14)
     for (const d of pods) {
       expect(d.version).toBe('v1')
+      expect(d.variant).toBeUndefined()
       expect(d.firmwareVersion).toBe('2.1.3')
       expect(d.hasModem).toBe(false)
       expect(d.hasSolarPanel).toBe(false)
     }
     for (const d of tech) {
       expect(d.version).toBe('v2')
+      expect(d.variant).toBe('tech')
       expect(d.firmwareVersion).toBe('3.0.2')
       expect(d.hasModem).toBe(false)
       expect(d.hasSolarPanel).toBe(false)
     }
     for (const d of addon) {
       expect(d.version).toBe('v2')
+      expect(d.variant).toBe('tech-addon')
       expect(d.firmwareVersion).toBe('3.0.2')
       expect(d.hasModem).toBe(true)
       expect(d.hasSolarPanel).toBe(true)
     }
     // Demo units are the heads of each range
-    for (const id of ['IAET-01', 'IAET-02', 'IAFU-01', 'IAFT-01', 'IAFT-02']) {
+    for (const id of ['IAET01', 'IAET02', 'IAFU01', 'IAFT01', 'IAFT02']) {
       expect(ids).toContain(id)
     }
   })
@@ -156,7 +171,7 @@ describe('seed fleet shape (36 users + demo, 41 devices)', () => {
       Array.from({ length: 36 }, (_, i) => i),
     )
     expect(demo.map((p) => p.deviceId).sort()).toEqual(
-      ['IAET-01', 'IAET-02', 'IAFU-01', 'IAFT-01', 'IAFT-02'].sort(),
+      ['IAET01', 'IAET02', 'IAFU01', 'IAFT01', 'IAFT02'].sort(),
     )
     const deviceIds = new Set(seedDevices.map((d) => d.deviceId))
     const plantDevices = seedUserPlants.map((p) => p.deviceId)

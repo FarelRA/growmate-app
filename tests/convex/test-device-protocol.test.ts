@@ -26,7 +26,7 @@ beforeEach(() => {
 function podsEnvelope(overrides: Record<string, any> = {}) {
   return {
     deviceKey: TEST_DEVICE_KEY,
-    deviceId: 'IAET-01',
+    deviceId: 'IAET01',
     hardwareId: '7C87CE1A2B3C',
     firmwareVersion: '2.0.0',
     snapshotId: 'B1-1',
@@ -52,7 +52,7 @@ function podsEnvelope(overrides: Record<string, any> = {}) {
 function techEnvelope(overrides: Record<string, any> = {}) {
   return {
     ...podsEnvelope(),
-    deviceId: 'TECH01',
+    deviceId: 'IAFU01',
     variant: 'tech',
     snapshotId: 'B2-1',
     sensors: [
@@ -71,7 +71,7 @@ function techEnvelope(overrides: Record<string, any> = {}) {
 
 async function seedPods(ctx: FakeCtx, overrides: Record<string, any> = {}) {
   const deviceId = await ctx.db.insert('devices', {
-    deviceId: 'IAET-01',
+    deviceId: 'IAET01',
     name: 'Test Pod',
     version: 'v1',
     autoWatering: false,
@@ -135,7 +135,7 @@ describe('firmware envelope ingest (pods)', () => {
     const ctx = createFakeCtx()
     const deviceId = await seedPods(ctx)
     await queueDeviceCommand(ctx, {
-      deviceId: 'IAET-01', kind: 'pump', durationMs: 5000,
+      deviceId: 'IAET01', kind: 'pump', durationMs: 5000,
     })
 
     const first: any = await callHandler(ingestAndAckSensorData, ctx, podsEnvelope())
@@ -154,7 +154,7 @@ describe('firmware envelope ingest (pods)', () => {
     const ctx = createFakeCtx()
     await seedPods(ctx)
     await queueDeviceCommand(ctx, {
-      deviceId: 'IAET-01', kind: 'pump', durationMs: 5000,
+      deviceId: 'IAET01', kind: 'pump', durationMs: 5000,
     })
 
     const first: any = await callHandler(
@@ -180,10 +180,10 @@ describe('firmware envelope ingest (pods)', () => {
     const ctx = createFakeCtx()
     await seedPods(ctx)
     await queueDeviceCommand(ctx, {
-      deviceId: 'IAET-01', kind: 'pump', durationMs: 5000,
+      deviceId: 'IAET01', kind: 'pump', durationMs: 5000,
     })
     await queueDeviceCommand(ctx, {
-      deviceId: 'IAET-01', kind: 'light', enabled: true,
+      deviceId: 'IAET01', kind: 'light', enabled: true,
     })
 
     const res: any = await callHandler(ingestAndAckSensorData, ctx, podsEnvelope())
@@ -198,7 +198,7 @@ describe('firmware envelope ingest (pods)', () => {
     const ctx = createFakeCtx()
     await seedPods(ctx)
     const staged: any = await stageDeviceConfig(ctx, {
-      deviceId: 'IAET-01', reportIntervalSec: 30,
+      deviceId: 'IAET01', reportIntervalSec: 30,
     })
     expect(staged.rev).toBe(1)
 
@@ -214,20 +214,20 @@ describe('firmware envelope ingest (pods)', () => {
   it('claim rename: staged claim is served, then history follows the new id', async () => {
     const ctx = createFakeCtx()
     await seedPods(ctx)
-    await stageDeviceClaim(ctx, { deviceId: 'IAET-01', claimDeviceId: 'POD-7' })
+    await stageDeviceClaim(ctx, { deviceId: 'IAET01', claimDeviceId: 'IAET99' })
 
     const first: any = await callHandler(ingestAndAckSensorData, ctx, podsEnvelope())
-    expect(first.claim).toEqual({ deviceId: 'POD-7' })
+    expect(first.claim).toEqual({ deviceId: 'IAET99' })
 
     const second: any = await callHandler(
       ingestAndAckSensorData,
       ctx,
-      podsEnvelope({ deviceId: 'POD-7', snapshotId: 'B1-2' }),
+      podsEnvelope({ deviceId: 'IAET99', snapshotId: 'B1-2' }),
     )
     expect(second.claim).toBeUndefined()
     const devices = ctx.db.all('devices')
     expect(devices).toHaveLength(1)
-    expect(devices[0].deviceId).toBe('POD-7')
+    expect(devices[0].deviceId).toBe('IAET99')
     expect(devices[0].hardwareId).toBe('7C87CE1A2B3C')
   })
 
@@ -235,7 +235,7 @@ describe('firmware envelope ingest (pods)', () => {
     const ctx = createFakeCtx()
     await seedPods(ctx)
     await stageDeviceOta(ctx, {
-      deviceId: 'IAET-01', minFirmware: '2.1.0', firmwareUrl: 'https://x/y.bin',
+      deviceId: 'IAET01', minFirmware: '2.1.0', firmwareUrl: 'https://x/y.bin',
     })
     const res: any = await callHandler(ingestAndAckSensorData, ctx, podsEnvelope())
     expect(res.minFirmware).toBe('2.1.0')
@@ -277,18 +277,18 @@ describe('operator staging validation', () => {
     const ctx = createFakeCtx()
     await seedPods(ctx)
     await expect(
-      stageDeviceConfig(ctx, { deviceId: 'IAET-01', reportIntervalSec: 5 }),
+      stageDeviceConfig(ctx, { deviceId: 'IAET01', reportIntervalSec: 5 }),
     ).rejects.toThrow()
     await expect(
-      stageDeviceClaim(ctx, { deviceId: 'IAET-01', claimDeviceId: 'bad id!' }),
+      stageDeviceClaim(ctx, { deviceId: 'IAET01', claimDeviceId: 'bad id!' }),
     ).rejects.toThrow()
     await expect(
       stageDeviceOta(ctx, {
-        deviceId: 'IAET-01', minFirmware: '2.1.0', firmwareUrl: 'http://x/y.bin',
+        deviceId: 'IAET01', minFirmware: '2.1.0', firmwareUrl: 'http://x/y.bin',
       }),
     ).rejects.toThrow()
     await expect(
-      queueDeviceCommand(ctx, { deviceId: 'IAET-01', kind: 'pump', durationMs: 99999 }),
+      queueDeviceCommand(ctx, { deviceId: 'IAET01', kind: 'pump', durationMs: 99999 }),
     ).rejects.toThrow()
   })
 
@@ -296,7 +296,7 @@ describe('operator staging validation', () => {
     const ctx = createFakeCtx()
     await seedPods(ctx)
     const res: any = await queueDeviceCommand(ctx, {
-      deviceId: 'IAET-01', kind: 'video_start',
+      deviceId: 'IAET01', kind: 'video_start',
       width: 640, height: 480, fps: 5, quality: 70, maxSec: 300,
     })
     expect(res.queued).toMatchObject({ kind: 'video_start', width: 640, id: expect.any(String) })

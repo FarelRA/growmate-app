@@ -74,10 +74,13 @@ async function ingestSensorReadings(
   },
   firmwareVersion?: string,
 ): Promise<IngestionResult> {
+  // Hard bound: exactly one row per sensor kind (soil/light/temperature/air/
+  // water/current = 6 max). take(10) freezes the ≤6-rows invariant with
+  // headroom — never an unbounded read on this hot ingest path.
   const currentSensors = await ctx.db
     .query('sensors')
     .withIndex('by_device', (q) => q.eq('deviceId', device._id))
-    .collect()
+    .take(10)
 
   const recentSensorEvents: {
     eventType: string
@@ -332,7 +335,9 @@ const ingestSensorDataArgs = {
   deviceId: v.string(),
   firmwareVersion: v.optional(v.string()),
   hardwareId: v.optional(v.string()),
-  variant: v.optional(v.string()),
+  // Tech envelopes always carry variant (tech | tech-addon); pods send none.
+  // Closed union: unknown variants fail closed instead of forking rows.
+  variant: v.optional(v.union(v.literal('tech'), v.literal('tech-addon'))),
   snapshotId: v.optional(v.string()),
   ageMs: v.optional(v.number()),
   appliedConfigRev: v.optional(v.number()),
@@ -370,7 +375,7 @@ type IngestSensorDataArgs = {
   deviceId: string
   firmwareVersion?: string
   hardwareId?: string
-  variant?: string
+  variant?: 'tech' | 'tech-addon'
   snapshotId?: string
   ageMs?: number
   appliedConfigRev?: number
@@ -411,25 +416,39 @@ async function performIngest(
   ctx: MutationCtx,
   args: IngestSensorDataArgs,
 ) {
-    // Claim rename: a claimed unit reports its NEW deviceId with the SAME
-    // hardwareId. Resolve via hardwareId so history follows the rename
-    // instead of forking a fresh device row.
-    let device = await getDeviceByExternalId(ctx, args.deviceId.trim())
-    if (!device && args.hardwareId) {
+    // Identity resolution: hardwareId is the immutable birth identity (MAC
+    // hex, always sent), deviceId is the renameable effective identity.
+    // Resolve via hardwareId FIRST: a claimed unit reports its NEW deviceId
+    // with the SAME hardwareId, so history follows the rename instead of
+    // forking a fresh row. Resolving by deviceId first would ingest into the
+    // wrong row when the new id collides with an existing one.
+    const externalId = args.deviceId.trim()
+    if (!DEVICE_ID_RE.test(externalId)) {
+      throw new ConvexError('deviceId tidak valid')
+    }
+    let device: DeviceDoc | null = null
+    if (args.hardwareId) {
       device = await ctx.db
         .query('devices')
         .withIndex('by_hardwareId', (q) => q.eq('hardwareId', args.hardwareId))
         .first() ?? null
-      if (device) {
+      if (device && device.deviceId !== externalId) {
+        const taken = await getDeviceByExternalId(ctx, externalId)
+        if (taken && String(taken._id) !== String(device._id)) {
+          throw new ConvexError('ID perangkat tersebut sudah digunakan')
+        }
         await ctx.db.patch(device._id, {
-          deviceId: args.deviceId.trim(),
+          deviceId: externalId,
           updatedAt: Date.now(),
         })
         device = (await ctx.db.get(device._id))!
       }
     }
     if (!device) {
-      device = await ensureDeviceExists(ctx, args.deviceId, args.firmwareVersion, args.variant)
+      device = await getDeviceByExternalId(ctx, externalId)
+    }
+    if (!device) {
+      device = await ensureDeviceExists(ctx, externalId, args.firmwareVersion, args.variant)
     }
     if (!device) {
       throw new ConvexError('Perangkat tidak ditemukan')
@@ -441,12 +460,19 @@ async function performIngest(
     const activePlant = plant && !plant.archived ? plant : null
     const now = Date.now()
 
+    // Variant patching: tech envelopes always carry variant, pods send none.
+    // Patch variant AND version together — a pre-variant v1 row that starts
+    // reporting variant is a tech unit and must join the v2 automation
+    // branch. Pods (no variant) never touch either field: no downgrades.
     const patchIdentity: Record<string, string | number> = { updatedAt: now }
     if (args.hardwareId && !device.hardwareId) {
       patchIdentity.hardwareId = args.hardwareId
     }
     if (args.variant && device.variant !== args.variant) {
       patchIdentity.variant = args.variant
+    }
+    if (args.variant && device.version !== 'v2') {
+      patchIdentity.version = 'v2'
     }
     if (Object.keys(patchIdentity).length > 1) {
       await ctx.db.patch(device._id, patchIdentity)
@@ -509,11 +535,12 @@ async function performIngest(
         firmwareVersion: args.firmwareVersion?.trim() || device.firmwareVersion,
       }
       // Rebuild sensor state from the latest stored rows so automation
-      // evaluates on current values even for duplicate deliveries.
+      // evaluates on current values even for duplicate deliveries. Same
+      // ≤6-rows bound as the ingest path above.
       const currentSensors = await ctx.db
         .query('sensors')
         .withIndex('by_device', (q) => q.eq('deviceId', device!._id))
-        .collect()
+        .take(10)
       for (const s of currentSensors) {
         sensorState.set(s.kind, { value: s.value, unit: s.unit })
       }
@@ -603,12 +630,17 @@ async function performIngest(
       response.firmwareUrl = device.otaFirmwareUrl
     }
 
-    // Device response buffer is ~3KB: never exceed it.
-    if (Buffer.byteLength(JSON.stringify(response), 'utf8') > 3072 && response.commands.length > 1) {
+    // Device response buffer is ~3KB: never exceed it. Convex isolates have
+    // no Node Buffer — measure with TextEncoder instead.
+    if (responseByteLength(response) > 3072 && response.commands.length > 1) {
       response.commands = response.commands.slice(0, 1)
     }
 
     return response
+}
+
+function responseByteLength(value: unknown): number {
+  return new TextEncoder().encode(JSON.stringify(value)).length
 }
 
 function buildDeviceResponseCommands(device: DeviceDoc) {
@@ -617,7 +649,10 @@ function buildDeviceResponseCommands(device: DeviceDoc) {
   // Pump XOR light is SERVER-PACED on pods (v1): never send both in one
   // response — combined stall browns out the 4A boost (06-api). Tech legs
   // run independent per-channel timers and may combine pump+fert+pest.
-  const isPods = device.version === 'v1' && (device.variant === undefined || device.variant === null)
+  // Gate on version only: v1 rows never carry a variant, and any varianted
+  // row is promoted to v2 on ingest, so variant sniffing here would split
+  // the branch and risk pacing the wrong family.
+  const isPods = device.version === 'v1'
   const pump = queued.pump && queued.pump.id
     ? { kind: 'pump', durationMs: queued.pump.durationMs, id: queued.pump.id }
     : null

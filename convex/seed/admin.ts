@@ -90,6 +90,14 @@ export const devices = internalAction({
         deviceId: d.deviceId,
       });
       if (existing) {
+        // Rows seeded before `variant` existed stay visible to dashboards:
+        // backfill the static hardware fact without touching versions.
+        if ((existing as { variant?: string }).variant !== d.variant) {
+          await ctx.runMutation(internal.seedInternal.patchDeviceVariant, {
+            deviceId: existing._id,
+            variant: d.variant,
+          });
+        }
         deviceIds.push(existing._id);
         continue;
       }
@@ -98,6 +106,7 @@ export const devices = internalAction({
         deviceId: d.deviceId,
         name: d.name,
         version: d.version,
+        variant: d.variant,
         lastSeen: d.lastSeen,
         firmwareVersion: d.firmwareVersion,
         hasModem: d.hasModem,

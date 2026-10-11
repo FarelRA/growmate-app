@@ -706,7 +706,8 @@ export default defineSchema({
     receivedAt: v.number(),
   })
     .index('by_device_and_snapshot', ['deviceId', 'snapshotId'])
-    .index('by_device', ['deviceId']),
+    .index('by_device', ['deviceId'])
+    .index('by_receivedAt', ['receivedAt']),
 
   // ============================================
   // VIDEO RECORDINGS - V2 H.264 segment metadata

@@ -30,7 +30,7 @@ function mulberry32(seed: number): () => number {
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const round1 = (v: number) => Math.round(v * 10) / 10;
 
-// ─── Sensor History (30 days × 5 kinds per device) ──────
+// ─── Sensor History (30 days × 5 kinds v1 / 6 kinds v2 incl. current) ──────
 
 export const sensors = internalAction({
   handler: async (ctx) => {
@@ -49,8 +49,9 @@ export const sensors = internalAction({
       if (seeded) continue;
 
       const indoor = device.version === "v1";
+      const addon = (device as { variant?: string }).variant === "tech-addon";
       const rng = mulberry32(hashStr(d.deviceId));
-      const readings: Array<{ kind: "soil" | "light" | "temperature" | "air" | "water"; value: number; unit: string; measuredAt: number }> = [];
+      const readings: Array<{ kind: "soil" | "light" | "temperature" | "air" | "water" | "current"; value: number; unit: string; measuredAt: number }> = [];
 
       for (let back = HISTORY_DAYS - 1; back >= 0; back--) {
         // Mid-morning reading with jitter; always in the past.
@@ -89,6 +90,19 @@ export const sensors = internalAction({
           unit: "%",
           measuredAt,
         });
+        if (!indoor) {
+          // Tech current leg (server-stored milliamps, converted from raw):
+          // discharge is negative, solar add-ons charge positive at midday.
+          const charging = addon && sun > 0.5 && !cloudy;
+          readings.push({
+            kind: "current",
+            value: charging
+              ? Math.round(clamp(420 * sun + (rng() * 120 - 60), 80, 800))
+              : -Math.round(clamp(140 + 60 * Math.abs(wave) + (rng() * 60 - 30), 40, 320)),
+            unit: "mA",
+            measuredAt,
+          });
+        }
       }
 
       const inserted = await ctx.runMutation(internal.seedInternal.bulkInsertSensorReadings, {

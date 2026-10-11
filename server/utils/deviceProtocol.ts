@@ -18,6 +18,9 @@ export const DEVICE_SENSOR_KINDS = [
 
 export type DeviceSensorKind = (typeof DEVICE_SENSOR_KINDS)[number]
 
+/** Tech device legs (06-api tech `variant`): selects the current leg. Pods never sends it. */
+export type DeviceVariant = 'tech' | 'tech-addon'
+
 export const PODS_RAW_MAX = 4095
 export const TECH_RAW_MAX = 32767
 export const MAX_SNAPSHOT_COMMANDS_BYTES = 3072
@@ -48,7 +51,7 @@ export function checkSensorRateLimit(event: H3Event<EventHandlerRequest>, device
   if (hits.length >= SENSOR_BURST) {
     const waitMs = SENSOR_WINDOW_MS - (now - hits[0]!)
     const retryAfter = retryAfterSec(waitMs)
-    setHeader(event, 'Retry-After', String(retryAfter))
+    setHeader(event, 'Retry-After', retryAfter)
     throw createError({
       statusCode: 429,
       statusMessage: `Rate limited: retry after ${retryAfter}s`,
@@ -64,7 +67,7 @@ export function checkCameraRateLimit(event: H3Event<EventHandlerRequest>, device
   const last = cameraHits.get(deviceId) ?? 0
   if (now - last < CAMERA_MIN_GAP_MS) {
     const retryAfter = retryAfterSec(CAMERA_MIN_GAP_MS - (now - last))
-    setHeader(event, 'Retry-After', String(retryAfter))
+    setHeader(event, 'Retry-After', retryAfter)
     throw createError({
       statusCode: 429,
       statusMessage: `Rate limited: retry after ${retryAfter}s`,
@@ -84,7 +87,7 @@ export interface DeviceEnvelope {
   deviceId: string
   hardwareId?: string
   firmwareVersion?: string
-  variant?: string
+  variant?: DeviceVariant
   snapshotId?: string
   ageMs?: number
   appliedConfigRev?: number
@@ -110,8 +113,9 @@ function bad(message: string): never {
  * Validate the firmware sensor envelope. Accepts the exact shapes both
  * firmwares send: raw-only analog entries (no `value`), native DHT floats
  * (no `raw`), the tech `current` kind, tech `variant`, and empty `sensors[]`
- * (server must accept, never 400). Legacy value-bearing entries keep the
- * previous range checks so existing app clients are unaffected.
+ * (server must accept, never 400). Anything else in the sensor array is a
+ * malformed envelope (400 per docs 08 §2 — the device will not resend
+ * as-is, so fail fast instead of ingesting half-shaped telemetry).
  */
 export function validateDeviceEnvelope(body: unknown): DeviceEnvelope {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
@@ -124,9 +128,13 @@ export function validateDeviceEnvelope(body: unknown): DeviceEnvelope {
     bad('deviceId is required')
   }
 
+  // Tech always sends `variant` ("tech" | "tech-addon", selects the current
+  // leg per 06-api tech); pods never sends it. Presence selects the raw
+  // ceiling below; an unknown variant is a malformed envelope, not a third
+  // fleet — never infer the leg from the device ID.
   const variant = env.variant
-  if (variant !== undefined && typeof variant !== 'string') {
-    bad('variant must be string')
+  if (variant !== undefined && variant !== 'tech' && variant !== 'tech-addon') {
+    bad('variant must be tech or tech-addon')
   }
   const rawMax = variant !== undefined ? TECH_RAW_MAX : PODS_RAW_MAX
 
@@ -153,14 +161,19 @@ export function validateDeviceEnvelope(body: unknown): DeviceEnvelope {
     const analog =
       entry.kind === 'soil' || entry.kind === 'light' || entry.kind === 'water' || entry.kind === 'current'
     if (analog) {
-      // RAW-ONLY analog entries (no percent math on device, 06-api).
+      // RAW-ONLY analog entries (no percent math on device, 06-api):
+      // firmware `sensor_array_add_raw` sends {kind, unit, raw} and nothing
+      // else. A `value` on an analog kind is malformed, not legacy.
       if (!hasRaw) bad(`${entry.kind}: MISSING raw (must be RAW-only)`)
+      if (hasValue) bad(`${entry.kind}: must be RAW-only (no value)`)
       if (!isInt(entry.raw) || (entry.raw as number) < 0 || (entry.raw as number) > rawMax) {
         bad(`Raw value for ${entry.kind} must be between 0-${rawMax}`)
       }
     } else {
-      // temperature / air: native DHT floats, no `raw`.
+      // temperature / air: native DHT floats, no `raw`
+      // (`sensor_array_add_dht` / `read_dht22` send {kind, unit, value}).
       if (!hasValue) bad(`${entry.kind}: MISSING value (DHT is native floats)`)
+      if (hasRaw) bad(`${entry.kind}: DHT must not carry raw`)
       if (!isFiniteNumber(entry.value)) {
         bad(`Sensor value for ${entry.kind} must be number`)
       }
@@ -172,8 +185,10 @@ export function validateDeviceEnvelope(body: unknown): DeviceEnvelope {
     bad('acceptedCommandIds must be string[]')
   }
 
-  if (env.ageMs !== undefined && (!isFiniteNumber(env.ageMs) || (env.ageMs as number) < 0)) {
-    bad('ageMs must be >= 0')
+  // Both firmwares send ints (pods `snapshot->age_ms` uint32, tech
+  // `int(ageMs + dwell)`); a float ageMs is a malformed envelope.
+  if (env.ageMs !== undefined && (!isInt(env.ageMs) || (env.ageMs as number) < 0)) {
+    bad('ageMs must be int >= 0')
   }
   if (env.appliedConfigRev !== undefined && (!isInt(env.appliedConfigRev) || (env.appliedConfigRev as number) < 0)) {
     bad('appliedConfigRev must be >= 0')
@@ -198,9 +213,9 @@ export function validateDeviceEnvelope(body: unknown): DeviceEnvelope {
     deviceId: (deviceId as string).trim(),
     hardwareId: typeof env.hardwareId === 'string' ? env.hardwareId : undefined,
     firmwareVersion: typeof env.firmwareVersion === 'string' ? env.firmwareVersion : undefined,
-    variant: typeof variant === 'string' ? variant : undefined,
+    variant: variant === 'tech' || variant === 'tech-addon' ? variant : undefined,
     snapshotId: typeof env.snapshotId === 'string' ? env.snapshotId : undefined,
-    ageMs: isFiniteNumber(env.ageMs) ? (env.ageMs as number) : undefined,
+    ageMs: isInt(env.ageMs) ? (env.ageMs as number) : undefined,
     appliedConfigRev: isInt(env.appliedConfigRev) ? (env.appliedConfigRev as number) : undefined,
     sensors: list,
     acceptedCommandIds: accepted as string[],

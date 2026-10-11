@@ -2,6 +2,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
+import { getFunctionName } from 'convex/server'
+import { api } from '~~/convex/_generated/api'
 import HistoryPanel from '../../../app/components/HistoryPanel.vue'
 
 vi.mock('@/utils/images', () => ({
@@ -270,6 +272,28 @@ describe('HistoryPanel', () => {
       expect(wrapper.findAll('img')).toHaveLength(5)
       expect(findButton(wrapper, 'Muat lagi')).toBeUndefined()
     })
+
+    it('queries deviceGalleryImages with the deviceId + growing limit shape', async () => {
+      mountPanel({ galleryRows: galleryRows(3) })
+      expect(galleryMock.calls).toHaveLength(1)
+      const fn = galleryMock.calls[0]!.fn
+      expect(getFunctionName(fn as never)).toBe(getFunctionName(api.devices.deviceGalleryImages as never))
+      expect(galleryArgs().value).toMatchObject({ deviceId: 'dev-1', limit: 24 })
+    })
+
+    it('caps the growing image limit at 100 and hides Muat lagi there', async () => {
+      const wrapper = mountPanel({ galleryRows: galleryRows(100) })
+      const btn = clickTab(wrapper, 'Gambar')
+      if (btn) await btn.trigger('click')
+      // 24 → 48 → 72 → 96 → 100 (GALLERY_CAP): four clicks reach the cap.
+      for (let i = 0; i < 4; i++) {
+        const loadMore = findButton(wrapper, 'Muat lagi')
+        expect(loadMore, `Muat lagi visible before click ${i + 1}`).toBeDefined()
+        if (loadMore) await loadMore.trigger('click')
+      }
+      expect(galleryArgs().value).toMatchObject({ deviceId: 'dev-1', limit: 100 })
+      expect(findButton(wrapper, 'Muat lagi')).toBeUndefined()
+    })
   })
 
   describe('recordings tab content', () => {
@@ -330,7 +354,7 @@ describe('HistoryPanel', () => {
 
     it('Muat lagi refetches with limit=40', async () => {
       const rows = Array.from({ length: 20 }, (_, i) => recRow(i + 1))
-      globalThis.fetch = vi.fn().mockResolvedValue(recPayload(rows))
+      globalThis.fetch = vi.fn().mockImplementation(() => recPayload(rows))
       const wrapper = mountPanel({ deviceVersion: 'v2' })
       await flush()
       const rekBtn = clickTab(wrapper, 'Rekaman')
@@ -342,6 +366,29 @@ describe('HistoryPanel', () => {
       expect(vi.mocked(fetch).mock.calls.length).toBeGreaterThanOrEqual(2)
       const secondUrl = String(vi.mocked(fetch).mock.calls[1]?.[0])
       expect(secondUrl).toContain('limit=40')
+    })
+
+    it('caps growing recording limits at 100 (RECORDINGS_CAP)', async () => {
+      const rows = Array.from({ length: 100 }, (_, i) => recRow(i + 1))
+      globalThis.fetch = vi.fn().mockImplementation(() => recPayload(rows))
+      const wrapper = mountPanel({ deviceVersion: 'v2' })
+      await flush()
+      const rekBtn = clickTab(wrapper, 'Rekaman')
+      if (rekBtn) await rekBtn.trigger('click')
+      // 20 → 40 → 60 → 80 → 100: four load-mores reach the cap.
+      for (let i = 0; i < 4; i++) {
+        const loadMore = findButton(wrapper, 'Muat lagi')
+        expect(loadMore, `Muat lagi visible before click ${i + 1}`).toBeDefined()
+        if (loadMore) await loadMore.trigger('click')
+        await flush()
+      }
+      const urls = vi.mocked(fetch).mock.calls.map((c) => String(c[0]))
+      expect(urls.some((u) => u.includes('limit=100'))).toBe(true)
+      expect(urls.every((u) => {
+        const m = u.match(/limit=(\d+)/)
+        return !m || Number(m[1]) <= 100
+      })).toBe(true)
+      expect(findButton(wrapper, 'Muat lagi')).toBeUndefined()
     })
 
     it('switching deviceId resets the list and refetches', async () => {
@@ -382,9 +429,13 @@ describe('HistoryPanel', () => {
 
     it('Putar without downloadUrl falls back to refetch-then-find with Bearer', async () => {
       const { downloadUrl: _dropped, ...noUrl } = recRow(1)
+      const calls: string[] = []
       globalThis.fetch = vi.fn(async (url: unknown) => {
-        if (String(url).includes('limit=')) return recPayload([noUrl])
-        return recPayload([recRow(1)])
+        calls.push(String(url))
+        // Initial page (limit=20) carries the row without a signed URL;
+        // the refetch widens to RECORDINGS_CAP (limit=100) and returns it.
+        if (String(url).includes('limit=100')) return recPayload([recRow(1)])
+        return recPayload([noUrl])
       })
       const wrapper = mountPanel({ deviceVersion: 'v2' })
       await flush()
@@ -400,6 +451,7 @@ describe('HistoryPanel', () => {
           headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
         }),
       )
+      expect(calls.some((u) => u.includes('limit=100'))).toBe(true)
       expect(wrapper.find('past-recording-viewer-stub').exists()).toBe(true)
     })
   })

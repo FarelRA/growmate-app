@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useDashboard } from '@/composables/useDashboard'
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 
 definePageMeta({
   requiresAuth: true,
@@ -45,6 +45,20 @@ const displayPanelOptions = computed(() => {
   }
   return panelOptions
 })
+
+// Stream tab is v2-only: when the active device cannot stream while the
+// stream panel is selected (device switch or direct ?panel=stream link),
+// fall back to overview so the page never renders a blank panel.
+watch(
+  [showStreamTab, activePanel],
+  ([canStream, panel]) => {
+    if (import.meta.server) return
+    if (!canStream && panel === 'stream') {
+      setPanel('overview')
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

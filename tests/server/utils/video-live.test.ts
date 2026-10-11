@@ -44,25 +44,25 @@ describe('ingestVideoBytes', () => {
         Buffer.from('\r\n'),
       ])
     const chunk = Buffer.concat([part(7, 1), part(8, 2)])
-    const res = ingestVideoBytes('TECH01', 'vid-1', chunk, 0)
+    const res = ingestVideoBytes('IAFT01', 'vid-1', chunk, 0)
     expect(res.frames).toBe(2)
     expect(res.nextSeq).toBe(9)
 
-    const latest = getLatestFrame('TECH01')
+    const latest = getLatestFrame('IAFT01')
     expect(latest?.seq).toBe(8)
     expect(latest?.videoId).toBe('vid-1')
-    expect(getStreamCounters('TECH01')).toMatchObject({ frames: 2 })
+    expect(getStreamCounters('IAFT01')).toMatchObject({ frames: 2 })
   })
 
   it('fans out to subscribers and isolates devices', () => {
     const seen: number[] = []
-    const unsub = subscribeFrames('TECH01', (frame) => seen.push(frame.seq))
-    ingestVideoBytes('TECH01', 'vid-1', fakeJpeg(3), 0)
+    const unsub = subscribeFrames('IAFT01', (frame) => seen.push(frame.seq))
+    ingestVideoBytes('IAFT01', 'vid-1', fakeJpeg(3), 0)
     ingestVideoBytes('OTHER', 'vid-9', fakeJpeg(4), 0)
     expect(seen).toEqual([0])
     expect(getLatestFrame('OTHER')?.videoId).toBe('vid-9')
     unsub()
-    ingestVideoBytes('TECH01', 'vid-1', fakeJpeg(5), 1)
+    ingestVideoBytes('IAFT01', 'vid-1', fakeJpeg(5), 1)
     expect(seen).toEqual([0])
   })
 })

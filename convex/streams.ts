@@ -54,6 +54,22 @@ export const recordLiveSession = mutation({
   handler: async (ctx, args) => {
     assertDeviceKey(args.deviceKey)
 
+    // The only caller builds these server-side (sanitized videoId, S3 key,
+    // measured byte length), but fail closed on junk instead of storing it:
+    // these rows drive S3 deletes and signed-URL issuance downstream.
+    if (!args.fileName.trim() || !args.path.trim()) {
+      throw new ConvexError('fileName + path required')
+    }
+    if (!Number.isFinite(args.size) || args.size < 0) {
+      throw new ConvexError('size must be >= 0')
+    }
+    if (!Number.isFinite(args.capturedAt)) {
+      throw new ConvexError('capturedAt harus berupa timestamp yang valid')
+    }
+    if (args.durationMs !== undefined && (!Number.isFinite(args.durationMs) || args.durationMs < 0)) {
+      throw new ConvexError('durationMs must be >= 0')
+    }
+
     const device = await getDeviceByExternalId(ctx, args.deviceId)
     if (!device) {
       throw new ConvexError('Perangkat tidak ditemukan')

@@ -102,6 +102,58 @@ describe('validateDeviceEnvelope firmware contract', () => {
     })
     expect(envelope.sensors).toHaveLength(1)
   })
+
+  it('accepts variant tech-addon with the tech raw ceiling', () => {
+    const envelope = validateDeviceEnvelope({
+      deviceId: 'dev-1',
+      variant: 'tech-addon',
+      sensors: [{ kind: 'soil', unit: '%', raw: 32767 }],
+    })
+    expect(envelope.variant).toBe('tech-addon')
+  })
+
+  it('rejects unknown variants (closed tech | tech-addon union)', () => {
+    expect(() =>
+      validateDeviceEnvelope({
+        deviceId: 'dev-1',
+        variant: 'experimental',
+        sensors: [{ kind: 'soil', unit: '%', raw: 100 }],
+      }),
+    ).toThrowError(expect.objectContaining({ statusCode: 400 }))
+    expect(() =>
+      validateDeviceEnvelope({
+        deviceId: 'dev-1',
+        variant: 42,
+        sensors: [{ kind: 'soil', unit: '%', raw: 100 }],
+      }),
+    ).toThrowError(expect.objectContaining({ statusCode: 400 }))
+  })
+
+  it('rejects analog entries carrying value (RAW-only per firmware sensor_array_add_raw)', () => {
+    expect(() =>
+      validateDeviceEnvelope({
+        deviceId: 'dev-1',
+        sensors: [{ kind: 'soil', unit: '%', raw: 100, value: 50 }],
+      }),
+    ).toThrowError(expect.objectContaining({ statusCode: 400 }))
+  })
+
+  it('rejects DHT entries carrying raw (sensor_array_add_dht sends value-only)', () => {
+    expect(() =>
+      validateDeviceEnvelope({
+        deviceId: 'dev-1',
+        sensors: [{ kind: 'temperature', unit: 'C', value: 24.5, raw: 100 }],
+      }),
+    ).toThrowError(expect.objectContaining({ statusCode: 400 }))
+  })
+
+  it('rejects float ageMs (both firmwares send ints)', () => {
+    expect(() =>
+      validateDeviceEnvelope({ deviceId: 'dev-1', ageMs: 12.5, sensors: [] }),
+    ).toThrowError(expect.objectContaining({ statusCode: 400 }))
+    const envelope = validateDeviceEnvelope({ deviceId: 'dev-1', ageMs: 1000, sensors: [] })
+    expect(envelope.ageMs).toBe(1000)
+  })
 })
 
 describe('handleSensorIngest', () => {

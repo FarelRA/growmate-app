@@ -18,9 +18,10 @@ async function seedV2(ctx: FakeCtx) {
     createdAt: now, updatedAt: now,
   })
   const deviceId = await ctx.db.insert('devices', {
-    deviceId: 'TECH01',
+    deviceId: 'IAFT01',
     name: 'Tech',
     version: 'v2',
+    variant: 'tech-addon',
     autoWatering: false,
     autoLighting: false,
     wateringThreshold: 35,
@@ -52,10 +53,10 @@ async function seedV2(ctx: FakeCtx) {
 function techEnvelope(overrides: Record<string, any> = {}) {
   return {
     deviceKey: TEST_DEVICE_KEY,
-    deviceId: 'TECH01',
+    deviceId: 'IAFT01',
     hardwareId: '7C87CE1A2B3C',
     firmwareVersion: '2.0.0',
-    variant: 'tech',
+    variant: 'tech-addon',
     snapshotId: 'B1-1',
     ageMs: 100,
     appliedConfigRev: 0,
@@ -75,7 +76,7 @@ describe('user video stream triggers', () => {
   it('start queues a validated video_start delivered on next ingest', async () => {
     const ctx = createFakeCtx()
     await seedV2(ctx)
-    await triggerVideoStartCore(ctx, { _id: ctx.__testUserId }, 'TECH01')
+    await triggerVideoStartCore(ctx, { _id: ctx.__testUserId }, 'IAFT01')
 
     const stored = ctx.db.all('devices')[0] as any
     expect(stored.queuedCommands.videoStart).toMatchObject({
@@ -91,8 +92,8 @@ describe('user video stream triggers', () => {
   it('stop clears a pending start and queues an ackable video_stop', async () => {
     const ctx = createFakeCtx()
     await seedV2(ctx)
-    await triggerVideoStartCore(ctx, { _id: ctx.__testUserId }, 'TECH01')
-    await triggerVideoStopCore(ctx, { _id: ctx.__testUserId }, 'TECH01')
+    await triggerVideoStartCore(ctx, { _id: ctx.__testUserId }, 'IAFT01')
+    await triggerVideoStopCore(ctx, { _id: ctx.__testUserId }, 'IAFT01')
 
     const stored = ctx.db.all('devices')[0] as any
     expect(stored.queuedCommands.videoStart).toBeNull()
@@ -113,22 +114,24 @@ describe('user video stream triggers', () => {
     const ctx = createFakeCtx()
     await seedV2(ctx)
     await expect(
-      triggerVideoStartCore(ctx, { _id: ctx.__testUserId }, 'TECH01', { width: 9999 }),
+      triggerVideoStartCore(ctx, { _id: ctx.__testUserId }, 'IAFT01', { width: 9999 }),
     ).rejects.toThrow()
     await expect(
-      triggerVideoStartCore(ctx, { _id: ctx.__testUserId }, 'TECH01', { fps: 99 }),
+      triggerVideoStartCore(ctx, { _id: ctx.__testUserId }, 'IAFT01', { fps: 99 }),
     ).rejects.toThrow()
 
     const podsId = await ctx.db.insert('devices', {
       ...(ctx.db.all('devices')[0] as any),
-      deviceId: 'IAET-01', version: 'v1',
+      _id: undefined,
+      _seq: undefined,
+      deviceId: 'IAET01', version: 'v1', variant: undefined,
     })
     void podsId
     await expect(
-      triggerVideoStartCore(ctx, { _id: ctx.__testUserId }, 'IAET-01'),
+      triggerVideoStartCore(ctx, { _id: ctx.__testUserId }, 'IAET01'),
     ).rejects.toThrow()
     await expect(
-      triggerVideoStopCore(ctx, { _id: ctx.__testUserId }, 'IAET-01'),
+      triggerVideoStopCore(ctx, { _id: ctx.__testUserId }, 'IAET01'),
     ).rejects.toThrow()
   })
 })

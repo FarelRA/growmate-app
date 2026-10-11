@@ -206,7 +206,7 @@ describe('PastRecordingViewer', () => {
       props: {
         recording: makeRecording({
           fileName: 'vid.mjpeg',
-          path: 'TECH01/live/vid.mjpeg',
+          path: 'IAFT01/live/vid.mjpeg',
           downloadUrl: 'https://x/vid.mjpeg',
         }),
       },
@@ -229,7 +229,7 @@ describe('PastRecordingViewer', () => {
       props: {
         recording: makeRecording({
           fileName: 'vid.h264',
-          path: 'TECH01/live/vid.h264',
+          path: 'IAFT01/live/vid.h264',
           downloadUrl: 'https://x/vid.h264',
         }),
       },

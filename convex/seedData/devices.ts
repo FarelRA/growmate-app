@@ -1,14 +1,17 @@
 // Seed dataset — hand-maintained. Image bytes live in public/seed-images/<hash>/;
 // this module carries only content hashes (see convex/seed/images.ts).
 //
-// 41 devices: 16x GrowMate Pods v1 (IAET, indoor, no modem/solar),
-// 8x GrowMate Tech v2 (IAFU, outdoor fields, no modem/solar),
-// 12x GrowMate Tech-Addon v2 (IAFT, outdoor, modem + solar).
-// Demo owns IAET-01, IAET-02, IAFU-01, IAFT-01, IAFT-02.
+// 41 devices: 18x GrowMate Pods v1 (IAET, indoor, no modem/solar),
+// 9x GrowMate Tech v2 (IAFU, outdoor fields, no modem/solar),
+// 14x GrowMate Tech-Addon v2 (IAFT, outdoor, modem + solar).
+// Demo owns IAET01, IAET02, IAFU01, IAFT01, IAFT02.
 interface SeedDevice {
   deviceId: string
   name: string
   version: 'v1' | 'v2'
+  // Tech envelopes always carry `variant` (tech | tech-addon); pods send none.
+  // Seeds mirror the wire: v1 omits it, v2 sets it.
+  variant?: 'tech' | 'tech-addon'
   firmwareVersion: string
   lastSeen: number
   hasModem: boolean
@@ -30,7 +33,7 @@ const day = 86400000
 
 const seedData: SeedDevice[] = [
   {
-    deviceId: "IAET-01",
+    deviceId: "IAET01",
     name: "Pod Dapur",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -49,7 +52,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAET-02",
+    deviceId: "IAET02",
     name: "Rak Hidroponik Ruang Tamu",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -68,7 +71,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAET-03",
+    deviceId: "IAET03",
     name: "Pod Kamar Tidur",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -87,7 +90,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 8,
   },
   {
-    deviceId: "IAET-04",
+    deviceId: "IAET04",
     name: "Meja Kerja Hidroponik",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -106,7 +109,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAET-05",
+    deviceId: "IAET05",
     name: "Pod Balkon Apartemen",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -125,7 +128,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 12,
   },
   {
-    deviceId: "IAET-06",
+    deviceId: "IAET06",
     name: "Rak Dapur Vertikal",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -144,7 +147,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAET-07",
+    deviceId: "IAET07",
     name: "Pod Ruang Keluarga",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -163,7 +166,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 8,
   },
   {
-    deviceId: "IAET-08",
+    deviceId: "IAET08",
     name: "Mini Garden Kantor",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -182,7 +185,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAET-09",
+    deviceId: "IAET09",
     name: "Pod Teras Belakang",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -201,7 +204,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAET-10",
+    deviceId: "IAET10",
     name: "Rak Tanaman Kafe",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -220,7 +223,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 12,
   },
   {
-    deviceId: "IAET-11",
+    deviceId: "IAET11",
     name: "Pod Kamar Anak",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -239,7 +242,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 8,
   },
   {
-    deviceId: "IAET-12",
+    deviceId: "IAET12",
     name: "Dapur Hidroponik",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -258,7 +261,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAET-13",
+    deviceId: "IAET13",
     name: "Pod Lorong Rumah",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -277,7 +280,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAET-14",
+    deviceId: "IAET14",
     name: "Rak Bibit Indoor",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -296,7 +299,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 8,
   },
   {
-    deviceId: "IAET-15",
+    deviceId: "IAET15",
     name: "Pod Apartemen Studio",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -315,7 +318,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAET-16",
+    deviceId: "IAET16",
     name: "Greenhouse Mini Balkon",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -334,7 +337,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 12,
   },
   {
-    deviceId: "IAET-17",
+    deviceId: "IAET17",
     name: "Pod Sudut Baca",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -353,7 +356,7 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAET-18",
+    deviceId: "IAET18",
     name: "Rak Hidroponik Serbaguna",
     version: "v1",
     firmwareVersion: "2.1.3",
@@ -372,9 +375,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAFU-01",
+    deviceId: "IAFU01",
     name: "Lahan Cabai",
     version: "v2",
+    variant: "tech",
     firmwareVersion: "3.0.2",
     lastSeen: now - 2 * day - 21 * 3600000,
     hasModem: false,
@@ -391,9 +395,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAFU-02",
+    deviceId: "IAFU02",
     name: "Kebun Sayur Belakang",
     version: "v2",
+    variant: "tech",
     firmwareVersion: "3.0.2",
     lastSeen: now - 3 * day - 2 * 3600000,
     hasModem: false,
@@ -410,9 +415,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAFU-03",
+    deviceId: "IAFU03",
     name: "Sawah Percobaan",
     version: "v2",
+    variant: "tech",
     firmwareVersion: "3.0.2",
     lastSeen: now - 4 * day - 6 * 3600000,
     hasModem: false,
@@ -429,9 +435,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 8,
   },
   {
-    deviceId: "IAFU-04",
+    deviceId: "IAFU04",
     name: "Ladang Tomat",
     version: "v2",
+    variant: "tech",
     firmwareVersion: "3.0.2",
     lastSeen: now - 5 * day - 10 * 3600000,
     hasModem: false,
@@ -448,9 +455,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAFU-05",
+    deviceId: "IAFU05",
     name: "Kebun Stroberi",
     version: "v2",
+    variant: "tech",
     firmwareVersion: "3.0.2",
     lastSeen: now - 6 * day - 14 * 3600000,
     hasModem: false,
@@ -467,9 +475,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 12,
   },
   {
-    deviceId: "IAFU-06",
+    deviceId: "IAFU06",
     name: "Lahan Pakcoy",
     version: "v2",
+    variant: "tech",
     firmwareVersion: "3.0.2",
     lastSeen: now - 18 * 3600000,
     hasModem: false,
@@ -486,9 +495,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 8,
   },
   {
-    deviceId: "IAFU-07",
+    deviceId: "IAFU07",
     name: "Kebun Herbal",
     version: "v2",
+    variant: "tech",
     firmwareVersion: "3.0.2",
     lastSeen: now - 1 * day - 22 * 3600000,
     hasModem: false,
@@ -505,9 +515,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAFU-08",
+    deviceId: "IAFU08",
     name: "Petak Bayam",
     version: "v2",
+    variant: "tech",
     firmwareVersion: "3.0.2",
     lastSeen: now - 2 * day - 3 * 3600000,
     hasModem: false,
@@ -524,9 +535,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 8,
   },
   {
-    deviceId: "IAFU-09",
+    deviceId: "IAFU09",
     name: "Lahan Kangkung",
     version: "v2",
+    variant: "tech",
     firmwareVersion: "3.0.2",
     lastSeen: now - 4 * day - 14 * 3600000,
     hasModem: false,
@@ -543,9 +555,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAFT-01",
+    deviceId: "IAFT01",
     name: "Stasiun Lapangan Utara",
     version: "v2",
+    variant: "tech-addon",
     firmwareVersion: "3.0.2",
     lastSeen: now - 3 * day - 7 * 3600000,
     hasModem: true,
@@ -562,9 +575,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAFT-02",
+    deviceId: "IAFT02",
     name: "Kebun Surya Timur",
     version: "v2",
+    variant: "tech-addon",
     firmwareVersion: "3.0.2",
     lastSeen: now - 4 * day - 11 * 3600000,
     hasModem: true,
@@ -581,9 +595,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 12,
   },
   {
-    deviceId: "IAFT-03",
+    deviceId: "IAFT03",
     name: "Lahan Jagung",
     version: "v2",
+    variant: "tech-addon",
     firmwareVersion: "3.0.2",
     lastSeen: now - 5 * day - 15 * 3600000,
     hasModem: true,
@@ -600,9 +615,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAFT-04",
+    deviceId: "IAFT04",
     name: "Greenhouse Desa",
     version: "v2",
+    variant: "tech-addon",
     firmwareVersion: "3.0.2",
     lastSeen: now - 6 * day - 19 * 3600000,
     hasModem: true,
@@ -619,9 +635,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAFT-05",
+    deviceId: "IAFT05",
     name: "Kebun Buah Naga",
     version: "v2",
+    variant: "tech-addon",
     firmwareVersion: "3.0.2",
     lastSeen: now - 23 * 3600000,
     hasModem: true,
@@ -638,9 +655,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 12,
   },
   {
-    deviceId: "IAFT-06",
+    deviceId: "IAFT06",
     name: "Petak Padi Organik",
     version: "v2",
+    variant: "tech-addon",
     firmwareVersion: "3.0.2",
     lastSeen: now - 1 * day - 4 * 3600000,
     hasModem: true,
@@ -657,9 +675,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 8,
   },
   {
-    deviceId: "IAFT-07",
+    deviceId: "IAFT07",
     name: "Lahan Cabai Rawit",
     version: "v2",
+    variant: "tech-addon",
     firmwareVersion: "3.0.2",
     lastSeen: now - 2 * day - 8 * 3600000,
     hasModem: true,
@@ -676,9 +695,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAFT-08",
+    deviceId: "IAFT08",
     name: "Kebun Kopi Muda",
     version: "v2",
+    variant: "tech-addon",
     firmwareVersion: "3.0.2",
     lastSeen: now - 3 * day - 12 * 3600000,
     hasModem: true,
@@ -695,9 +715,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAFT-09",
+    deviceId: "IAFT09",
     name: "Stasiun Irigasi Barat",
     version: "v2",
+    variant: "tech-addon",
     firmwareVersion: "3.0.2",
     lastSeen: now - 4 * day - 16 * 3600000,
     hasModem: true,
@@ -714,9 +735,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 12,
   },
   {
-    deviceId: "IAFT-10",
+    deviceId: "IAFT10",
     name: "Lahan Hortikultura",
     version: "v2",
+    variant: "tech-addon",
     firmwareVersion: "3.0.2",
     lastSeen: now - 5 * day - 20 * 3600000,
     hasModem: true,
@@ -733,9 +755,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAFT-11",
+    deviceId: "IAFT11",
     name: "Kebun Sayur Surya",
     version: "v2",
+    variant: "tech-addon",
     firmwareVersion: "3.0.2",
     lastSeen: now - 6 * day,
     hasModem: true,
@@ -752,9 +775,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAFT-12",
+    deviceId: "IAFT12",
     name: "Petak Percobaan Selatan",
     version: "v2",
+    variant: "tech-addon",
     firmwareVersion: "3.0.2",
     lastSeen: now - 5 * 3600000,
     hasModem: true,
@@ -771,9 +795,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 8,
   },
   {
-    deviceId: "IAFT-13",
+    deviceId: "IAFT13",
     name: "Kebun Melon",
     version: "v2",
+    variant: "tech-addon",
     firmwareVersion: "3.0.2",
     lastSeen: now - 1 * day - 10 * 3600000,
     hasModem: true,
@@ -790,9 +815,10 @@ const seedData: SeedDevice[] = [
     lightingHysteresis: 10,
   },
   {
-    deviceId: "IAFT-14",
+    deviceId: "IAFT14",
     name: "Lahan Bawang Merah",
     version: "v2",
+    variant: "tech-addon",
     firmwareVersion: "3.0.2",
     lastSeen: now - 3 * day - 18 * 3600000,
     hasModem: true,

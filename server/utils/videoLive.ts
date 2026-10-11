@@ -205,7 +205,14 @@ export function subscribeFrames(deviceId: string, push: (frame: LatestFrame) => 
     viewersByDevice.set(deviceId, set)
   }
   set.add(push)
+  const active = set
   return () => {
-    set!.delete(push)
+    active.delete(push)
+    // Prune the empty set so a long-lived relay never accumulates one
+    // dead entry per device that ever had a viewer. Guard against a
+    // reset that swapped in a fresh set for the same deviceId.
+    if (active.size === 0 && viewersByDevice.get(deviceId) === active) {
+      viewersByDevice.delete(deviceId)
+    }
   }
 }

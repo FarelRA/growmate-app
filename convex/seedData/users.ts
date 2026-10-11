@@ -2,7 +2,7 @@
 // this module carries only content hashes (see convex/seed/images.ts).
 //
 // 36 Javanese growers (22 advanced, 14 basic, all Gmail) + 1 demo account.
-// Demo owns IAET-01, IAET-02, IAFU-01, IAFT-01, IAFT-02 (see convex/seed/admin.ts).
+// Demo owns IAET01, IAET02, IAFU01, IAFT01, IAFT02 (see convex/seed/admin.ts).
 interface SeedUser {
   email: string
   password: string

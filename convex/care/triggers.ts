@@ -31,6 +31,11 @@ export async function triggerLightingCore(
 ) {
   const device = await getSelectedDevice(ctx, user._id, deviceId)
   if (!device) throw new ConvexError('Perangkat tidak ditemukan')
+  // Grow lights exist on pods (v1) only: tech firmware ignores the `light`
+  // kind, so queueing it on v2 would redeliver forever with no ack. The
+  // webapp already hides light actions on v2 (CarePanel/OverviewPanel
+  // v-if="!isV2"); this gate keeps direct API callers honest.
+  if (device.version === 'v2') throw new ConvexError('Aksi ini hanya tersedia untuk perangkat V1')
 
   await executeManualLighting(ctx, user as UserDoc, device, enabled)
   return { device, enabled }

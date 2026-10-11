@@ -127,14 +127,21 @@ export interface SaveAdminDeviceArgs {
 export async function saveAdminDevice(ctx: MutationCtx, args: SaveAdminDeviceArgs) {
   const now = Date.now()
 
-  const existingByDeviceId = await getDeviceByExternalId(ctx, args.deviceId.trim())
+  // Same charset the firmware enforces on claim ([A-Za-z0-9_-], ≤31):
+  // reject admin-saved ids the devices would refuse to adopt.
+  const trimmedDeviceId = args.deviceId.trim()
+  if (!CLAIM_ID_RE.test(trimmedDeviceId)) {
+    throw new ConvexError('claim must match [A-Za-z0-9_-] <=31')
+  }
+
+  const existingByDeviceId = await getDeviceByExternalId(ctx, trimmedDeviceId)
   if (existingByDeviceId && String(existingByDeviceId._id) !== String(args.existingDeviceId)) {
      throw new ConvexError('ID perangkat tersebut sudah digunakan')
   }
 
   const payload = {
-    deviceId: args.deviceId.trim(),
-    name: args.name?.trim() || getDefaultDeviceName(args.deviceId),
+    deviceId: trimmedDeviceId,
+    name: args.name?.trim() || getDefaultDeviceName(trimmedDeviceId),
     firmwareVersion: args.firmwareVersion?.trim() || undefined,
     autoWatering: args.autoWatering,
     autoLighting: args.autoLighting,

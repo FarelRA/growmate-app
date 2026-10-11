@@ -146,4 +146,35 @@ describe('GET /api/v2/recordings/:deviceId auth', () => {
     expect(mockQuery).toHaveBeenCalledWith('listRecordings', { deviceId: 'dev-1', limit: 50 })
     expect(result.recordings).toEqual([])
   })
+
+  it('clamps ?limit= to the shared 0-100 window and floors floats', async () => {
+    mockQuery.mockImplementation(async (ref: string) => {
+      if (ref === 'isAuthenticated') return true
+      if (ref === 'getOwnedDevice') return { deviceId: 'dev-1', name: 'GrowMate' }
+      if (ref === 'listRecordings') return []
+      throw new Error(`unexpected query: ${ref}`)
+    })
+    const handler = (await import(SRC)).default
+    // Mirror convex clampRecordingsLimit (DEFAULT 50, MAX 100).
+    await handler(mockEvent('dev-1', 'token-123', { limit: '200' }))
+    expect(mockQuery).toHaveBeenLastCalledWith('listRecordings', { deviceId: 'dev-1', limit: 100 })
+    await handler(mockEvent('dev-1', 'token-123', { limit: '-5' }))
+    expect(mockQuery).toHaveBeenLastCalledWith('listRecordings', { deviceId: 'dev-1', limit: 0 })
+    await handler(mockEvent('dev-1', 'token-123', { limit: '12.9' }))
+    expect(mockQuery).toHaveBeenLastCalledWith('listRecordings', { deviceId: 'dev-1', limit: 12 })
+  })
+
+  it('falls back to limit 50 for unparseable ?limit=', async () => {
+    mockQuery.mockImplementation(async (ref: string) => {
+      if (ref === 'isAuthenticated') return true
+      if (ref === 'getOwnedDevice') return { deviceId: 'dev-1', name: 'GrowMate' }
+      if (ref === 'listRecordings') return []
+      throw new Error(`unexpected query: ${ref}`)
+    })
+    const handler = (await import(SRC)).default
+    await handler(mockEvent('dev-1', 'token-123', { limit: 'abc' }))
+    expect(mockQuery).toHaveBeenLastCalledWith('listRecordings', { deviceId: 'dev-1', limit: 50 })
+    await handler(mockEvent('dev-1', 'token-123', { limit: '' }))
+    expect(mockQuery).toHaveBeenLastCalledWith('listRecordings', { deviceId: 'dev-1', limit: 50 })
+  })
 })

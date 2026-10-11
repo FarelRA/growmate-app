@@ -30,7 +30,7 @@ const currentDeviceId = computed(
   () => activeDeviceId.value || devices.value?.[0]?.deviceId || undefined,
 )
 
-const { data } = useConvexQuery(
+const { data, error: assistantError } = useConvexQuery(
   api.assistant.assistant,
   computed(() => ({ deviceId: currentDeviceId.value })),
 )
@@ -91,6 +91,10 @@ async function handleResetThread() {
 async function openTicket(ticketId?: string) {
   await router.push({ path: '/workspace-support', query: { ticketId } })
 }
+
+function reloadAssistant() {
+  window.location.reload()
+}
 </script>
 
 <template>
@@ -105,8 +109,8 @@ async function openTicket(ticketId?: string) {
             <span class="italic text-gm-primary">mentor tanaman</span> pribadi Anda
           </h1>
           <p class="mt-3 max-w-3xl text-sm leading-relaxed text-gm-muted">
-            Gunakan bagian ini untuk memilih perangkat aktif, memahami kapasitas penggunaan
-            harian, dan menindaklanjuti kebutuhan dukungan dengan lebih cepat.
+            Gunakan bagian ini untuk memilih perangkat aktif, memahami kapasitas penggunaan harian,
+            dan menindaklanjuti kebutuhan dukungan dengan lebih cepat.
           </p>
         </div>
       </div>
@@ -207,10 +211,11 @@ async function openTicket(ticketId?: string) {
         Pilih tanaman untuk perangkat ini
       </h2>
       <p class="mt-2 text-sm text-gm-muted">
-          Floral Assistant akan memberi saran yang jauh lebih relevan setelah perangkat aktif
-          memiliki profil tanaman yang sedang dibudidayakan.
+        Floral Assistant akan memberi saran yang jauh lebih relevan setelah perangkat aktif memiliki
+        profil tanaman yang sedang dibudidayakan.
       </p>
       <button
+        type="button"
         class="mt-5 rounded-full bg-gm-primary px-5 py-3 text-sm font-bold text-white"
         @click="
           router.push({
@@ -233,11 +238,12 @@ async function openTicket(ticketId?: string) {
             Percakapan
           </h2>
           <p class="mt-2 text-sm text-gm-muted">
-            Gunakan percakapan ini untuk memahami kondisi tanaman, menentukan langkah perawatan,
-            dan mengambil keputusan budidaya dengan lebih percaya diri.
+            Gunakan percakapan ini untuk memahami kondisi tanaman, menentukan langkah perawatan, dan
+            mengambil keputusan budidaya dengan lebih percaya diri.
           </p>
         </div>
         <button
+          type="button"
           class="rounded-full bg-[#f3f3f3] px-5 py-3 text-sm font-bold text-gm-text disabled:opacity-50"
           :disabled="resetting"
           @click="handleResetThread"
@@ -260,5 +266,29 @@ async function openTicket(ticketId?: string) {
         langganan Anda perlu diubah.
       </div>
     </section>
+  </div>
+
+  <div
+    v-else-if="assistantError"
+    class="rounded-[2rem] bg-white p-8 text-center shadow-[0_12px_32px_rgba(15,23,42,0.05)]"
+  >
+    <p class="text-sm font-bold text-gm-text">Gagal memuat asisten</p>
+    <p class="mx-auto mt-2 max-w-md text-sm text-gm-muted">Periksa koneksi Anda lalu coba lagi.</p>
+    <button
+      type="button"
+      class="mt-5 rounded-full bg-gm-primary px-6 py-3 text-sm font-bold text-white"
+      @click="reloadAssistant"
+    >
+      Coba lagi
+    </button>
+  </div>
+
+  <div v-else class="rounded-[2rem] bg-white p-8 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
+    <div class="animate-pulse space-y-4" aria-hidden="true">
+      <div class="h-6 w-1/3 rounded-full bg-[#f3f3f3]"></div>
+      <div class="h-24 rounded-[1.5rem] bg-[#f3f3f3]"></div>
+      <div class="h-16 rounded-[1.5rem] bg-[#f3f3f3]"></div>
+    </div>
+    <p class="mt-5 text-center text-sm text-gm-muted" role="status">Memuat asisten...</p>
   </div>
 </template>

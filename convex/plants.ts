@@ -3,7 +3,9 @@ import { query } from './_generated/server'
 export const plantLibrary = query({
   args: {},
   handler: async (ctx) => {
-    const presets = await ctx.db.query('plantCatalog').take(64)
+    // Static admin-curated catalog: indexed read (by_key) with a hard take.
+    // In-memory name sort below is unchanged.
+    const presets = await ctx.db.query('plantCatalog').withIndex('by_key').take(64)
     return presets
       .map((preset) => ({
         ...preset,

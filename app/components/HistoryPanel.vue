@@ -16,11 +16,23 @@ const RECORDINGS_CAP = 100
 const props = defineProps<{
   deviceId: string
   historyData: {
-    timeline: { _id: string; title: string; detail?: string; timestampLabel: string; relativeTime: string }[]
+    timeline: {
+      _id: string
+      title: string
+      detail?: string
+      timestampLabel: string
+      relativeTime: string
+    }[]
     currentPlant: { name: string; species: string } | null
     imageHistory: { _id: string; imageUrl: string | null; capturedAtLabel: string }[]
     archivedPlants: {
-      page: { _id: string; name: string; species: string; plantedAtLabel: string; archivedAtLabel: string | null }[]
+      page: {
+        _id: string
+        name: string
+        species: string
+        plantedAtLabel: string
+        archivedAtLabel: string | null
+      }[]
       isDone: boolean
       continueCursor: string
     }
@@ -35,7 +47,15 @@ const props = defineProps<{
       duration?: number
     }[]
   } | null
-  historyMetricCards: { key: string; label: string; unit: string; stroke: string; fill: string; points: { value: number; measuredAt: number }[]; latest: number | undefined }[]
+  historyMetricCards: {
+    key: string
+    label: string
+    unit: string
+    stroke: string
+    fill: string
+    points: { value: number; measuredAt: number }[]
+    latest: number | undefined
+  }[]
   deviceVersion?: string
 }>()
 
@@ -57,7 +77,10 @@ const galleryArgs = computed(() => ({
   deviceId: props.deviceId || undefined,
   limit: imageLimit.value,
 }))
-const { data: galleryImages } = useConvexQuery(api.devices.deviceGalleryImages, galleryArgs)
+const { data: galleryImages, isLoading: galleryLoading } = useConvexQuery(
+  api.devices.deviceGalleryImages,
+  galleryArgs,
+)
 const imageExhausted = computed(
   () => (galleryImages.value?.length ?? 0) < imageLimit.value || imageLimit.value >= GALLERY_CAP,
 )
@@ -68,17 +91,20 @@ function loadMoreImages() {
 
 // Recordings gallery: same growing-limit pattern over the signed-URL route.
 const recordingLimit = ref(RECORDINGS_PAGE)
-const recordingList = ref<{
-  _id: string
-  fileName: string
-  path: string
-  size: number
-  durationMs?: number
-  capturedAt: number
-  capturedAtLabel: string
-  downloadUrl?: string
-}[]>([])
+const recordingList = ref<
+  {
+    _id: string
+    fileName: string
+    path: string
+    size: number
+    durationMs?: number
+    capturedAt: number
+    capturedAtLabel: string
+    downloadUrl?: string
+  }[]
+>([])
 const recordingsLoading = ref(false)
+const recordingsError = ref<string | null>(null)
 const recordingsExhausted = ref(false)
 let recordingsRequestId = 0
 
@@ -88,6 +114,7 @@ async function refreshRecordings() {
   if (!props.deviceId || !isV2.value) return
   const requestId = ++recordingsRequestId
   recordingsLoading.value = true
+  recordingsError.value = null
   try {
     const token = await getAuthToken()
     if (requestId !== recordingsRequestId) return
@@ -96,7 +123,8 @@ async function refreshRecordings() {
       { headers: token ? { Authorization: `Bearer ${token}` } : {} },
     )
     if (!resp.ok) {
-      toast.error(`Gagal memuat rekaman (HTTP ${resp.status})`)
+      recordingsError.value = `Gagal memuat rekaman (HTTP ${resp.status})`
+      toast.error(recordingsError.value)
       return
     }
     const json = await resp.json()
@@ -107,6 +135,7 @@ async function refreshRecordings() {
   } catch (error) {
     if (requestId !== recordingsRequestId) return
     console.warn('[history] refreshRecordings failed', error)
+    recordingsError.value = 'Gagal memuat rekaman'
     toast.error('Gagal memuat rekaman')
   } finally {
     if (requestId === recordingsRequestId) {
@@ -126,6 +155,7 @@ watch(
     imageLimit.value = GALLERY_PAGE
     recordingLimit.value = RECORDINGS_PAGE
     recordingList.value = []
+    recordingsError.value = null
     recordingsExhausted.value = false
     selectedRecording.value = null
     showPlayback.value = false
@@ -215,7 +245,12 @@ function automationLabel(action: string): string {
   return automationActionLabels[action] ?? action
 }
 
-function automationDetail(log: { soilValue?: number; lightValue?: number; threshold?: number; duration?: number }): string {
+function automationDetail(log: {
+  soilValue?: number
+  lightValue?: number
+  threshold?: number
+  duration?: number
+}): string {
   const parts: string[] = []
   if (log.soilValue !== undefined) parts.push(`Tanah ${log.soilValue}%`)
   if (log.lightValue !== undefined) parts.push(`Cahaya ${log.lightValue}%`)
@@ -229,7 +264,9 @@ function automationDetail(log: { soilValue?: number; lightValue?: number; thresh
   <section class="space-y-4">
     <article class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
       <p class="text-xs font-bold uppercase tracking-[0.2em] text-gm-primary">Riwayat</p>
-      <h1 class="mt-2 font-headline text-2xl font-black tracking-tight text-gm-text">Arsip metrik</h1>
+      <h1 class="mt-2 font-headline text-2xl font-black tracking-tight text-gm-text">
+        Arsip metrik
+      </h1>
 
       <div class="mt-4 flex gap-1 rounded-[1.25rem] bg-[#f3f3f3] p-1">
         <button
@@ -237,41 +274,81 @@ function automationDetail(log: { soilValue?: number; lightValue?: number; thresh
           class="flex-1 rounded-[1rem] px-3 py-2 text-center text-xs font-bold uppercase tracking-[0.15em] transition-all"
           :class="activeSubTab === 'metrics' ? 'bg-white text-gm-text shadow-sm' : 'text-gm-muted'"
           @click="activeSubTab = 'metrics'"
-        >Metrik</button>
+        >
+          Metrik
+        </button>
         <button
           type="button"
           class="flex-1 rounded-[1rem] px-3 py-2 text-center text-xs font-bold uppercase tracking-[0.15em] transition-all"
           :class="activeSubTab === 'logs' ? 'bg-white text-gm-text shadow-sm' : 'text-gm-muted'"
           @click="activeSubTab = 'logs'"
-        >Log</button>
+        >
+          Log
+        </button>
         <button
           v-if="isV2"
           type="button"
           class="flex-1 rounded-[1rem] px-3 py-2 text-center text-xs font-bold uppercase tracking-[0.15em] transition-all"
-          :class="activeSubTab === 'recordings' ? 'bg-white text-gm-text shadow-sm' : 'text-gm-muted'"
+          :class="
+            activeSubTab === 'recordings' ? 'bg-white text-gm-text shadow-sm' : 'text-gm-muted'
+          "
           @click="activeSubTab = 'recordings'"
-        >Rekaman</button>
+        >
+          Rekaman
+        </button>
         <button
           type="button"
           class="flex-1 rounded-[1rem] px-3 py-2 text-center text-xs font-bold uppercase tracking-[0.15em] transition-all"
           :class="activeSubTab === 'timeline' ? 'bg-white text-gm-text shadow-sm' : 'text-gm-muted'"
           @click="activeSubTab = 'timeline'"
-        >Timeline</button>
+        >
+          Timeline
+        </button>
         <button
           type="button"
           class="flex-1 rounded-[1rem] px-3 py-2 text-center text-xs font-bold uppercase tracking-[0.15em] transition-all"
           :class="activeSubTab === 'images' ? 'bg-white text-gm-text shadow-sm' : 'text-gm-muted'"
           @click="activeSubTab = 'images'"
-        >Gambar</button>
+        >
+          Gambar
+        </button>
       </div>
     </article>
 
     <div v-if="activeSubTab === 'recordings'">
       <article class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
         <h2 class="font-headline text-xl font-black tracking-tight text-gm-text">Rekaman Video</h2>
-        <p class="mt-1 text-sm text-gm-muted">Rekaman siaran kamera perangkat yang telah disimpan.</p>
+        <p class="mt-1 text-sm text-gm-muted">
+          Rekaman siaran kamera perangkat yang telah disimpan.
+        </p>
 
-        <div v-if="recordingList.length === 0 && !recordingsLoading" class="mt-5 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted">
+        <div
+          v-if="recordingsLoading && recordingList.length === 0"
+          class="mt-5 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted"
+          role="status"
+        >
+          Memuat rekaman...
+        </div>
+
+        <div
+          v-else-if="recordingsError && recordingList.length === 0"
+          class="mt-5 space-y-3 rounded-[1.5rem] bg-[#f3f3f3] p-5"
+        >
+          <p class="text-sm text-gm-muted">{{ recordingsError }}</p>
+          <button
+            type="button"
+            class="rounded-full bg-white px-4 py-2 text-xs font-bold text-gm-text"
+            :disabled="recordingsLoading"
+            @click="refreshRecordings"
+          >
+            Coba lagi
+          </button>
+        </div>
+
+        <div
+          v-else-if="recordingList.length === 0"
+          class="mt-5 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted"
+        >
           Belum ada rekaman.
         </div>
 
@@ -293,7 +370,9 @@ function automationDetail(log: { soilValue?: number; lightValue?: number; thresh
               class="shrink-0 rounded-full bg-gm-primary px-4 py-2 text-xs font-bold text-white"
               :disabled="recordingsLoading"
               @click="playRecording(rec)"
-            >▶ Putar</button>
+            >
+              ▶ Putar
+            </button>
           </article>
         </div>
 
@@ -310,7 +389,13 @@ function automationDetail(log: { soilValue?: number; lightValue?: number; thresh
     </div>
 
     <template v-if="activeSubTab === 'metrics'">
-      <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div
+        v-if="!historyMetricCards.length"
+        class="rounded-[2rem] bg-white p-5 text-sm text-gm-muted shadow-[0_12px_32px_rgba(15,23,42,0.05)]"
+      >
+        Riwayat metrik akan muncul setelah pembaruan telemetri pertama dari perangkat.
+      </div>
+      <section v-else class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <article
           v-for="metric in historyMetricCards"
           :key="metric.key"
@@ -318,14 +403,23 @@ function automationDetail(log: { soilValue?: number; lightValue?: number; thresh
         >
           <div class="flex items-center justify-between gap-3">
             <p class="text-sm font-semibold text-gm-muted">{{ metric.label }}</p>
-            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-gm-primary">Riwayat</span>
+            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-gm-primary"
+              >Riwayat</span
+            >
           </div>
           <div class="mt-3 flex items-end gap-1">
-            <span class="font-headline text-3xl font-black tracking-tight text-gm-text">{{ metric.latest ?? '--' }}</span>
+            <span class="font-headline text-3xl font-black tracking-tight text-gm-text">{{
+              metric.latest ?? '--'
+            }}</span>
             <span class="pb-1 text-xs font-bold text-gm-muted">{{ metric.unit }}</span>
           </div>
           <div class="mt-4 h-20 rounded-[1.25rem] bg-[#f3f3f3] p-2">
-            <MetricLineChart :points="metric.points" :height="80" :stroke="metric.stroke" :fill="metric.fill" />
+            <MetricLineChart
+              :points="metric.points"
+              :height="80"
+              :stroke="metric.stroke"
+              :fill="metric.fill"
+            />
           </div>
         </article>
       </section>
@@ -334,8 +428,12 @@ function automationDetail(log: { soilValue?: number; lightValue?: number; thresh
     <template v-if="activeSubTab === 'logs' && historyData">
       <article class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
         <p class="text-xs font-bold uppercase tracking-[0.2em] text-gm-primary">Log</p>
-        <h2 class="mt-2 font-headline text-2xl font-black tracking-tight text-gm-text">Log otomasi</h2>
-        <p class="mt-1 text-sm text-gm-muted">Catatan aksi otomatis dan manual pada tanaman aktif.</p>
+        <h2 class="mt-2 font-headline text-2xl font-black tracking-tight text-gm-text">
+          Log otomasi
+        </h2>
+        <p class="mt-1 text-sm text-gm-muted">
+          Catatan aksi otomatis dan manual pada tanaman aktif.
+        </p>
         <div v-if="(historyData.automationLogs?.length ?? 0) > 0" class="mt-5 space-y-3">
           <article
             v-for="log in historyData.automationLogs"
@@ -345,7 +443,9 @@ function automationDetail(log: { soilValue?: number; lightValue?: number; thresh
             <div class="flex items-start justify-between gap-3">
               <div>
                 <div class="text-sm font-bold text-gm-text">{{ automationLabel(log.action) }}</div>
-                <div v-if="automationDetail(log)" class="mt-1 text-sm text-gm-muted">{{ automationDetail(log) }}</div>
+                <div v-if="automationDetail(log)" class="mt-1 text-sm text-gm-muted">
+                  {{ automationDetail(log) }}
+                </div>
               </div>
               <div class="text-right text-[11px] text-gm-muted">
                 <div>{{ log.timestampLabel }}</div>
@@ -354,15 +454,22 @@ function automationDetail(log: { soilValue?: number; lightValue?: number; thresh
             </div>
           </article>
         </div>
-        <div v-else class="mt-5 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted">Belum ada log otomasi untuk tanaman ini.</div>
+        <div v-else class="mt-5 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted">
+          Belum ada log otomasi untuk tanaman ini.
+        </div>
       </article>
     </template>
 
-    <section v-if="activeSubTab === 'timeline' && historyData" class="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+    <section
+      v-if="activeSubTab === 'timeline' && historyData"
+      class="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]"
+    >
       <article class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
         <div>
           <p class="text-xs font-bold uppercase tracking-[0.2em] text-gm-primary">Linimasa</p>
-          <h2 class="mt-2 font-headline text-2xl font-black tracking-tight text-gm-text">Aktivitas budidaya terbaru</h2>
+          <h2 class="mt-2 font-headline text-2xl font-black tracking-tight text-gm-text">
+            Aktivitas budidaya terbaru
+          </h2>
         </div>
         <div v-if="historyData.timeline.length" class="mt-5 space-y-3">
           <article
@@ -382,21 +489,33 @@ function automationDetail(log: { soilValue?: number; lightValue?: number; thresh
             </div>
           </article>
         </div>
-        <div v-else class="mt-5 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted">Riwayat akan muncul setelah pembaruan telemetri dan aksi perawatan pertama.</div>
+        <div v-else class="mt-5 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted">
+          Riwayat akan muncul setelah pembaruan telemetri dan aksi perawatan pertama.
+        </div>
       </article>
 
       <div class="space-y-4">
         <article class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
-          <p class="text-xs font-bold uppercase tracking-[0.2em] text-gm-primary">Tanaman saat ini</p>
-          <h2 class="mt-2 font-headline text-2xl font-black tracking-tight text-gm-text">{{ historyData.currentPlant?.name || 'Tidak ada tanaman aktif' }}</h2>
-          <p v-if="historyData.currentPlant" class="mt-2 text-sm text-gm-muted">{{ historyData.currentPlant.species }}</p>
+          <p class="text-xs font-bold uppercase tracking-[0.2em] text-gm-primary">
+            Tanaman saat ini
+          </p>
+          <h2 class="mt-2 font-headline text-2xl font-black tracking-tight text-gm-text">
+            {{ historyData.currentPlant?.name || 'Tidak ada tanaman aktif' }}
+          </h2>
+          <p v-if="historyData.currentPlant" class="mt-2 text-sm text-gm-muted">
+            {{ historyData.currentPlant.species }}
+          </p>
           <div v-if="historyData.imageHistory.length" class="mt-4 grid grid-cols-2 gap-2">
             <div
               v-for="image in historyData.imageHistory.slice(0, 4)"
               :key="image._id"
               class="overflow-hidden rounded-[1.25rem] bg-[#f3f3f3]"
             >
-              <img :src="getImageUrl(image.imageUrl, 200) ?? undefined" :alt="historyData.currentPlant?.name || 'Snapshot tanaman'" class="h-24 w-full object-cover" />
+              <img
+                :src="getImageUrl(image.imageUrl, 200) ?? undefined"
+                :alt="historyData.currentPlant?.name || 'Snapshot tanaman'"
+                class="h-24 w-full object-cover"
+              />
               <div class="px-3 py-2 text-[11px] text-gm-muted">{{ image.capturedAtLabel }}</div>
             </div>
           </div>
@@ -404,7 +523,9 @@ function automationDetail(log: { soilValue?: number; lightValue?: number; thresh
 
         <article class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
           <p class="text-xs font-bold uppercase tracking-[0.2em] text-gm-primary">Arsip</p>
-          <h2 class="mt-2 font-headline text-2xl font-black tracking-tight text-gm-text">Tanaman sebelumnya pada pod ini</h2>
+          <h2 class="mt-2 font-headline text-2xl font-black tracking-tight text-gm-text">
+            Tanaman sebelumnya pada pod ini
+          </h2>
           <div v-if="historyData.archivedPlants.page.length" class="mt-4 space-y-3">
             <article
               v-for="plant in historyData.archivedPlants.page"
@@ -413,10 +534,14 @@ function automationDetail(log: { soilValue?: number; lightValue?: number; thresh
             >
               <div class="text-sm font-bold text-gm-text">{{ plant.name }}</div>
               <div class="mt-1 text-sm text-gm-muted">{{ plant.species }}</div>
-              <div class="mt-2 text-[11px] text-gm-muted">Ditanam {{ plant.plantedAtLabel }} • Diarsipkan {{ plant.archivedAtLabel }}</div>
+              <div class="mt-2 text-[11px] text-gm-muted">
+                Ditanam {{ plant.plantedAtLabel }} • Diarsipkan {{ plant.archivedAtLabel }}
+              </div>
             </article>
           </div>
-          <div v-else class="mt-4 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted">Belum ada tanaman yang diarsipkan untuk perangkat ini.</div>
+          <div v-else class="mt-4 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted">
+            Belum ada tanaman yang diarsipkan untuk perangkat ini.
+          </div>
         </article>
       </div>
     </section>
@@ -426,7 +551,18 @@ function automationDetail(log: { soilValue?: number; lightValue?: number; thresh
         <h2 class="font-headline text-xl font-black tracking-tight text-gm-text">Galeri Gambar</h2>
         <p class="mt-1 text-sm text-gm-muted">Jepretan kamera perangkat, terbaru dulu.</p>
 
-        <div v-if="(galleryImages?.length ?? 0) === 0" class="mt-4 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted">
+        <div
+          v-if="galleryLoading && (galleryImages?.length ?? 0) === 0"
+          class="mt-4 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted"
+          role="status"
+        >
+          Memuat gambar...
+        </div>
+
+        <div
+          v-else-if="(galleryImages?.length ?? 0) === 0"
+          class="mt-4 rounded-[1.5rem] bg-[#f3f3f3] p-5 text-sm text-gm-muted"
+        >
           Belum ada gambar yang tersedia.
         </div>
 
@@ -436,7 +572,12 @@ function automationDetail(log: { soilValue?: number; lightValue?: number; thresh
             :key="image._id"
             class="overflow-hidden rounded-[1.5rem] bg-[#f3f3f3]"
           >
-            <img :src="getImageUrl(image.imageUrl, 400) ?? undefined" :alt="'Snapshot tanaman'" class="h-36 w-full object-cover" loading="lazy" />
+            <img
+              :src="getImageUrl(image.imageUrl, 400) ?? undefined"
+              :alt="'Snapshot tanaman'"
+              class="h-36 w-full object-cover"
+              loading="lazy"
+            />
             <div class="px-3 py-2 text-[11px] text-gm-muted">{{ image.capturedAtLabel }}</div>
           </article>
         </div>
@@ -459,10 +600,7 @@ function automationDetail(log: { soilValue?: number; lightValue?: number; thresh
         @click.self="showPlayback = false"
       >
         <div class="w-full max-w-2xl">
-          <PastRecordingViewer
-            :recording="selectedRecording"
-            @close="showPlayback = false"
-          />
+          <PastRecordingViewer :recording="selectedRecording" @close="showPlayback = false" />
         </div>
       </div>
     </Teleport>

@@ -112,7 +112,7 @@ export const claimDevice = mutation({
 
     const device = await ctx.db
       .query('devices')
-      .withIndex('by_deviceId', (q) => q.eq('deviceId', args.deviceId))
+      .withIndex('by_deviceId', (q) => q.eq('deviceId', args.deviceId.trim()))
       .first()
 
     if (!device) {

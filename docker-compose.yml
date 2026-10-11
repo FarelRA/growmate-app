@@ -130,6 +130,10 @@ services:
     environment:
       CONVEX_CLOUD_ORIGIN: ${CONVEX_CLOUD_ORIGIN}
       CONVEX_SITE_ORIGIN: ${CONVEX_SITE_ORIGIN}
+      # Auth issuer allowlist (convex/auth.config.ts reads CONVEX_SITE_URL,
+      # falling back to SITE_URL then localhost). Must match the public site
+      # origin or password-JWT verification fails closed in production.
+      CONVEX_SITE_URL: ${CONVEX_SITE_URL}
       INSTANCE_NAME: ${CONVEX_INSTANCE_NAME}
       INSTANCE_SECRET: ${CONVEX_INSTANCE_SECRET}
       # Fail-closed device auth (convex/sensors.ts, convex/streams.ts read container env).

@@ -40,14 +40,10 @@ export async function toggleLikeCore(
   // Likes are a toggle: award post_liked points on the FIRST like only.
   // Unlike awards nothing, and relike after unlike awards nothing, so
   // unlike→relike loops can never farm leaderboard points.
-  const pastLikes = await ctx.db
-    .query('userActivities')
-    .withIndex('by_user', (q) => q.eq('userId', user._id))
-    .collect()
-  const alreadyRewarded = pastLikes.some(
-    (activity) =>
-      activity.activityType === 'post_liked' && String(activity.relatedId) === String(postId),
-  )
+  // Bounded reward lookup: cursor-paginated scan of the caller's own
+  // activities with early exit on match — never an unbounded collect() on
+  // this hot toggle path, and byte-identical reward semantics.
+  const alreadyRewarded = await hasPriorPostLikedReward(ctx, user._id, postId)
   if (!alreadyRewarded) {
     await addUserActivity(ctx, {
       userId: user._id,
@@ -58,6 +54,27 @@ export async function toggleLikeCore(
   }
 
   return { success: true, liked: true }
+}
+
+async function hasPriorPostLikedReward(
+  ctx: MutationCtx,
+  userId: Id<'users'>,
+  postId: Id<'communityPosts'>,
+): Promise<boolean> {
+  let cursor: string | null = null
+  while (true) {
+    const page = await ctx.db
+      .query('userActivities')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .paginate({ cursor, numItems: 100 })
+    const found = page.page.some(
+      (activity) =>
+        activity.activityType === 'post_liked' && String(activity.relatedId) === String(postId),
+    )
+    if (found) return true
+    if (page.isDone) return false
+    cursor = page.continueCursor
+  }
 }
 
 export async function createCommentCore(

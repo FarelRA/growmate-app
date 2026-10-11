@@ -97,6 +97,11 @@ interface FakeCtx {
     query: (table: string) => any
     all: (table: string) => Doc[]
   }
+  scheduler: {
+    runAfter: (delayMs: number, functionRef: unknown, args: unknown) => Promise<void>
+  }
+  /** Captured scheduler.runAfter calls: [delayMs, functionRef, args]. */
+  schedulerCalls: Array<[number, unknown, unknown]>
   __testUserId: string | null
 }
 
@@ -159,7 +164,13 @@ function createCtx(): FakeCtx {
     },
     all: (table: string) => snapshot(table),
   }
-  return { db, __testUserId: null }
+  const schedulerCalls: Array<[number, unknown, unknown]> = []
+  const scheduler = {
+    runAfter: async (delayMs: number, functionRef: unknown, args: unknown) => {
+      schedulerCalls.push([delayMs, functionRef, args])
+    },
+  }
+  return { db, scheduler, schedulerCalls, __testUserId: null }
 }
 
 async function callHandler(fn: any, ctx: FakeCtx, args: any): Promise<any> {
@@ -545,6 +556,9 @@ describe('admin consolidation: adminDeleteDevice cascades', () => {
       await ctx.db.insert('plantImages', {
         deviceId: deviceDocId,
         plantId,
+        // Only plantA's image has an S3 prefix: the cascade must schedule
+        // variant deletes for it and skip scheduling for prefix-less rows.
+        ...(plantId === plantA ? { imageUrl: 'img-prefix-a' } : {}),
         source: 'camera',
         capturedAt: NOW,
       })
@@ -633,6 +647,16 @@ describe('admin consolidation: adminDeleteDevice cascades', () => {
       remaining('automationLogs').filter((l) => String(l.deviceId) === String(deviceDocId)),
     ).toHaveLength(0)
     expect(await ctx.db.get(otherDevice)).not.toBeNull()
+
+    // S3 deletes are scheduled, not dropped: one recording key plus one
+    // image prefix (the prefix-less plantB image schedules nothing).
+    const scheduledArgs = ctx.schedulerCalls.map(([, , args]) => args)
+    expect(scheduledArgs).toContainEqual({ key: 'gm-cascade/seg.mp4' })
+    expect(scheduledArgs).toContainEqual({ pathPrefix: 'img-prefix-a' })
+    expect(ctx.schedulerCalls).toHaveLength(2)
+    for (const [delayMs] of ctx.schedulerCalls) {
+      expect(delayMs).toBe(0)
+    }
   })
 
   it('rejects missing devices, claimed devices, and non-admin callers', async () => {

@@ -18,12 +18,28 @@ const navigation: { label: string; to: string; detail?: string }[] = [
 
 const quickLinks = [
   { label: 'Produk', to: '/products', detail: 'Perangkat resmi GrowMate untuk budidaya cerdas' },
-  { label: 'Marketplace', to: '/marketplace', detail: 'Hasil panen dan produk dari sesama pengguna GrowMate' },
-  { label: 'Pustaka Tanaman', to: '/plant-library', detail: 'Daftar tanaman, profil tumbuh, dan panduan budidaya' },
+  {
+    label: 'Marketplace',
+    to: '/marketplace',
+    detail: 'Hasil panen dan produk dari sesama pengguna GrowMate',
+  },
+  {
+    label: 'Pustaka Tanaman',
+    to: '/plant-library',
+    detail: 'Daftar tanaman, profil tumbuh, dan panduan budidaya',
+  },
   { label: 'Dukungan', to: '/support', detail: 'Panduan mulai, alur penggunaan, dan bantuan umum' },
-  { label: 'Tentang', to: '/about', detail: 'Ringkasan solusi GrowMate untuk pertanian berkelanjutan' },
+  {
+    label: 'Tentang',
+    to: '/about',
+    detail: 'Ringkasan solusi GrowMate untuk pertanian berkelanjutan',
+  },
   { label: 'Blog', to: '/blog', detail: 'Artikel edukasi dan pembaruan resmi GrowMate' },
-  { label: 'Cerita Pengguna', to: '/stories', detail: 'Pengalaman budidaya dari komunitas GrowMate' },
+  {
+    label: 'Cerita Pengguna',
+    to: '/stories',
+    detail: 'Pengalaman budidaya dari komunitas GrowMate',
+  },
   { label: 'Daftar', to: '/register', detail: 'Buat akun untuk mulai memantau tanaman Anda' },
   { label: 'Masuk', to: '/login', detail: 'Buka ruang kerja GrowMate Anda' },
 ]
@@ -84,13 +100,23 @@ function closeMenus() {
         </nav>
 
         <div class="flex items-center gap-3 lg:gap-5">
-          <button class="text-gray-700 transition-colors duration-200 hover:-translate-y-0.5 hover:text-gm-text" @click="searchOpen = true">
+          <button
+            type="button"
+            class="text-gray-700 transition-colors duration-200 hover:-translate-y-0.5 hover:text-gm-text"
+            @click="searchOpen = true"
+          >
             <span class="material-symbols-outlined text-[22px]">search</span>
           </button>
-          <NuxtLink class="hidden text-gray-700 transition-colors duration-200 hover:-translate-y-0.5 hover:text-gm-text sm:block" to="/login">
+          <NuxtLink
+            class="hidden text-gray-700 transition-colors duration-200 hover:-translate-y-0.5 hover:text-gm-text sm:block"
+            to="/login"
+          >
             <span class="material-symbols-outlined text-[22px]">person</span>
           </NuxtLink>
-          <NuxtLink class="text-gray-700 transition-colors duration-200 hover:-translate-y-0.5 hover:text-gm-text" to="/marketplace">
+          <NuxtLink
+            class="text-gray-700 transition-colors duration-200 hover:-translate-y-0.5 hover:text-gm-text"
+            to="/marketplace"
+          >
             <span class="material-symbols-outlined text-[22px]">shopping_bag</span>
           </NuxtLink>
         </div>
@@ -110,7 +136,6 @@ function closeMenus() {
         </NuxtLink>
       </div>
     </div>
-
   </header>
 
   <Teleport to="body">
@@ -119,8 +144,15 @@ function closeMenus() {
       class="fixed inset-0 z-[60] flex items-start justify-center bg-black/35 px-4 py-8 backdrop-blur-md"
       @click="searchOpen = false"
     >
-      <RevealBlock as="div" origin="down" class="w-full max-w-2xl rounded-[2rem] bg-white p-5 shadow-2xl sm:p-6" @click.stop>
-        <div class="flex items-center gap-3 rounded-full bg-[#f3f5f1] px-4 py-3 transition-shadow duration-300 focus-within:shadow-[0_0_0_4px_rgba(0,110,28,0.08)]">
+      <RevealBlock
+        as="div"
+        origin="down"
+        class="w-full max-w-2xl rounded-[2rem] bg-white p-5 shadow-2xl sm:p-6"
+        @click.stop
+      >
+        <div
+          class="flex items-center gap-3 rounded-full bg-[#f3f5f1] px-4 py-3 transition-shadow duration-300 focus-within:shadow-[0_0_0_4px_rgba(0,110,28,0.08)]"
+        >
           <span class="material-symbols-outlined text-gm-muted">search</span>
           <input
             v-model="searchQuery"

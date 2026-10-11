@@ -26,11 +26,17 @@ export default defineEventHandler(async (event) => {
     }
 
     const contentLength = getHeader(event, 'content-length')
-    if (contentLength && Number(contentLength) > MAX_DEVICE_FRAME_BYTES) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'frame over 1MB',
-      })
+    if (contentLength !== undefined) {
+      const parsedLength = Number(contentLength)
+      if (!Number.isFinite(parsedLength) || parsedLength < 0) {
+        throw createError({ statusCode: 400, statusMessage: 'invalid content-length' })
+      }
+      if (parsedLength > MAX_DEVICE_FRAME_BYTES) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'frame over 1MB',
+        })
+      }
     }
 
     const rawBody = await readRawBody(event)

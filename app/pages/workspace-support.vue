@@ -14,7 +14,7 @@ definePageMeta({
 const route = useRoute()
 const router = useRouter()
 
-const { data } = useConvexQuery(api.support.supportInbox, {})
+const { data, error: supportError } = useConvexQuery(api.support.supportInbox, {})
 const { mutate: createSupportRequest } = useConvexMutation(api.support.createSupportRequest)
 const { mutate: sendSupportMessage } = useConvexMutation(api.support.sendSupportMessage)
 const { mutate: closeSupportRequest } = useConvexMutation(api.support.closeSupportRequest)
@@ -25,6 +25,10 @@ const creatingTicket = ref(false)
 const sendingReply = ref(false)
 const closingTicket = ref(false)
 const selectedRequestId = ref<string | null>(null)
+
+function reloadSupport() {
+  window.location.reload()
+}
 
 const selectedRequest = computed(
   () =>
@@ -134,6 +138,7 @@ async function handleCloseTicket() {
           </p>
         </div>
         <button
+          type="button"
           class="rounded-full bg-[#f3f3f3] px-5 py-3 text-sm font-bold text-gm-text"
           @click="router.push('/assistant')"
         >
@@ -162,6 +167,7 @@ async function handleCloseTicket() {
           />
         </label>
         <button
+          type="button"
           class="rounded-full bg-[#ffdbcf] px-5 py-3 text-sm font-bold text-[#795548] disabled:opacity-50"
           :disabled="creatingTicket"
           @click="handleCreateTicket"
@@ -213,6 +219,7 @@ async function handleCloseTicket() {
 
           <div class="flex flex-wrap gap-3">
             <button
+              type="button"
               v-if="selectedRequest.status !== 'closed'"
               class="rounded-full bg-[#ffdbcf] px-5 py-3 text-sm font-bold text-[#795548] disabled:opacity-50"
               :disabled="closingTicket"
@@ -267,6 +274,7 @@ async function handleCloseTicket() {
                 />
               </label>
               <button
+                type="button"
                 class="rounded-full bg-gm-primary p-4 text-white disabled:opacity-50"
                 aria-label="Kirim pesan"
                 :disabled="sendingReply"
@@ -285,5 +293,29 @@ async function handleCloseTicket() {
         </div>
       </article>
     </section>
+  </div>
+
+  <div
+    v-else-if="supportError"
+    class="rounded-[2rem] bg-white p-8 text-center shadow-[0_12px_32px_rgba(15,23,42,0.05)]"
+  >
+    <p class="text-sm font-bold text-gm-text">Gagal memuat dukungan</p>
+    <p class="mx-auto mt-2 max-w-md text-sm text-gm-muted">Periksa koneksi Anda lalu coba lagi.</p>
+    <button
+      type="button"
+      class="mt-5 rounded-full bg-gm-primary px-6 py-3 text-sm font-bold text-white"
+      @click="reloadSupport"
+    >
+      Coba lagi
+    </button>
+  </div>
+
+  <div v-else class="rounded-[2rem] bg-white p-8 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
+    <div class="animate-pulse space-y-4" aria-hidden="true">
+      <div class="h-6 w-1/3 rounded-full bg-[#f3f3f3]"></div>
+      <div class="h-24 rounded-[1.5rem] bg-[#f3f3f3]"></div>
+      <div class="h-16 rounded-[1.5rem] bg-[#f3f3f3]"></div>
+    </div>
+    <p class="mt-5 text-center text-sm text-gm-muted" role="status">Memuat dukungan...</p>
   </div>
 </template>

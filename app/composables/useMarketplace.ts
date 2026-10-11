@@ -54,15 +54,30 @@ export function useMarketplace() {
   const { data } = useConvexQuery(api.marketplace.marketplace, {})
 
   const { mutate: saveMarketplaceDraft } = useConvexMutation(api.marketplace.saveMarketplaceDraft)
-  const { mutate: publishMarketplaceDraft } = useConvexMutation(api.marketplace.publishMarketplaceDraft)
-  const { mutate: updateMarketplaceListingStatus } = useConvexMutation(api.marketplace.updateMarketplaceListingStatus)
-  const { mutate: updateMarketplaceListing } = useConvexMutation(api.marketplace.updateMarketplaceListing)
-  const { mutate: deleteMarketplaceDraft } = useConvexMutation(api.marketplace.deleteMarketplaceDraft)
-  const { mutate: deleteMarketplaceListing } = useConvexMutation(api.marketplace.deleteMarketplaceListing)
-  const { mutate: sendMarketplaceMessage } = useConvexMutation(api.marketplace.sendMarketplaceMessage)
-  const { mutate: replyMarketplaceThread } = useConvexMutation(api.marketplace.replyMarketplaceThread)
-  const { mutate: markMarketplaceThreadRead } = useConvexMutation(api.marketplace.markMarketplaceThreadRead)
-
+  const { mutate: publishMarketplaceDraft } = useConvexMutation(
+    api.marketplace.publishMarketplaceDraft,
+  )
+  const { mutate: updateMarketplaceListingStatus } = useConvexMutation(
+    api.marketplace.updateMarketplaceListingStatus,
+  )
+  const { mutate: updateMarketplaceListing } = useConvexMutation(
+    api.marketplace.updateMarketplaceListing,
+  )
+  const { mutate: deleteMarketplaceDraft } = useConvexMutation(
+    api.marketplace.deleteMarketplaceDraft,
+  )
+  const { mutate: deleteMarketplaceListing } = useConvexMutation(
+    api.marketplace.deleteMarketplaceListing,
+  )
+  const { mutate: sendMarketplaceMessage } = useConvexMutation(
+    api.marketplace.sendMarketplaceMessage,
+  )
+  const { mutate: replyMarketplaceThread } = useConvexMutation(
+    api.marketplace.replyMarketplaceThread,
+  )
+  const { mutate: markMarketplaceThreadRead } = useConvexMutation(
+    api.marketplace.markMarketplaceThreadRead,
+  )
 
   const savingDraft = ref(false)
   const publishingDraftId = ref<string | null>(null)
@@ -116,11 +131,14 @@ export function useMarketplace() {
   )
 
   const selectedThread = computed(
-    () => data.value?.threads.find((thread: { _id: string }) => thread._id === selectedThreadId.value) ?? null,
+    () =>
+      data.value?.threads.find(
+        (thread: { _id: string }) => thread._id === selectedThreadId.value,
+      ) ?? null,
   )
 
   function openExternal(url: string) {
-    window.open(url, '_blank')
+    window.open(url, '_blank', 'noopener')
   }
 
   function hasWorkingImage(id: string, image?: string | null) {
@@ -173,7 +191,9 @@ export function useMarketplace() {
       } else {
         await saveMarketplaceDraft({
           ...draftForm.value,
-          draftId: draftForm.value.draftId ? (draftForm.value.draftId as Id<'listingDrafts'>) : undefined,
+          draftId: draftForm.value.draftId
+            ? (draftForm.value.draftId as Id<'listingDrafts'>)
+            : undefined,
           imageUrl: imageUrl ?? undefined,
         })
         toast.success(draftForm.value.draftId ? 'Draft diperbarui' : 'Draft disimpan')
@@ -205,7 +225,10 @@ export function useMarketplace() {
     archived: 'Listing diarsipkan',
   }
 
-  async function handleUpdateListingStatus(productId: string, status: 'active' | 'reserved' | 'sold' | 'archived') {
+  async function handleUpdateListingStatus(
+    productId: string,
+    status: 'active' | 'reserved' | 'sold' | 'archived',
+  ) {
     updatingListingId.value = productId
     try {
       await updateMarketplaceListingStatus({ productId: productId as Id<'products'>, status })
@@ -253,7 +276,9 @@ export function useMarketplace() {
     try {
       await sendMarketplaceMessage({
         productId: inquiryListing.value._id as Id<'products'>,
-        threadId: (inquiryListing.value.contactThreadId ?? undefined) as Id<'marketplaceThreads'> | undefined,
+        threadId: (inquiryListing.value.contactThreadId ?? undefined) as
+          | Id<'marketplaceThreads'>
+          | undefined,
         body: inquiryMessage.value,
       })
       toast.success(`Pertanyaan dikirim ke ${inquiryListing.value.sellerName}`)
@@ -285,24 +310,50 @@ export function useMarketplace() {
 
   return {
     // state
-    searchQuery, selectedCategory, selectedThreadId,
-    showInquiryModal, inquiryListing, inquiryMessage, replyMessage,
-    draftForm, data,
-    savingDraft, publishingDraftId, updatingListingId,
-    deletingDraftId, deletingListingId,
-    sendingInquiry, sendingReply, editingListingId,
-    draftImageFile, draftImagePreview, failedMarketplaceImages,
+    searchQuery,
+    selectedCategory,
+    selectedThreadId,
+    showInquiryModal,
+    inquiryListing,
+    inquiryMessage,
+    replyMessage,
+    draftForm,
+    data,
+    savingDraft,
+    publishingDraftId,
+    updatingListingId,
+    deletingDraftId,
+    deletingListingId,
+    sendingInquiry,
+    sendingReply,
+    editingListingId,
+    draftImageFile,
+    draftImagePreview,
+    failedMarketplaceImages,
 
     // computed
-    featured, filteredOfficial, filteredCommunity, selectedThread,
+    featured,
+    filteredOfficial,
+    filteredCommunity,
+    selectedThread,
 
     // helper methods
-    openExternal, hasWorkingImage, handleImageError,
-    resetDraftForm, editDraft, editListing, handleDraftImageChange, openInquiry,
+    openExternal,
+    hasWorkingImage,
+    handleImageError,
+    resetDraftForm,
+    editDraft,
+    editListing,
+    handleDraftImageChange,
+    openInquiry,
 
     // mutation handlers
-    handleSaveDraft, handlePublishDraft, handleUpdateListingStatus,
-    handleDeleteDraft, handleDeleteListing,
-    handleSendInquiry, handleReplyThread,
+    handleSaveDraft,
+    handlePublishDraft,
+    handleUpdateListingStatus,
+    handleDeleteDraft,
+    handleDeleteListing,
+    handleSendInquiry,
+    handleReplyThread,
   }
 }

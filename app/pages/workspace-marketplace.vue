@@ -7,22 +7,46 @@ definePageMeta({
 })
 
 const {
-  searchQuery, selectedCategory, selectedThreadId,
-  showInquiryModal, inquiryListing, inquiryMessage, replyMessage,
-  draftForm, data,
-  savingDraft, publishingDraftId, updatingListingId,
-  deletingDraftId, deletingListingId,
-  sendingInquiry, sendingReply, editingListingId,
+  searchQuery,
+  selectedCategory,
+  selectedThreadId,
+  showInquiryModal,
+  inquiryListing,
+  inquiryMessage,
+  replyMessage,
+  draftForm,
+  data,
+  savingDraft,
+  publishingDraftId,
+  updatingListingId,
+  deletingDraftId,
+  deletingListingId,
+  sendingInquiry,
+  sendingReply,
+  editingListingId,
   draftImagePreview,
 
-  featured, filteredOfficial, filteredCommunity, selectedThread,
+  featured,
+  filteredOfficial,
+  filteredCommunity,
+  selectedThread,
 
-  openExternal, hasWorkingImage, handleImageError,
-  resetDraftForm, editDraft, editListing, handleDraftImageChange, openInquiry,
+  openExternal,
+  hasWorkingImage,
+  handleImageError,
+  resetDraftForm,
+  editDraft,
+  editListing,
+  handleDraftImageChange,
+  openInquiry,
 
-  handleSaveDraft, handlePublishDraft, handleUpdateListingStatus,
-  handleDeleteDraft, handleDeleteListing,
-  handleSendInquiry, handleReplyThread,
+  handleSaveDraft,
+  handlePublishDraft,
+  handleUpdateListingStatus,
+  handleDeleteDraft,
+  handleDeleteListing,
+  handleSendInquiry,
+  handleReplyThread,
 } = useMarketplace()
 </script>
 
@@ -79,8 +103,25 @@ const {
     </section>
   </div>
 
-  <div v-else class="rounded-[2rem] bg-white p-6 text-sm text-gm-muted shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
-    Memuat marketplace...
+  <div v-else class="rounded-[2rem] bg-white p-6 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
+    <div class="animate-pulse space-y-4" aria-hidden="true">
+      <div class="h-40 rounded-[2rem] bg-[#f3f3f3]"></div>
+      <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div class="h-52 rounded-[2rem] bg-[#f3f3f3]"></div>
+        <div class="h-52 rounded-[2rem] bg-[#f3f3f3]"></div>
+        <div class="hidden h-52 rounded-[2rem] bg-[#f3f3f3] xl:block"></div>
+      </div>
+    </div>
+    <p class="mt-5 text-center text-sm text-gm-muted" role="status">Memuat marketplace...</p>
+    <div class="mt-4 text-center">
+      <button
+        type="button"
+        class="rounded-full bg-[#f3f3f3] px-5 py-3 text-sm font-bold text-gm-text"
+        @click="window.location.reload()"
+      >
+        Muat ulang
+      </button>
+    </div>
   </div>
 
   <div
@@ -94,10 +135,19 @@ const {
     <div class="w-full max-w-2xl rounded-[2rem] bg-white p-8 shadow-2xl" @click.stop>
       <div class="flex items-start justify-between gap-4">
         <div>
-          <h3 class="font-headline text-2xl font-bold text-gm-text">Kirim pesan ke {{ inquiryListing.sellerName }}</h3>
-          <p class="mt-1 text-sm text-gm-muted">Percakapan ini akan tetap terkait dengan {{ inquiryListing.title }}.</p>
+          <h3 class="font-headline text-2xl font-bold text-gm-text">
+            Kirim pesan ke {{ inquiryListing.sellerName }}
+          </h3>
+          <p class="mt-1 text-sm text-gm-muted">
+            Percakapan ini akan tetap terkait dengan {{ inquiryListing.title }}.
+          </p>
         </div>
-        <button class="rounded-full p-2 hover:bg-[#f3f3f3]" aria-label="Tutup" @click="showInquiryModal = false">
+        <button
+          type="button"
+          class="rounded-full p-2 hover:bg-[#f3f3f3]"
+          aria-label="Tutup"
+          @click="showInquiryModal = false"
+        >
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
@@ -112,13 +162,20 @@ const {
       </label>
       <div class="mt-6 flex gap-3">
         <button
+          type="button"
           @click="handleSendInquiry"
           class="flex-1 rounded-full bg-gm-primary px-6 py-4 text-sm font-bold text-white"
           :disabled="sendingInquiry"
         >
           {{ sendingInquiry ? 'Mengirim...' : 'Kirim Pertanyaan' }}
         </button>
-        <button @click="showInquiryModal = false" class="rounded-full bg-[#e8e8e8] px-6 py-4 text-sm font-bold text-gm-text">Batal</button>
+        <button
+          type="button"
+          @click="showInquiryModal = false"
+          class="rounded-full bg-[#e8e8e8] px-6 py-4 text-sm font-bold text-gm-text"
+        >
+          Batal
+        </button>
       </div>
     </div>
   </div>

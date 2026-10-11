@@ -44,10 +44,12 @@ export async function buildAssistantContext(
 
   if (deviceWithPlant && activePlant) {
     ;[sensors, schedules, recentEvents, automationLogs] = await Promise.all([
+      // Hard bound: exactly one row per sensor kind (≤6 rows). take(10)
+      // freezes the invariant with headroom — never an unbounded read.
       ctx.db
         .query('sensors')
         .withIndex('by_plant', (q) => q.eq('plantId', activePlant._id))
-        .collect(),
+        .take(10),
       ctx.db
         .query('careSchedules')
         .withIndex('by_plant', (q) => q.eq('plantId', activePlant._id))

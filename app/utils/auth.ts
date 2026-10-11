@@ -174,7 +174,11 @@ export const authState = {
   isAuthenticated,
 }
 
-export async function signInWithPassword(flow: 'signIn' | 'signUp', email: string, password: string) {
+export async function signInWithPassword(
+  flow: 'signIn' | 'signUp',
+  email: string,
+  password: string,
+) {
   const client = createClient()
   const result = await client.action(api.auth.signIn, {
     provider: 'password',
@@ -196,7 +200,10 @@ export async function signOutCurrentUser() {
   } catch (error) {
     // Clearing local auth state is the important part here; warn because the
     // server session may linger when the signOut call fails.
-    console.warn('[auth] signOut failed; clearing local tokens anyway, server session may linger', error)
+    console.warn(
+      '[auth] signOut failed; clearing local tokens anyway, server session may linger',
+      error,
+    )
   } finally {
     storeTokens(null)
   }
@@ -219,6 +226,27 @@ export async function fetchSetupStatus(retries = 2): Promise<SetupStatus | null>
     } catch (error: unknown) {
       if (error instanceof ConvexError) {
         throw error
+      }
+
+      // Expired-session recovery: the stored JWT may have lapsed while the
+      // tab was idle. Force one refresh and retry the status query a single
+      // time before falling through to the existing network-error handling.
+      // Only the first attempt refreshes, so generic errors keep their exact
+      // call counts (no behavior change for non-auth failures).
+      if (isAuthError(error) && attempt === 0) {
+        try {
+          await getAuthToken({ forceRefreshToken: true })
+        } catch {
+          // Keep the stale token; the retry below surfaces the outcome.
+        }
+        try {
+          return await createClient(token.value ?? undefined).query(api.users.checkSetupStatus, {})
+        } catch (retryError: unknown) {
+          if (retryError instanceof ConvexError) {
+            throw retryError
+          }
+          return null
+        }
       }
 
       if (error instanceof TypeError && error.message === 'Failed to fetch') {

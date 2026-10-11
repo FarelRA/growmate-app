@@ -8,10 +8,7 @@ import { useDeviceSelection } from '@/composables/useDeviceSelection'
 import { useSchedules } from '@/composables/useSchedules'
 import { useRecordings } from '@/composables/useRecordings'
 import { authState } from '@/utils/auth'
-import {
-  DEFAULT_TANK_CAPACITY,
-  DEFAULT_TANK_MIN_LEVEL,
-} from '~~/convex/types'
+import { DEFAULT_TANK_CAPACITY, DEFAULT_TANK_MIN_LEVEL } from '~~/convex/types'
 import { useDevicePanels } from '@/composables/dashboard/devicePanels'
 import { useDoseActions } from '@/composables/dashboard/doseActions'
 
@@ -36,10 +33,8 @@ export function useDashboard() {
   const { devices, currentDeviceId, handleSelectDevice, handleDeviceUnregistered } =
     useDeviceSelection()
 
-  const {
-    panelOptions, iconMap, accentMap,
-    activePanel, setPanel, openSelectPlant,
-  } = useDevicePanels(currentDeviceId)
+  const { panelOptions, iconMap, accentMap, activePanel, setPanel, openSelectPlant } =
+    useDevicePanels(currentDeviceId)
 
   const { data } = useConvexQuery(
     api.devices.dashboard,
@@ -50,11 +45,19 @@ export function useDashboard() {
 
   const { data: historyData } = useConvexQuery(
     api.devices.deviceHistory,
-    computed(() => ({ deviceId: currentDeviceId.value, paginationOpts: { numItems: 20, cursor: null } })),
+    computed(() => ({
+      deviceId: currentDeviceId.value,
+      paginationOpts: { numItems: 20, cursor: null },
+    })),
   )
 
   const isV2 = computed(() => data.value?.device?.version === 'v2')
 
+  // Recordings stay subscribed-off here: HistoryPanel owns the single live
+  // recordings fetch (paginated ?limit=, grown by "Muat lagi"), and this
+  // facade never renders the list itself (dashboard.vue does not consume
+  // these keys). Leaving the eager default-50 fetch on would double every
+  // v2 recordings request. The keys remain so the facade shape is stable.
   const {
     recordings,
     recordingsError,
@@ -62,7 +65,7 @@ export function useDashboard() {
     recordingsRetryCount,
     fetchRecordings,
     retryRecordings,
-  } = useRecordings(currentDeviceId, isV2)
+  } = useRecordings(currentDeviceId, isV2, { enabled: false })
 
   const {
     scheduleForm,
@@ -101,13 +104,19 @@ export function useDashboard() {
   const isLiveLoading = ref(false)
 
   const batterySoC = computed(() => data.value?.device?.batterySoC ?? DEFAULT_BATTERY_SOC)
-  const batteryCurrent = computed(() => data.value?.device?.batteryCurrent ?? DEFAULT_BATTERY_CURRENT)
-  const batteryCapacityAh = computed(() => data.value?.device?.batteryCapacityAh ?? DEFAULT_BATTERY_CAPACITY_AH)
+  const batteryCurrent = computed(
+    () => data.value?.device?.batteryCurrent ?? DEFAULT_BATTERY_CURRENT,
+  )
+  const batteryCapacityAh = computed(
+    () => data.value?.device?.batteryCapacityAh ?? DEFAULT_BATTERY_CAPACITY_AH,
+  )
   const tankSwitchOpen = computed(() => data.value?.device?.reportedTankSwitchOpen ?? false)
   const drawerSwitchOpen = computed(() => data.value?.device?.reportedDrawerSwitchOpen ?? false)
   const hasModem = computed(() => data.value?.device?.hasModem ?? false)
   const hasSolarPanel = computed(() => data.value?.device?.hasSolarPanel ?? false)
-  const solarPanelWatts = computed(() => data.value?.device?.solarPanelWatts ?? DEFAULT_SOLAR_PANEL_WATTS)
+  const solarPanelWatts = computed(
+    () => data.value?.device?.solarPanelWatts ?? DEFAULT_SOLAR_PANEL_WATTS,
+  )
   const tankCapacity = computed(() => data.value?.device?.tankCapacity ?? DEFAULT_TANK_CAPACITY)
   const tankMinLevel = computed(() => data.value?.device?.tankMinLevel ?? DEFAULT_TANK_MIN_LEVEL)
 
@@ -121,7 +130,8 @@ export function useDashboard() {
 
   const timeToEmpty = computed(() => {
     if (batteryCurrent.value >= 0) return 'Tidak discharging'
-    const hours = (batterySoC.value / 100 * batteryCapacityAh.value * 1000) / -batteryCurrent.value
+    const hours =
+      ((batterySoC.value / 100) * batteryCapacityAh.value * 1000) / -batteryCurrent.value
     return `~${Math.round(hours * 60)} menit tersisa`
   })
 
@@ -137,13 +147,21 @@ export function useDashboard() {
     { value: 0, measuredAt: 1 },
   ]
 
-  const fallbackSensors = computed(() => [
-    { kind: 'soil', label: 'Kelembapan Tanah', unit: '%', accent: 'earth' },
-    { kind: 'light', label: 'Intensitas Cahaya', unit: '%', accent: 'sun' },
-    { kind: 'temperature', label: 'Suhu', unit: 'C', accent: 'warm' },
-    { kind: 'air', label: 'Kelembapan Udara', unit: '%', accent: 'air' },
-    { kind: 'water', label: isV2.value ? 'Level Tangki Pupuk' : 'Level Air', unit: '%', accent: 'water' },
-  ] as const)
+  const fallbackSensors = computed(
+    () =>
+      [
+        { kind: 'soil', label: 'Kelembapan Tanah', unit: '%', accent: 'earth' },
+        { kind: 'light', label: 'Intensitas Cahaya', unit: '%', accent: 'sun' },
+        { kind: 'temperature', label: 'Suhu', unit: '°C', accent: 'warm' },
+        { kind: 'air', label: 'Kelembapan Udara', unit: '%', accent: 'air' },
+        {
+          kind: 'water',
+          label: isV2.value ? 'Level Tangki Pupuk' : 'Level Air',
+          unit: '%',
+          accent: 'water',
+        },
+      ] as const,
+  )
 
   const { mutate: removeDevice } = useConvexMutation(api.devices.removeDevice)
 
@@ -186,12 +204,24 @@ export function useDashboard() {
     if (!metricHistory) return []
 
     return [
-      { key: 'soil', label: 'Tanah', unit: '%', stroke: '#7a5649', fill: 'rgba(122, 86, 73, 0.12)' },
-      { key: 'light', label: 'Cahaya', unit: '%', stroke: '#006e1c', fill: 'rgba(0, 110, 28, 0.12)' },
+      {
+        key: 'soil',
+        label: 'Tanah',
+        unit: '%',
+        stroke: '#7a5649',
+        fill: 'rgba(122, 86, 73, 0.12)',
+      },
+      {
+        key: 'light',
+        label: 'Cahaya',
+        unit: '%',
+        stroke: '#006e1c',
+        fill: 'rgba(0, 110, 28, 0.12)',
+      },
       {
         key: 'temperature',
         label: 'Suhu',
-        unit: 'C',
+        unit: '°C',
         stroke: '#c56b00',
         fill: 'rgba(197, 107, 0, 0.12)',
       },
@@ -210,7 +240,10 @@ export function useDashboard() {
         fill: 'rgba(0, 164, 237, 0.12)',
       },
     ].map((metric) => {
-      const points = (metricHistory as Record<string, Array<{ value: number; measuredAt: number }>>)[metric.key] ?? []
+      const points =
+        (metricHistory as Record<string, Array<{ value: number; measuredAt: number }>>)[
+          metric.key
+        ] ?? []
       const latest = points[points.length - 1]?.value
       return { ...metric, points, latest }
     })
@@ -262,29 +295,68 @@ export function useDashboard() {
 
   return {
     // state
-    panelOptions, iconMap, accentMap,
-    devices, data, plantLibrary, historyData,
-    activePanel, currentDeviceId,
-    waterSensor, displayPlantImage, displaySensors,
-    schedulePreview, historyMetricCards,
-    scheduleForm, savingSchedule, deletingScheduleId, removingDeviceId,
+    panelOptions,
+    iconMap,
+    accentMap,
+    devices,
+    data,
+    plantLibrary,
+    historyData,
+    activePanel,
+    currentDeviceId,
+    waterSensor,
+    displayPlantImage,
+    displaySensors,
+    schedulePreview,
+    historyMetricCards,
+    scheduleForm,
+    savingSchedule,
+    deletingScheduleId,
+    removingDeviceId,
 
     // methods
-    setPanel, handleSelectDevice, openSelectPlant,
-    handleWater, handleLight, handleFertilize, handlePesticide, handleToggleAutomation,
-    handleStartStream, handleStopStream, isStreaming,
-    handleToggleSchedule, handleSaveSchedule, handleDeleteSchedule,
+    setPanel,
+    handleSelectDevice,
+    openSelectPlant,
+    handleWater,
+    handleLight,
+    handleFertilize,
+    handlePesticide,
+    handleToggleAutomation,
+    handleStartStream,
+    handleStopStream,
+    isStreaming,
+    handleToggleSchedule,
+    handleSaveSchedule,
+    handleDeleteSchedule,
     handleRemoveDevice,
-    resetScheduleForm, editSchedule,
+    resetScheduleForm,
+    editSchedule,
     formatPlantHealthLabel,
 
     // V2
-    isV2, streamUrl, recordings, recordingsError, recordingsLoading, recordingsRetryCount,
-    streamActive, isLiveLoading, fetchRecordings, retryRecordings,
-    batterySoC, batteryCurrent, batteryCapacityAh, batteryIcon,
-    timeToEmpty, timeToFull,
-    tankSwitchOpen, drawerSwitchOpen,
-    hasModem, hasSolarPanel, solarPanelWatts,
-    tankCapacity, tankMinLevel,
+    isV2,
+    streamUrl,
+    recordings,
+    recordingsError,
+    recordingsLoading,
+    recordingsRetryCount,
+    streamActive,
+    isLiveLoading,
+    fetchRecordings,
+    retryRecordings,
+    batterySoC,
+    batteryCurrent,
+    batteryCapacityAh,
+    batteryIcon,
+    timeToEmpty,
+    timeToFull,
+    tankSwitchOpen,
+    drawerSwitchOpen,
+    hasModem,
+    hasSolarPanel,
+    solarPanelWatts,
+    tankCapacity,
+    tankMinLevel,
   }
 }

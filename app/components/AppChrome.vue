@@ -18,10 +18,30 @@ const { data: setupStatus } = useConvexQuery(api.users.checkSetupStatus, {})
 const { mutate: markNotificationRead } = useConvexMutation(api.notifications.markNotificationRead)
 
 const growerNavigation = [
-  { label: growmateTerms.workspaceNav.dashboard, short: 'Beranda', icon: 'dashboard', to: '/dashboard' },
-  { label: growmateTerms.workspaceNav.assistant, short: 'Asisten', icon: 'psychology', to: '/assistant' },
-  { label: growmateTerms.workspaceNav.marketplace, short: 'Marketplace', icon: 'shopping_basket', to: '/workspace-marketplace' },
-  { label: growmateTerms.workspaceNav.community, short: 'Komunitas', icon: 'groups', to: '/community' },
+  {
+    label: growmateTerms.workspaceNav.dashboard,
+    short: 'Beranda',
+    icon: 'dashboard',
+    to: '/dashboard',
+  },
+  {
+    label: growmateTerms.workspaceNav.assistant,
+    short: 'Asisten',
+    icon: 'psychology',
+    to: '/assistant',
+  },
+  {
+    label: growmateTerms.workspaceNav.marketplace,
+    short: 'Marketplace',
+    icon: 'shopping_basket',
+    to: '/workspace-marketplace',
+  },
+  {
+    label: growmateTerms.workspaceNav.community,
+    short: 'Komunitas',
+    icon: 'groups',
+    to: '/community',
+  },
 ]
 
 const adminNavigation = [
@@ -84,6 +104,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="flex items-center gap-3">
           <button
+            type="button"
             v-if="canInstall"
             class="rounded-full bg-gm-primary px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#0b7d29]"
             @click="handleInstallApp"
@@ -91,6 +112,7 @@ onBeforeUnmount(() => {
             Instal Aplikasi
           </button>
           <button
+            type="button"
             class="relative rounded-full p-2 text-slate-500 transition-colors hover:bg-[#f3f3f3]"
             aria-label="Buka notifikasi"
             @click="handleOpenNotifications"
@@ -121,6 +143,7 @@ onBeforeUnmount(() => {
           </div>
           <div v-if="notifications?.items.length" class="mt-4 space-y-3">
             <button
+              type="button"
               v-for="item in notifications.items"
               :key="item._id"
               class="w-full rounded-2xl p-3 text-left"

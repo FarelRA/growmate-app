@@ -10,7 +10,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
 
-  const token = authHeader.slice(7)
+  const token = authHeader.slice(7).trim()
+  if (!token) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  }
   const convex = useConvexAuth(token)
 
   let isAuthenticated = false

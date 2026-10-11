@@ -1,6 +1,14 @@
 <script setup lang="ts">
 defineProps<{
-  devices: { deviceId: string; name: string; isOnline: boolean; version?: string; lastStreaming?: boolean; plant: { name: string; species: string } | null; archivedPlants: { _id: string; name: string; archivedAtLabel: string | null }[] }[]
+  devices: {
+    deviceId: string
+    name: string
+    isOnline: boolean
+    version?: string
+    lastStreaming?: boolean
+    plant: { name: string; species: string } | null
+    archivedPlants: { _id: string; name: string; archivedAtLabel: string | null }[]
+  }[]
   currentDeviceId: string | undefined
   removingDeviceId: string | null
 }>()
@@ -17,14 +25,33 @@ defineEmits<{
   <section class="space-y-4">
     <article class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
       <p class="text-xs font-bold uppercase tracking-[0.2em] text-gm-primary">Armada</p>
-      <h1 class="mt-2 font-headline text-3xl font-black tracking-tight text-gm-text">Pod GrowMate Anda</h1>
-      <p class="mt-3 text-sm leading-relaxed text-gm-muted">Kelola perangkat dan arsip perangkat Anda, tambah atau hapus, serta ganti tanamannya.</p>
+      <h1 class="mt-2 font-headline text-3xl font-black tracking-tight text-gm-text">
+        Pod GrowMate Anda
+      </h1>
+      <p class="mt-3 text-sm leading-relaxed text-gm-muted">
+        Kelola perangkat dan arsip perangkat Anda, tambah atau hapus, serta ganti tanamannya.
+      </p>
       <div class="mt-5 flex flex-wrap gap-3">
-        <button type="button" class="rounded-full bg-gm-primary px-5 py-3 text-sm font-bold text-white" @click="$emit('connectDevice')">
+        <button
+          type="button"
+          class="rounded-full bg-gm-primary px-5 py-3 text-sm font-bold text-white"
+          @click="$emit('connectDevice')"
+        >
           Hubungkan perangkat lain
         </button>
       </div>
     </article>
+
+    <div
+      v-if="!devices.length"
+      class="rounded-[2rem] bg-white p-6 text-center shadow-[0_12px_32px_rgba(15,23,42,0.05)]"
+    >
+      <p class="text-sm font-bold text-gm-text">Belum ada perangkat yang terhubung</p>
+      <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed text-gm-muted">
+        Hubungkan perangkat GrowMate pertama Anda untuk mulai memantau dan merawat tanaman dari satu
+        tempat.
+      </p>
+    </div>
 
     <div class="space-y-4">
       <article
@@ -35,43 +62,65 @@ defineEmits<{
         <div class="flex flex-col gap-4">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <h2 class="font-headline text-2xl font-black tracking-tight text-gm-text">{{ device.name }}</h2>
+              <h2 class="font-headline text-2xl font-black tracking-tight text-gm-text">
+                {{ device.name }}
+              </h2>
               <p class="mt-1 text-sm text-gm-muted">{{ device.deviceId }}</p>
             </div>
             <div class="flex flex-col items-end gap-2">
               <span
                 class="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em]"
-                :class="device.deviceId === currentDeviceId ? 'bg-gm-primary text-white' : 'bg-[#f3f3f3] text-gm-muted'"
+                :class="
+                  device.deviceId === currentDeviceId
+                    ? 'bg-gm-primary text-white'
+                    : 'bg-[#f3f3f3] text-gm-muted'
+                "
               >
                 {{ device.deviceId === currentDeviceId ? 'Aktif' : 'Siaga' }}
               </span>
               <span
                 class="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em]"
-                :class="device.isOnline ? 'bg-[#94f990]/35 text-[#005313]' : 'bg-[#e8e8e8] text-gm-muted'"
+                :class="
+                  device.isOnline ? 'bg-[#94f990]/35 text-[#005313]' : 'bg-[#e8e8e8] text-gm-muted'
+                "
               >
                 {{ device.isOnline ? 'Terhubung' : 'Tidak terhubung' }}
               </span>
               <span
                 class="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em]"
-                :class="device.version === 'v2' ? 'bg-purple-100 text-purple-800' : 'bg-gray-200 text-gray-600'"
+                :class="
+                  device.version === 'v2'
+                    ? 'bg-purple-100 text-purple-800'
+                    : 'bg-gray-200 text-gray-600'
+                "
               >
                 {{ (device.version ?? 'v1').toUpperCase() }}
               </span>
-              <span v-if="device.version === 'v2'" class="text-[10px] font-medium" :class="device.lastStreaming ? 'text-green-600' : 'text-gray-400'">
+              <span
+                v-if="device.version === 'v2'"
+                class="text-[10px] font-medium"
+                :class="device.lastStreaming ? 'text-green-600' : 'text-gray-400'"
+              >
                 {{ device.lastStreaming ? 'Stream aktif' : 'Stream tidak tersedia' }}
               </span>
             </div>
           </div>
 
           <div v-if="device.plant" class="rounded-[1.5rem] bg-[#f3f3f3] p-4">
-            <div class="text-xs font-bold uppercase tracking-[0.18em] text-gm-muted">Tanaman saat ini</div>
+            <div class="text-xs font-bold uppercase tracking-[0.18em] text-gm-muted">
+              Tanaman saat ini
+            </div>
             <div class="mt-2 text-lg font-bold text-gm-text">{{ device.plant.name }}</div>
             <div class="mt-1 text-sm text-gm-muted">{{ device.plant.species }}</div>
           </div>
-          <div v-else class="rounded-[1.5rem] bg-[#f3f3f3] p-4 text-sm text-gm-muted">Perangkat ini sudah diklaim tetapi masih menunggu profil tanaman.</div>
+          <div v-else class="rounded-[1.5rem] bg-[#f3f3f3] p-4 text-sm text-gm-muted">
+            Perangkat ini sudah diklaim tetapi masih menunggu profil tanaman.
+          </div>
 
           <div v-if="device.archivedPlants?.length" class="space-y-2">
-            <div class="text-xs font-bold uppercase tracking-[0.18em] text-gm-muted">Arsip terbaru</div>
+            <div class="text-xs font-bold uppercase tracking-[0.18em] text-gm-muted">
+              Arsip terbaru
+            </div>
             <div class="grid gap-2 sm:grid-cols-2">
               <div
                 v-for="plant in device.archivedPlants"
@@ -85,10 +134,18 @@ defineEmits<{
           </div>
 
           <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <button type="button" class="rounded-full bg-[#f3f3f3] px-4 py-3 text-sm font-bold text-gm-text" @click="$emit('selectDevice', device.deviceId)">
+            <button
+              type="button"
+              class="rounded-full bg-[#f3f3f3] px-4 py-3 text-sm font-bold text-gm-text"
+              @click="$emit('selectDevice', device.deviceId)"
+            >
               Jadikan aktif
             </button>
-            <button type="button" class="rounded-full bg-gradient-to-r from-gm-primary to-gm-primary-soft px-4 py-3 text-sm font-bold text-white" @click="$emit('selectPlant', device.deviceId)">
+            <button
+              type="button"
+              class="rounded-full bg-gradient-to-r from-gm-primary to-gm-primary-soft px-4 py-3 text-sm font-bold text-white"
+              @click="$emit('selectPlant', device.deviceId)"
+            >
               {{ device.plant ? 'Ganti tanaman' : 'Pilih tanaman' }}
             </button>
             <button

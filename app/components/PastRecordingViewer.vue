@@ -93,7 +93,7 @@ onMounted(async () => {
       const nextStart = findStart(allBytes, nalStart)
       if (!nextStart) break
       const nalUnit = allBytes.slice(nalStart, nextStart.pos)
-      const nalType = nalUnit[0]! & 0x1F
+      const nalType = nalUnit[0]! & 0x1f
 
       if (nalType === 7) {
         spsNal = new Uint8Array(nalUnit)
@@ -135,7 +135,10 @@ onMounted(async () => {
 
     decoder = new VideoDecoder({
       output: (frame: VideoFrame) => {
-        if (!canvasCtx) { frame.close(); return }
+        if (!canvasCtx) {
+          frame.close()
+          return
+        }
         canvasCtx.drawImage(frame, 0, 0)
         frame.close()
       },
@@ -147,7 +150,7 @@ onMounted(async () => {
     if (spsNal && spsNal.length >= 4) {
       const profile = spsNal[1] ?? 0
       const constraints = spsNal[2] ?? 0
-      const level = (spsNal[3] ?? 0) & 0x3F
+      const level = (spsNal[3] ?? 0) & 0x3f
       const codec = `avc1.${profile.toString(16).padStart(2, '0')}${constraints.toString(16).padStart(2, '0')}${level.toString(16).padStart(2, '0')}`
       decoder.configure({ codec, optimizeForLatency: false })
     }
@@ -255,54 +258,48 @@ onUnmounted(() => {
       </div>
     </template>
     <template v-else>
-    <canvas
-      ref="canvasRef"
-      class="w-full aspect-video"
-      :class="{ hidden: !loaded && !error }"
-    />
-    <div
-      v-if="!loaded && !error"
-      class="flex aspect-video items-center justify-center text-white/60 text-sm"
-    >
-      Memuat rekaman...
-    </div>
-    <div
-      v-if="error"
-      class="flex aspect-video items-center justify-center text-red-400 text-sm p-4"
-    >
-      {{ error }}
-    </div>
-    <div
-      v-if="loaded"
-      class="flex items-center gap-3 px-4 py-3 bg-black/80"
-    >
-      <button
-        type="button"
-        class="text-white text-lg w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10"
-        @click="togglePlay"
+      <canvas ref="canvasRef" class="w-full aspect-video" :class="{ hidden: !loaded && !error }" />
+      <div
+        v-if="!loaded && !error"
+        class="flex aspect-video items-center justify-center text-white/60 text-sm"
       >
-        {{ playing ? '⏸' : '▶' }}
-      </button>
-      <input
-        type="range"
-        min="0"
-        max="100"
-        step="0.1"
-        :value="progress"
-        class="flex-1 h-1 accent-gm-primary"
-        @input="onSeek"
-      />
-      <span class="text-white/70 text-xs tabular-nums whitespace-nowrap">
-        {{ currentTime }} / {{ totalTime }}
-      </span>
-      <button
-        type="button"
-        class="text-white/70 text-sm w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10"
-        @click="emit('close')"
+        Memuat rekaman...
+      </div>
+      <div
+        v-if="error"
+        class="flex aspect-video items-center justify-center text-red-400 text-sm p-4"
       >
-        ✕
-      </button>
-    </div>
+        {{ error }}
+      </div>
+      <div v-if="loaded" class="flex items-center gap-3 px-4 py-3 bg-black/80">
+        <button
+          type="button"
+          class="text-white text-lg w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10"
+          @click="togglePlay"
+        >
+          {{ playing ? '⏸' : '▶' }}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          step="0.1"
+          :value="progress"
+          aria-label="Posisi pemutaran"
+          class="flex-1 h-1 accent-gm-primary"
+          @input="onSeek"
+        />
+        <span class="text-white/70 text-xs tabular-nums whitespace-nowrap">
+          {{ currentTime }} / {{ totalTime }}
+        </span>
+        <button
+          type="button"
+          class="text-white/70 text-sm w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10"
+          @click="emit('close')"
+        >
+          ✕
+        </button>
+      </div>
     </template>
   </div>
 </template>

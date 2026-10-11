@@ -21,11 +21,32 @@ const unclaimedDevice = ref<{ deviceId: string; name: string; firmwareVersion?: 
   null,
 )
 
+// Mirrors the firmware limit (APP_CONFIG_MAX_DEVICE_ID_LEN 31) and the fleet
+// charset: fleet IDs are NO-DASH codes such as IAET01, IAFU01, IAFT01.
+const DEVICE_ID_PATTERN = /^[A-Za-z0-9_-]{1,31}$/
+
+function normalizeDeviceId(input: string) {
+  return input.trim()
+}
+
+function validateDeviceId(input: string): string | null {
+  const trimmed = normalizeDeviceId(input)
+  if (!trimmed) {
+    return 'Harap masukkan ID perangkat'
+  }
+  if (!DEVICE_ID_PATTERN.test(trimmed)) {
+    return 'ID perangkat hanya boleh berisi huruf, angka, garis bawah, atau strip, maksimal 31 karakter'
+  }
+  return null
+}
+
 const { mutate: claimDevice } = useConvexMutation(api.users.claimDevice)
 
 const manualLinking = computed(() => route.query.manual === '1')
 const pageTitle = computed(() =>
-  manualLinking.value ? 'Tambahkan perangkat GrowMate lain' : 'Hubungkan perangkat GrowMate pertama Anda',
+  manualLinking.value
+    ? 'Tambahkan perangkat GrowMate lain'
+    : 'Hubungkan perangkat GrowMate pertama Anda',
 )
 const pageDescription = computed(() =>
   manualLinking.value
@@ -40,29 +61,40 @@ watch(deviceId, (value) => {
 })
 
 async function checkDevice() {
-  const trimmed = deviceId.value.trim()
-  if (!trimmed) {
-    toast.error('Harap masukkan ID perangkat')
+  const validationError = validateDeviceId(deviceId.value)
+  if (validationError) {
+    toast.error(validationError)
     return
   }
 
+  const trimmed = normalizeDeviceId(deviceId.value)
   checkingDevice.value = true
   try {
-    const result = await fetchPublicConvexQuery(api.devices.getUnclaimedDevice, { deviceId: trimmed })
+    const result = await fetchPublicConvexQuery(api.devices.getUnclaimedDevice, {
+      deviceId: trimmed,
+    })
     unclaimedDevice.value = result
     if (result) {
       toast.success(`Perangkat ditemukan: ${result.name}`)
     } else {
-      toast.error('Perangkat tidak ditemukan atau sudah diklaim')
+      // The lookup only returns unclaimed devices, so a miss means the ID is
+      // unknown or already linked to an account. The claim mutation below
+      // reports the exact reason when it runs.
+      toast.error(
+        'Perangkat tidak ditemukan atau sudah diklaim. Periksa kembali ID perangkat lalu coba lagi.',
+      )
     }
+  } catch (error: unknown) {
+    toast.error(getErrorMessage(error, 'Gagal memeriksa perangkat. Coba lagi.'))
   } finally {
     checkingDevice.value = false
   }
 }
 
 async function handleClaimDevice() {
-  if (!deviceId.value.trim()) {
-    toast.error('Harap masukkan ID perangkat')
+  const validationError = validateDeviceId(deviceId.value)
+  if (validationError) {
+    toast.error(validationError)
     return
   }
 
@@ -119,7 +151,7 @@ async function handleClaimDevice() {
         </article>
         <article class="rounded-[1.5rem] bg-[#f3f3f3] p-4">
           <div class="text-xs font-bold uppercase tracking-[0.18em] text-gm-muted">Contoh</div>
-          <div class="mt-2 text-sm font-semibold text-gm-text">ESP32_DEMO_001</div>
+          <div class="mt-2 text-sm font-semibold text-gm-text">IAET01</div>
         </article>
         <article v-if="unclaimedDevice" class="rounded-[1.5rem] bg-[#e8ffe8] p-4 text-[#005313]">
           <div class="text-xs font-bold uppercase tracking-[0.18em]">Terverifikasi</div>
@@ -132,7 +164,9 @@ async function handleClaimDevice() {
       class="rounded-[2rem] bg-white p-6 shadow-[0_12px_32px_rgba(15,23,42,0.05)] sm:p-8 lg:p-10"
     >
       <div>
-        <p class="text-xs font-bold uppercase tracking-[0.24em] text-gm-primary">Hubungkan Perangkat</p>
+        <p class="text-xs font-bold uppercase tracking-[0.24em] text-gm-primary">
+          Hubungkan Perangkat
+        </p>
         <h2 class="mt-3 font-headline text-3xl font-black tracking-tight text-gm-text">
           Masukkan ID perangkat Anda
         </h2>
@@ -146,8 +180,13 @@ async function handleClaimDevice() {
               v-model="deviceId"
               type="text"
               required
+              maxlength="31"
+              autocomplete="off"
+              spellcheck="false"
+              aria-describedby="device-id-format-hint"
+              data-testid="claim-device-input"
               class="flex-1 rounded-[1.25rem] bg-[#f7f7f7] px-4 py-4 text-sm outline-none transition focus:ring-2 focus:ring-gm-primary/20"
-              placeholder="ESP32_DEMO_001"
+              placeholder="IAET01"
             />
             <button
               type="button"
@@ -158,6 +197,10 @@ async function handleClaimDevice() {
               {{ checkingDevice ? 'Memeriksa...' : 'Verifikasi' }}
             </button>
           </div>
+          <span id="device-id-format-hint" class="mt-2 block text-xs text-gm-muted"
+            >Huruf, angka, garis bawah, atau strip. Maksimal 31 karakter. Contoh armada:
+            IAET01.</span
+          >
         </label>
 
         <button

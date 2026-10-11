@@ -128,6 +128,14 @@ export function validateDeviceEnvelope(body: unknown): DeviceEnvelope {
     bad('deviceId is required')
   }
 
+  // Same fleet charset the firmware enforces ([A-Za-z0-9_-], max 31 chars
+  // per pods APP_CONFIG_MAX_DEVICE_ID_LEN and tech device_identity _ID_RE):
+  // reject at the edge with 400 instead of forwarding junk to Convex.
+  const trimmedDeviceId = (deviceId as string).trim()
+  if (!/^[A-Za-z0-9_-]{1,31}$/.test(trimmedDeviceId)) {
+    bad('deviceId must match [A-Za-z0-9_-] <=31')
+  }
+
   // Tech always sends `variant` ("tech" | "tech-addon", selects the current
   // leg per 06-api tech); pods never sends it. Presence selects the raw
   // ceiling below; an unknown variant is a malformed envelope, not a third
@@ -161,6 +169,13 @@ export function validateDeviceEnvelope(body: unknown): DeviceEnvelope {
     const analog =
       entry.kind === 'soil' || entry.kind === 'light' || entry.kind === 'water' || entry.kind === 'current'
     if (analog) {
+      // The current leg is tech-only (pods never sends it) and the raw
+      // scale is selected by the envelope variant, so a variant-less
+      // current leg is uninterpretable: fail fast with 400 instead of
+      // forwarding it to Convex.
+      if (entry.kind === 'current' && variant === undefined) {
+        bad('current leg requires a tech variant')
+      }
       // RAW-ONLY analog entries (no percent math on device, 06-api):
       // firmware `sensor_array_add_raw` sends {kind, unit, raw} and nothing
       // else. A `value` on an analog kind is malformed, not legacy.
@@ -210,7 +225,7 @@ export function validateDeviceEnvelope(body: unknown): DeviceEnvelope {
   }
 
   return {
-    deviceId: (deviceId as string).trim(),
+    deviceId: trimmedDeviceId,
     hardwareId: typeof env.hardwareId === 'string' ? env.hardwareId : undefined,
     firmwareVersion: typeof env.firmwareVersion === 'string' ? env.firmwareVersion : undefined,
     variant: variant === 'tech' || variant === 'tech-addon' ? variant : undefined,

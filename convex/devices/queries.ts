@@ -31,7 +31,7 @@ import { formatScheduleSummary } from '../care/schedules'
 export async function getUnclaimedDeviceCore(ctx: QueryCtx, deviceId: string) {
   const device = await ctx.db
     .query('devices')
-    .withIndex('by_deviceId', (q) => q.eq('deviceId', deviceId))
+    .withIndex('by_deviceId', (q) => q.eq('deviceId', deviceId.trim()))
     .first()
 
   if (!device) return null
@@ -277,6 +277,7 @@ export async function dashboardCore(
   const notifications = await ctx.db
     .query('notifications')
     .withIndex('by_user', (q) => q.eq('userId', user._id))
+    .order('desc')
     .take(8)
 
   if (!plant || plant.archived) {

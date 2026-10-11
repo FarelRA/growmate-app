@@ -75,7 +75,10 @@ function toggleSection(key: string) {
           <h4 class="mb-4 text-sm font-semibold">{{ section.title }}</h4>
           <ul class="space-y-2.5">
             <li v-for="link in section.links" :key="link.to">
-              <NuxtLink class="text-xs text-white/70 transition-colors duration-200 hover:translate-x-1 hover:text-white" :to="link.to">
+              <NuxtLink
+                class="text-xs text-white/70 transition-colors duration-200 hover:translate-x-1 hover:text-white"
+                :to="link.to"
+              >
                 {{ link.label }}
               </NuxtLink>
             </li>
@@ -101,7 +104,11 @@ function toggleSection(key: string) {
 
       <div class="space-y-4 lg:hidden">
         <div v-for="section in sections" :key="section.key" class="border-b border-white/15 pb-4">
-          <button class="flex w-full items-center justify-between text-left" @click="toggleSection(section.key)">
+          <button
+            type="button"
+            class="flex w-full items-center justify-between text-left"
+            @click="toggleSection(section.key)"
+          >
             <span class="text-sm font-semibold">{{ section.title }}</span>
             <span
               class="material-symbols-outlined text-[18px] transition-transform"
@@ -123,7 +130,11 @@ function toggleSection(key: string) {
         </div>
 
         <div class="border-b border-white/15 pb-4">
-          <button class="flex w-full items-center justify-between text-left" @click="toggleSection('socials')">
+          <button
+            type="button"
+            class="flex w-full items-center justify-between text-left"
+            @click="toggleSection('socials')"
+          >
             <span class="text-sm font-semibold">Ikuti GrowMate</span>
             <span
               class="material-symbols-outlined text-[18px] transition-transform"
@@ -147,12 +158,26 @@ function toggleSection(key: string) {
         </div>
       </div>
 
-      <div class="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/15 pt-8 lg:flex-row">
+      <div
+        class="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/15 pt-8 lg:flex-row"
+      >
         <p class="text-xs text-white/55">© GrowMate 2026. Seluruh hak cipta dilindungi.</p>
         <div class="flex items-center gap-4">
-          <NuxtLink class="text-xs text-white/55 transition-colors duration-200 hover:text-white" to="/support">Dukungan</NuxtLink>
-          <NuxtLink class="text-xs text-white/55 transition-colors duration-200 hover:text-white" to="/login">Masuk</NuxtLink>
-          <NuxtLink class="text-xs text-white/55 transition-colors duration-200 hover:text-white" to="/register">Daftar</NuxtLink>
+          <NuxtLink
+            class="text-xs text-white/55 transition-colors duration-200 hover:text-white"
+            to="/support"
+            >Dukungan</NuxtLink
+          >
+          <NuxtLink
+            class="text-xs text-white/55 transition-colors duration-200 hover:text-white"
+            to="/login"
+            >Masuk</NuxtLink
+          >
+          <NuxtLink
+            class="text-xs text-white/55 transition-colors duration-200 hover:text-white"
+            to="/register"
+            >Daftar</NuxtLink
+          >
         </div>
       </div>
     </div>

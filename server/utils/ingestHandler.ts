@@ -18,13 +18,36 @@ export const MAX_INGEST_BODY_BYTES = 1024 * 100
  */
 export default async function handleSensorIngest(event: H3Event<EventHandlerRequest>) {
   try {
+    // Auth before buffering: unauthenticated callers get 401 without a
+    // body-validation oracle, and their bytes are never buffered.
+    const deviceKey = requireDeviceKey(event)
+
     const contentLength = getHeader(event, 'content-length')
-    if (contentLength && Number(contentLength) > MAX_INGEST_BODY_BYTES) {
-      throw createError({ statusCode: 413, statusMessage: 'Request body too large' })
+    if (contentLength !== undefined) {
+      const parsedLength = Number(contentLength)
+      if (!Number.isFinite(parsedLength) || parsedLength < 0) {
+        throw createError({ statusCode: 400, statusMessage: 'invalid content-length' })
+      }
+      if (parsedLength > MAX_INGEST_BODY_BYTES) {
+        throw createError({ statusCode: 413, statusMessage: 'Request body too large' })
+      }
     }
 
-    const body = await readBody(event)
-    const deviceKey = requireDeviceKey(event)
+    // Firmware posts JSON (pods api_client.c, tech api_client.py `_headers`).
+    const contentType = getHeader(event, 'content-type')
+    if (contentType && !contentType.includes('application/json')) {
+      throw createError({ statusCode: 400, statusMessage: 'content-type must be application/json' })
+    }
+
+    let body: unknown
+    try {
+      body = await readBody(event)
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'statusCode' in error) {
+        throw error
+      }
+      throw createError({ statusCode: 400, statusMessage: 'malformed JSON body' })
+    }
     const envelope = validateDeviceEnvelope(body)
 
     checkSensorRateLimit(event, envelope.deviceId)

@@ -113,7 +113,7 @@ export const assistant = query({
         ? ctx.db
             .query('sensors')
             .withIndex('by_plant', (q) => q.eq('plantId', plant._id))
-            .collect()
+            .take(10)
         : Promise.resolve([]),
     ])
     const quota = thread

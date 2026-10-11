@@ -10,8 +10,8 @@ import { test, expect } from '@playwright/test'
  * Full happy path (login → verify device → claim → dashboard) needs seeded
  * backend state that does not exist in the `playwright.config.ts` webServer
  * env (live Convex + seeded user + unclaimed device). It is written below as
- * `describe.skip` with env-driven credentials so it can run un-skipped once
- * seeding exists. See the skip reason on the block.
+ * a conditional block that runs only when E2E_TEST_EMAIL/E2E_TEST_PASSWORD
+ * are set (see the run command on the block).
  */
 test.describe('Device flow guards (no session)', () => {
   test('dashboard without session redirects to login', async ({ page }) => {
@@ -62,13 +62,19 @@ test.describe('Login page', () => {
 })
 
 // Requires: live Convex backend + seeded user (E2E_TEST_EMAIL/E2E_TEST_PASSWORD)
-// + unclaimed device (E2E_DEVICE_ID, e.g. ESP32_DEMO_001). The configured
+// + unclaimed device (E2E_DEVICE_ID, e.g. IAET01). The configured
 // webServer (`bun run build && node .output/server/index.mjs`) provides none
-// of these, so this block stays skipped until e2e seeding exists.
-test.describe.skip('Device happy path (seeded backend required)', () => {
+// of these, so this block runs only when the credentials are present and
+// stays skipped otherwise. Run it with:
+//   E2E_TEST_EMAIL=demo@growmate.bond E2E_TEST_PASSWORD=<pw> \
+//   E2E_DEVICE_ID=<unclaimed-fleet-id> bun run test:e2e
+// Fleet IDs are no-dash (IAET01, IAFU01, IAFT01); the claim-device form
+// example and the default below use the pods fleet ID IAET01.
+const canRunHappyPath = Boolean(process.env.E2E_TEST_EMAIL && process.env.E2E_TEST_PASSWORD)
+;(canRunHappyPath ? test.describe : test.describe.skip)('Device happy path (seeded backend required)', () => {
   const email = process.env.E2E_TEST_EMAIL ?? ''
   const password = process.env.E2E_TEST_PASSWORD ?? ''
-  const deviceId = process.env.E2E_DEVICE_ID ?? 'ESP32_DEMO_001'
+  const deviceId = process.env.E2E_DEVICE_ID ?? 'IAET01'
 
   test('login → claim-device → dashboard', async ({ page }) => {
     // 1. Login.
@@ -81,7 +87,7 @@ test.describe.skip('Device happy path (seeded backend required)', () => {
     // 2. Claim the device: verify first (claim button stays disabled until
     // the device lookup succeeds), then submit.
     await page.goto('/claim-device', { waitUntil: 'domcontentloaded', timeout: 15000 })
-    await page.locator('input[placeholder="ESP32_DEMO_001"]').fill(deviceId)
+    await page.getByTestId('claim-device-input').fill(deviceId)
     await page.getByRole('button', { name: 'Verifikasi' }).click()
     await expect(page.getByText('Terverifikasi')).toBeVisible({ timeout: 15000 })
     await page.getByRole('button', { name: 'Hubungkan Perangkat dan Lanjutkan' }).click()

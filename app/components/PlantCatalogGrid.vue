@@ -39,16 +39,21 @@ function stageLabel(value: string) {
       <div>
         <h2 class="font-headline text-2xl font-bold text-gm-text">Pustaka tanaman</h2>
         <p class="mt-2 text-sm text-gm-muted">
-          Pilih profil tanaman yang paling mendekati kondisi budidaya Anda, lalu sesuaikan jika diperlukan sebelum disimpan.
+          Pilih profil tanaman yang paling mendekati kondisi budidaya Anda, lalu sesuaikan jika
+          diperlukan sebelum disimpan.
         </p>
       </div>
-      <input
-        :value="librarySearch"
-        type="text"
-        class="w-full rounded-2xl border border-[#d9d9d9] px-4 py-3 text-sm outline-none transition focus:border-gm-primary lg:max-w-xs"
-        placeholder="Cari basil, tomat, monstera..."
-        @input="emit('update:librarySearch', ($event.target as HTMLInputElement).value)"
-      />
+      <label class="block w-full lg:max-w-xs">
+        <span class="sr-only">Cari tanaman di pustaka</span>
+        <input
+          :value="librarySearch"
+          type="text"
+          aria-label="Cari tanaman di pustaka"
+          class="w-full rounded-2xl border border-[#d9d9d9] px-4 py-3 text-sm outline-none transition focus:border-gm-primary"
+          placeholder="Cari basil, tomat, monstera..."
+          @input="emit('update:librarySearch', ($event.target as HTMLInputElement).value)"
+        />
+      </label>
     </div>
 
     <div class="flex flex-wrap gap-3">
@@ -58,9 +63,7 @@ function stageLabel(value: string) {
         type="button"
         class="rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.18em]"
         :class="
-          categoryFilter === category
-            ? 'bg-gm-primary text-white'
-            : 'bg-[#f3f3f3] text-gm-muted'
+          categoryFilter === category ? 'bg-gm-primary text-white' : 'bg-[#f3f3f3] text-gm-muted'
         "
         @click="emit('update:categoryFilter', category)"
       >
@@ -81,7 +84,12 @@ function stageLabel(value: string) {
         "
         @click="emit('update:selectedPresetKey', preset.key)"
       >
-        <img v-if="preset.imageUrl" :src="getImageUrl(preset.imageUrl, 400) || undefined" :alt="preset.name" class="h-36 w-full object-cover" />
+        <img
+          v-if="preset.imageUrl"
+          :src="getImageUrl(preset.imageUrl, 400) || undefined"
+          :alt="preset.name"
+          class="h-36 w-full object-cover"
+        />
         <div class="space-y-3 p-4">
           <div class="flex items-start justify-between gap-3">
             <div>
@@ -102,9 +110,7 @@ function stageLabel(value: string) {
           </div>
           <p class="text-sm leading-relaxed text-gm-muted">{{ preset.description }}</p>
           <div class="grid grid-cols-2 gap-2 text-[11px] text-gm-muted">
-            <div class="rounded-xl bg-[#f7f7f7] px-3 py-2">
-              Air {{ preset.wateringThreshold }}%
-            </div>
+            <div class="rounded-xl bg-[#f7f7f7] px-3 py-2">Air {{ preset.wateringThreshold }}%</div>
             <div class="rounded-xl bg-[#f7f7f7] px-3 py-2">
               Cahaya {{ preset.lightingThreshold }}%
             </div>

@@ -21,8 +21,17 @@ export interface DeviceRecording {
  * where recordings never loaded because the version resolved after the
  * device id). Failures are surfaced on `recordingsError` instead of being
  * swallowed into an empty list, and `retryRecordings` re-attempts the load.
+ *
+ * Pass `{ enabled: false }` to keep the (identical) return shape without
+ * subscribing: `useDashboard` does this because it never renders recordings
+ * itself — `HistoryPanel` owns the only live recordings fetch (paginated
+ * `?limit=`), so an eager fetch here would double every recordings request.
  */
-export function useRecordings(deviceId: Ref<string | undefined>, isV2: Ref<boolean>) {
+export function useRecordings(
+  deviceId: Ref<string | undefined>,
+  isV2: Ref<boolean>,
+  opts?: { enabled?: boolean | Ref<boolean> },
+) {
   const recordings = ref<DeviceRecording[]>([])
   const recordingsError = ref<string | null>(null)
   const recordingsLoading = ref(false)
@@ -63,10 +72,18 @@ export function useRecordings(deviceId: Ref<string | undefined>, isV2: Ref<boole
     await fetchRecordings(id)
   }
 
+  function isEnabled() {
+    return opts?.enabled === undefined
+      ? true
+      : typeof opts.enabled === 'boolean'
+        ? opts.enabled
+        : opts.enabled.value
+  }
+
   watch(
-    [deviceId, isV2],
-    ([id, v2]) => {
-      if (id && v2) {
+    [deviceId, isV2, () => isEnabled()],
+    ([id, v2, enabled]) => {
+      if (id && v2 && enabled) {
         void fetchRecordings(id)
       } else {
         latestRequestId += 1

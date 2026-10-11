@@ -1,5 +1,5 @@
 import { ConvexError } from 'convex/values'
-import type { Ctx, MutationCtx } from '../../types'
+import type { Ctx, MutationCtx, DeviceDoc } from '../../types'
 import type { Id } from '../../_generated/dataModel'
 import {
   DEFAULT_WATERING_THRESHOLD, DEFAULT_LIGHTING_THRESHOLD,
@@ -30,6 +30,12 @@ export async function ensureDeviceExists(
   variant?: string,
 ) {
   const normalizedDeviceId = deviceId.trim()
+  if (!/^[A-Za-z0-9_-]{1,31}$/.test(normalizedDeviceId)) {
+    throw new ConvexError('deviceId tidak valid')
+  }
+  if (variant !== undefined && variant !== 'tech' && variant !== 'tech-addon') {
+    throw new ConvexError('variant must be tech or tech-addon')
+  }
   const existing = await getDeviceByExternalId(ctx, normalizedDeviceId)
   if (existing) return existing
 
@@ -84,10 +90,20 @@ export async function ensureDeviceExists(
 }
 
 export async function getUserDevices(ctx: Ctx, userId: Id<'users'>) {
-  const devices = await ctx.db
-    .query('devices')
-    .withIndex('by_user', (q) => q.eq('userId', userId))
-    .collect()
+  // Bounded reads only on this hot path (every dashboard/assistant/trigger
+  // query fans out here): cursor-paginated full collection, 100/page, so a
+  // single read never grows with the user's history. Sorting is unchanged.
+  const devices: DeviceDoc[] = []
+  let cursor: string | null = null
+  while (true) {
+    const page = await ctx.db
+      .query('devices')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .paginate({ cursor, numItems: 100 })
+    devices.push(...page.page)
+    if (page.isDone) break
+    cursor = page.continueCursor
+  }
 
   return devices.sort((a, b) => b.updatedAt - a.updatedAt)
 }

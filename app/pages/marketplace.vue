@@ -38,7 +38,15 @@ usePublicSeo({
 const query = ref('')
 const selectedCategory = ref<'all' | 'official' | 'community'>('all')
 const failedImages = ref<string[]>([])
-const { data } = await usePublicConvexQuery<Record<string, unknown>, PublicMarketplaceData>('public-marketplace-listing', api.marketplace.marketplace, {})
+const {
+  data,
+  error: marketplaceError,
+  refresh: refreshMarketplace,
+} = await usePublicConvexQuery<Record<string, unknown>, PublicMarketplaceData>(
+  'public-marketplace-listing',
+  api.marketplace.marketplace,
+  {},
+)
 
 const featured = computed(() => data.value?.featured ?? null)
 
@@ -51,7 +59,7 @@ const filteredCommunity = computed(() =>
 )
 
 function openExternal(url: string) {
-  if (url) window.open(url, '_blank')
+  if (url) window.open(url, '_blank', 'noopener')
 }
 
 function hasWorkingImage(id: string, image?: string | null) {
@@ -68,21 +76,51 @@ function handleImageError(id: string) {
 <template>
   <MarketingPageShell>
     <section class="bg-[linear-gradient(135deg,#f6fbf2_0%,#edf7e8_50%,#dfeeda_100%)]">
-      <RevealBlock as="div" class="mx-auto max-w-7xl px-4 pt-6 pb-16 sm:px-6 lg:px-8 lg:pt-10 lg:pb-20">
-        <p class="mb-4 text-xs font-semibold tracking-[0.28em] text-gm-primary uppercase">Marketplace</p>
-        <h1 class="font-headline text-4xl text-[#17351a] sm:text-5xl">Ruang distribusi hasil panen dan produk dari sesama pengguna.</h1>
+      <RevealBlock
+        as="div"
+        class="mx-auto max-w-7xl px-4 pt-6 pb-16 sm:px-6 lg:px-8 lg:pt-10 lg:pb-20"
+      >
+        <p class="mb-4 text-xs font-semibold tracking-[0.28em] text-gm-primary uppercase">
+          Marketplace
+        </p>
+        <h1 class="font-headline text-4xl text-[#17351a] sm:text-5xl">
+          Ruang distribusi hasil panen dan produk dari sesama pengguna.
+        </h1>
         <p class="mt-5 max-w-3xl text-base text-gm-muted sm:text-lg">
-          Halaman ini membantu pengguna melihat hasil panen, bibit, dan kebutuhan budidaya lain yang dibagikan melalui marketplace komunitas GrowMate.
+          Halaman ini membantu pengguna melihat hasil panen, bibit, dan kebutuhan budidaya lain yang
+          dibagikan melalui marketplace komunitas GrowMate.
         </p>
         <div class="mt-8 max-w-xl rounded-full bg-white px-5 py-3 shadow-sm">
-          <input v-model="query" class="w-full bg-transparent text-sm outline-none" placeholder="Cari hasil panen, kategori, atau nama penjual" />
+          <label class="block">
+            <span class="sr-only">Cari hasil panen</span>
+            <input
+              v-model="query"
+              aria-label="Cari hasil panen"
+              class="w-full bg-transparent text-sm outline-none"
+              placeholder="Cari hasil panen, kategori, atau nama penjual"
+            />
+          </label>
         </div>
       </RevealBlock>
     </section>
 
     <section class="bg-white py-16 lg:py-20">
       <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+        <div v-if="marketplaceError" class="rounded-[2rem] bg-[#f3f3f3] p-8 text-center">
+          <p class="text-sm font-bold text-gm-text">Gagal memuat marketplace</p>
+          <p class="mx-auto mt-2 max-w-md text-sm text-gm-muted">
+            Periksa koneksi Anda lalu coba lagi.
+          </p>
+          <button
+            type="button"
+            class="mt-5 rounded-full bg-gm-primary px-6 py-3 text-sm font-bold text-white"
+            @click="refreshMarketplace()"
+          >
+            Coba lagi
+          </button>
+        </div>
         <ListingGrid
+          v-else
           :featured="featured"
           :filtered-official="filteredOfficial"
           :filtered-community="filteredCommunity"

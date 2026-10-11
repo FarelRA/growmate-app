@@ -1,4 +1,5 @@
 import { ConvexError } from 'convex/values'
+import { internal } from '../_generated/api'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import {
@@ -328,7 +329,14 @@ async function deletePlantImagesByDevice(ctx: MutationCtx, deviceId: Id<'devices
       .withIndex('by_device', (q) => q.eq('deviceId', deviceId))
       .take(CASCADE_BATCH)
     if (rows.length === 0) break
-    await Promise.all(rows.map((row) => ctx.db.delete(row._id)))
+    for (const row of rows) {
+      if (row.imageUrl) {
+        await ctx.scheduler.runAfter(0, internal.crons.deletePlantImageS3Objects, {
+          pathPrefix: row.imageUrl,
+        })
+      }
+      await ctx.db.delete(row._id)
+    }
   }
 }
 
@@ -339,7 +347,10 @@ async function deleteVideoRecordingsByDevice(ctx: MutationCtx, deviceId: Id<'dev
       .withIndex('by_device', (q) => q.eq('deviceId', deviceId))
       .take(CASCADE_BATCH)
     if (rows.length === 0) break
-    await Promise.all(rows.map((row) => ctx.db.delete(row._id)))
+    for (const row of rows) {
+      await ctx.scheduler.runAfter(0, internal.crons.deleteRecordingS3Object, { key: row.path })
+      await ctx.db.delete(row._id)
+    }
   }
 }
 

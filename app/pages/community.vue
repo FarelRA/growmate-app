@@ -13,13 +13,12 @@ definePageMeta({
   requiresSetup: true,
 })
 
-const { data } = useConvexQuery(api.community.community, {})
+const { data, error: communityError } = useConvexQuery(api.community.community, {})
 
 const { mutate: createPost } = useConvexMutation(api.community.createPost)
 const { mutate: likePost } = useConvexMutation(api.community.likePost)
 const { mutate: createComment } = useConvexMutation(api.community.createComment)
 const { mutate: deletePost } = useConvexMutation(api.community.deletePost)
-
 
 const showCreatePostModal = ref(false)
 const expandedComments = ref<string | null>(null)
@@ -37,6 +36,10 @@ const likingPosts = ref<Set<string>>(new Set())
 const commentingPosts = ref<Set<string>>(new Set())
 const deletingPosts = ref<Set<string>>(new Set())
 const postImageBlobUrl = ref<string | null>(null)
+
+function reloadCommunity() {
+  window.location.reload()
+}
 
 async function handleCreatePost() {
   creatingPost.value = true
@@ -90,7 +93,10 @@ async function handleLike(postId: string) {
 async function handleComment(postId: string) {
   commentingPosts.value.add(postId)
   try {
-    await createComment({ postId: postId as Id<'communityPosts'>, body: commentText.value[postId] ?? '' })
+    await createComment({
+      postId: postId as Id<'communityPosts'>,
+      body: commentText.value[postId] ?? '',
+    })
     commentText.value[postId] = ''
     expandedComments.value = postId
     toast.success('Komentar diposting')
@@ -136,6 +142,7 @@ async function handleDeletePost(postId: string) {
             </p>
           </div>
           <button
+            type="button"
             @click="showCreatePostModal = true"
             class="rounded-full bg-gm-primary px-6 py-3 text-sm font-bold text-white"
           >
@@ -171,6 +178,7 @@ async function handleDeletePost(postId: string) {
             </div>
           </div>
           <button
+            type="button"
             v-if="data.viewerId && data.viewerId === post.userId"
             @click="handleDeletePost(post._id)"
             class="rounded-full bg-[#ffdbcf] px-4 py-2 text-xs font-bold text-[#795548] disabled:opacity-50"
@@ -195,6 +203,7 @@ async function handleDeletePost(postId: string) {
 
         <div class="mt-6 flex flex-wrap items-center gap-3 pt-4 text-sm">
           <button
+            type="button"
             @click="handleLike(post._id)"
             class="flex items-center gap-2 rounded-full px-4 py-2 font-semibold"
             :class="
@@ -207,6 +216,7 @@ async function handleDeletePost(postId: string) {
             {{ post.likeCount }}
           </button>
           <button
+            type="button"
             @click="expandedComments = expandedComments === post._id ? null : post._id"
             class="flex items-center gap-2 rounded-full bg-[#f3f3f3] px-4 py-2 font-semibold text-gm-muted"
           >
@@ -227,6 +237,7 @@ async function handleDeletePost(postId: string) {
               />
             </label>
             <button
+              type="button"
               @click="handleComment(post._id)"
               class="rounded-full bg-gm-primary px-5 py-3 text-sm font-bold text-white"
               :disabled="commentingPosts.has(post._id)"
@@ -301,6 +312,30 @@ async function handleDeletePost(postId: string) {
   </div>
 
   <div
+    v-else-if="communityError"
+    class="rounded-[2rem] bg-white p-8 text-center shadow-[0_12px_40px_rgba(15,23,42,0.05)]"
+  >
+    <p class="text-sm font-bold text-gm-text">Gagal memuat komunitas</p>
+    <p class="mx-auto mt-2 max-w-md text-sm text-gm-muted">Periksa koneksi Anda lalu coba lagi.</p>
+    <button
+      type="button"
+      class="mt-5 rounded-full bg-gm-primary px-6 py-3 text-sm font-bold text-white"
+      @click="reloadCommunity"
+    >
+      Coba lagi
+    </button>
+  </div>
+
+  <div v-else class="rounded-[2rem] bg-white p-8 shadow-[0_12px_40px_rgba(15,23,42,0.05)]">
+    <div class="animate-pulse space-y-4" aria-hidden="true">
+      <div class="h-6 w-1/3 rounded-full bg-[#f3f3f3]"></div>
+      <div class="h-24 rounded-[1.5rem] bg-[#f3f3f3]"></div>
+      <div class="h-24 rounded-[1.5rem] bg-[#f3f3f3]"></div>
+    </div>
+    <p class="mt-5 text-center text-sm text-gm-muted" role="status">Memuat komunitas...</p>
+  </div>
+
+  <div
     v-if="showCreatePostModal"
     role="dialog"
     aria-modal="true"
@@ -316,7 +351,12 @@ async function handleDeletePost(postId: string) {
             Bagikan update budidaya, pelajaran yang didapat, atau momen panen.
           </p>
         </div>
-        <button class="rounded-full p-2 hover:bg-[#f3f3f3]" aria-label="Tutup" @click="showCreatePostModal = false">
+        <button
+          type="button"
+          class="rounded-full p-2 hover:bg-[#f3f3f3]"
+          aria-label="Tutup"
+          @click="showCreatePostModal = false"
+        >
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
@@ -356,6 +396,7 @@ async function handleDeletePost(postId: string) {
       </div>
       <div class="mt-6 flex flex-col gap-3 sm:flex-row">
         <button
+          type="button"
           @click="handleCreatePost"
           class="flex-1 rounded-full bg-gm-primary px-6 py-4 text-sm font-bold text-white"
           :disabled="creatingPost"
@@ -363,6 +404,7 @@ async function handleDeletePost(postId: string) {
           {{ creatingPost ? 'Mempublikasikan...' : 'Publikasikan Postingan' }}
         </button>
         <button
+          type="button"
           @click="showCreatePostModal = false"
           class="rounded-full bg-[#e8e8e8] px-6 py-4 text-sm font-bold text-gm-text"
         >

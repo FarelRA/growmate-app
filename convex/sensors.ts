@@ -412,6 +412,55 @@ function assertSensorCap(sensors: unknown[]) {
 
 const DEVICE_ID_RE = /^[A-Za-z0-9_-]{1,31}$/
 
+const INGEST_SENSOR_KINDS: ReadonlySet<string> = new Set([
+  'soil',
+  'light',
+  'water',
+  'temperature',
+  'air',
+  'current',
+])
+
+function assertIngestSensorShapes(
+  sensors: { kind: string; value?: number; unit: string; raw?: number }[],
+  variant: string | undefined,
+) {
+  // Firmware-shape parity with server/utils/deviceProtocol.ts
+  // validateDeviceEnvelope (pods raw-only analog legs, tech
+  // variant-selected current leg). The Convex mutation additionally serves
+  // legacy value-only app clients, so value-only analog stays accepted here
+  // while the Nitro gate stays raw-only; everything ambiguous fails fast
+  // before any row is created or forked.
+  for (const entry of sensors) {
+    if (!INGEST_SENSOR_KINDS.has(entry.kind)) {
+      throw new ConvexError(`Unknown sensor kind: ${String(entry.kind)}`)
+    }
+    if (entry.kind === 'temperature' || entry.kind === 'air') {
+      if (entry.raw !== undefined) {
+        throw new ConvexError(`${entry.kind}: DHT must not carry raw`)
+      }
+      if (typeof entry.value !== 'number' || !Number.isFinite(entry.value)) {
+        throw new ConvexError(`${entry.kind}: MISSING value (DHT is native floats)`)
+      }
+    } else if (entry.kind === 'current') {
+      // Tech current leg only: pods never sends it, and the raw scale is
+      // selected by the envelope variant, so a variant-less current leg is
+      // uninterpretable.
+      if (variant === undefined) {
+        throw new ConvexError('current leg requires a tech variant')
+      }
+      if (entry.value !== undefined) {
+        throw new ConvexError('current: must be RAW-only (no value)')
+      }
+      if (typeof entry.raw !== 'number' || !Number.isInteger(entry.raw)) {
+        throw new ConvexError('current: MISSING raw (must be RAW-only)')
+      }
+    } else if (entry.raw === undefined && entry.value === undefined) {
+      throw new ConvexError(`${entry.kind}: MISSING raw or value`)
+    }
+  }
+}
+
 async function performIngest(
   ctx: MutationCtx,
   args: IngestSensorDataArgs,
@@ -426,6 +475,12 @@ async function performIngest(
     if (!DEVICE_ID_RE.test(externalId)) {
       throw new ConvexError('deviceId tidak valid')
     }
+    // Closed variant union at the core (Convex arg validators only run on
+    // the real runtime; direct core calls must fail closed too).
+    if (args.variant !== undefined && args.variant !== 'tech' && args.variant !== 'tech-addon') {
+      throw new ConvexError('variant must be tech or tech-addon')
+    }
+    assertIngestSensorShapes(args.sensors, args.variant)
     let device: DeviceDoc | null = null
     if (args.hardwareId) {
       device = await ctx.db

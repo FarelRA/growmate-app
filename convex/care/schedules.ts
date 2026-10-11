@@ -320,10 +320,13 @@ export async function executeDueSchedulesCore(
     const device = plant ? await ctx.db.get(plant.deviceId) : null
     const ownerId = device?.userId
     if (!plant || plant.archived || !device || !ownerId) {
-      // Skip without firing, but still advance nextRunAt so one orphaned
-      // schedule can't permanently wedge the per-run cap. lastRunAt is
-      // left untouched as evidence nothing fired.
-      await ctx.db.patch(current._id, { nextRunAt })
+      // Orphaned schedule (plant archived/replaced, device deleted, or
+      // device unclaimed): DELETE it instead of perpetually advancing
+      // nextRunAt. Archived-plant schedules are dead rows — every
+      // plant replacement archives the old plant, so without this the
+      // table grows forever and each cron pass re-advances corpses.
+      // Deletion counts as skipped (nothing fired, no error).
+      await ctx.db.delete(current._id)
       skipped += 1
       continue
     }

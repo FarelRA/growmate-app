@@ -68,6 +68,7 @@ interface PlantPreset {
   _id: string
   name: string
   category: string
+  key: string
   imageUrl: string | null
 }
 interface BlogPost {
@@ -85,14 +86,45 @@ const featuredProduct = computed(() => marketplace.value?.featured ?? officialPr
 const stories = computed(() => community.value?.posts ?? [])
 const presets = computed(() => plantLibrary.value ?? [])
 
-const saleCards = computed(() => communityProducts.value.slice(0, 4))
+const saleCards = computed(() => orderByTitles(communityProducts.value, SALE_CARD_TITLES, 4))
 const gardenCards = computed(() => officialProducts.value.slice(0, 4))
-const podCards = computed(() => presets.value.slice(0, 4))
+const podCards = computed(() => orderByKeys(presets.value, POD_CARD_KEYS, 4))
 const blogCards = computed(() => blogPosts.value ?? [])
 const carouselStories = computed(() => stories.value.slice(0, 5))
 
+// Hand-picked homepage imagery (stable catalog keys / listing titles,
+// each photo visually verified in public/seed-images). Missing picks fall
+// through to query order so slots never render empty after a reseed.
+const HERO_PRESET_KEYS = ['selada', 'tomat-ceri']
+const HERO_PRODUCT_TITLE = 'GrowMate Pods'
+const HERO_LISTING_TITLE = 'Jagung Manis Petik Sendiri'
+const POD_CARD_KEYS = ['selada', 'tomat-ceri', 'stroberi', 'cabai-rawit']
+const SALE_CARD_TITLES = [
+  'Tomat Ceri Campur, Sekilo',
+  'Bayam Petik Pagi Ini, 500 Gram',
+  'Jagung Manis Petik Sendiri',
+  'Stroberi Petik 250 Gram',
+]
+
+function orderByKeys<T extends { key: string }>(items: T[], keys: string[], count: number): T[] {
+  const picked = keys.flatMap((key) => items.find((item) => item.key === key) ?? [])
+  const rest = items.filter((item) => !keys.includes(item.key))
+  return [...picked, ...rest].slice(0, count)
+}
+
+function orderByTitles<T extends { title: string }>(items: T[], titles: string[], count: number): T[] {
+  const picked = titles.flatMap((title) => items.find((item) => item.title === title) ?? [])
+  const rest = items.filter((item) => !titles.includes(item.title))
+  return [...picked, ...rest].slice(0, count)
+}
+
 const heroImages = computed(() => {
+  const presetByKey = (key: string) => presets.value.find((preset) => preset.key === key)?.imageUrl
   const pool = [
+    presetByKey('selada'),
+    presetByKey('tomat-ceri'),
+    officialProducts.value.find((product) => product.title === HERO_PRODUCT_TITLE)?.imageUrl,
+    communityProducts.value.find((product) => product.title === HERO_LISTING_TITLE)?.imageUrl,
     featuredProduct.value?.imageUrl,
     officialProducts.value[1]?.imageUrl,
     communityProducts.value[0]?.imageUrl,

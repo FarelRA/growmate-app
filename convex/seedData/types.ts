@@ -45,6 +45,8 @@ export interface PlantSeedData {
   fertilizerCadenceDays?: number
   pesticideCadenceDays?: number
   nutrientNotes?: string
+  /** Pod (GrowMate Pods indoor) vs field (Tech/Tech-Addon outdoor) division. */
+  suitableFor?: Array<'pod' | 'field'>
   sensorProfile: SeedSensorProfile
   lifecycleProfile: SeedLifecycleProfile
   image: SeedImage

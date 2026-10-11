@@ -17,6 +17,7 @@ const seedData: PlantSeedData[] = [
     fertilizerCadenceDays: 7,
     pesticideCadenceDays: 14,
     nutrientNotes: 'Pupuk NPK seimbang setiap minggu. Responsif terhadap pemupukan nitrogen saat fase vegetatif.',
+    suitableFor: ["pod", "field"],
     sensorProfile: {
           "soil": {
                 "min": 60,
@@ -63,6 +64,7 @@ const seedData: PlantSeedData[] = [
     fertilizerCadenceDays: 10,
     pesticideCadenceDays: 14,
     nutrientNotes: 'Pupuk nitrogen ringan setiap 10 hari. Hindari kelebihan pupuk yang menyebabkan daun pahit.',
+    suitableFor: ["pod", "field"],
     sensorProfile: {
           "soil": {
                 "min": 50,
@@ -109,6 +111,7 @@ const seedData: PlantSeedData[] = [
     fertilizerCadenceDays: 10,
     pesticideCadenceDays: 14,
     nutrientNotes: 'Pupuk nitrogen tinggi setiap 10 hari untuk pertumbuhan daun optimal.',
+    suitableFor: ["pod", "field"],
     sensorProfile: {
           "soil": {
                 "min": 50,
@@ -155,6 +158,7 @@ const seedData: PlantSeedData[] = [
     fertilizerCadenceDays: 7,
     pesticideCadenceDays: 14,
     nutrientNotes: 'Pupuk NPK seimbang setiap minggu. Responsif terhadap pupuk nitrogen.',
+    suitableFor: ["pod", "field"],
     sensorProfile: {
           "soil": {
                 "min": 50,
@@ -201,6 +205,7 @@ const seedData: PlantSeedData[] = [
     fertilizerCadenceDays: 5,
     pesticideCadenceDays: 10,
     nutrientNotes: 'Pupuk tinggi kalium dan fosfor setiap 5 hari saat fase berbuah. Kurangi nitrogen saat berbunga.',
+    suitableFor: ["pod", "field"],
     sensorProfile: {
           "soil": {
                 "min": 50,
@@ -247,6 +252,7 @@ const seedData: PlantSeedData[] = [
     fertilizerCadenceDays: 5,
     pesticideCadenceDays: 10,
     nutrientNotes: 'Pupuk tinggi kalium dan kalsium setiap 5 hari saat berbuah. Hindari kelebihan nitrogen.',
+    suitableFor: ["pod"],
     sensorProfile: {
           "soil": {
                 "min": 50,
@@ -293,6 +299,7 @@ const seedData: PlantSeedData[] = [
     fertilizerCadenceDays: 5,
     pesticideCadenceDays: 10,
     nutrientNotes: 'Pupuk tinggi fosfor dan kalium setiap 5 hari saat berbunga dan berbuah.',
+    suitableFor: ["pod", "field"],
     sensorProfile: {
           "soil": {
                 "min": 50,
@@ -339,6 +346,7 @@ const seedData: PlantSeedData[] = [
     fertilizerCadenceDays: 7,
     pesticideCadenceDays: 14,
     nutrientNotes: 'Pupuk NPK seimbang setiap minggu. Tumbuh agresif, responsif terhadap pupuk.',
+    suitableFor: ["pod"],
     sensorProfile: {
           "soil": {
                 "min": 50,
@@ -385,6 +393,7 @@ const seedData: PlantSeedData[] = [
     fertilizerCadenceDays: 14,
     pesticideCadenceDays: 14,
     nutrientNotes: 'Pupuk rendah nitrogen setiap 2 minggu. Pemupukan berlebihan menyebabkan pertumbuhan leggy.',
+    suitableFor: ["pod"],
     sensorProfile: {
           "soil": {
                 "min": 30,
@@ -431,6 +440,7 @@ const seedData: PlantSeedData[] = [
     fertilizerCadenceDays: 30,
     pesticideCadenceDays: 60,
     nutrientNotes: 'Pemupukan ringan setiap bulan selama musim tanam. Gunakan pupuk NPK seimbang dengan dosis 1/4 dari dosis normal.',
+    suitableFor: ["pod"],
     sensorProfile: {
           "soil": {
                 "min": 20,

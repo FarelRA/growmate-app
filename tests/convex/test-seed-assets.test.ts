@@ -20,6 +20,8 @@ import { join } from 'node:path'
 import seedUsers, { demoUser } from '../../convex/seedData/users'
 import seedDevices from '../../convex/seedData/devices'
 import seedUserPlants from '../../convex/seedData/userPlants'
+import seedPlants from '../../convex/seedData/plants'
+import seedFieldCrops from '../../convex/seedData/fieldCrops'
 
 const root = process.cwd()
 const seedDataDir = join(root, 'convex/seedData')
@@ -34,7 +36,7 @@ function readSeedData(name: string): string {
 /** All content hashes referenced as `hash: "<hex>"` in image datasets. */
 function referencedHashes(): Set<string> {
   const out = new Set<string>()
-  for (const f of ['plants.ts', 'products.ts', 'blog.ts', 'communityListings.ts', 'communityPosts.ts']) {
+  for (const f of ['plants.ts', 'fieldCrops.ts', 'products.ts', 'blog.ts', 'communityListings.ts', 'communityPosts.ts']) {
     for (const m of readSeedData(f).matchAll(/hash:\s*"([0-9a-f]{8,})"/g)) {
       out.add(m[1]!)
     }
@@ -85,7 +87,7 @@ describe('seed image externalization', () => {
 })
 
 describe('seed fleet shape (36 users + demo, 41 devices)', () => {
-  it('has 36 users with 22 advanced, plus an advanced demo account', () => {
+  it('has 36 Javanese gmail growers with 22 advanced, plus an advanced demo', () => {
     expect(seedUsers).toHaveLength(36)
     expect(seedUsers.filter((u) => u.tier === 'advanced')).toHaveLength(22)
     expect(seedUsers.filter((u) => u.tier === 'basic')).toHaveLength(14)
@@ -94,11 +96,12 @@ describe('seed fleet shape (36 users + demo, 41 devices)', () => {
     const handles = seedUsers.map((u) => u.handle)
     expect(new Set(handles).size).toBe(36)
     for (const u of seedUsers) {
-      expect(u.email).toMatch(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)
-      expect(['grower', 'company']).toContain(u.role)
+      expect(u.email).toMatch(/^[^@\s]+@gmail\.com$/)
+      expect(u.role).toBe('grower')
     }
     expect(demoUser.tier).toBe('advanced')
-    expect(demoUser.email).toBe('demo@growmate.bond')
+    expect(demoUser.role).toBe('grower')
+    expect(demoUser.email).toMatch(/^[^@\s]+@gmail\.com$/)
     expect(emails).not.toContain(demoUser.email)
   })
 
@@ -154,11 +157,36 @@ describe('seed fleet shape (36 users + demo, 41 devices)', () => {
     for (const id of plantDevices) {
       expect(deviceIds.has(id), `plant references unknown device ${id}`).toBe(true)
     }
-    const catalogKeys = new Set(
-      ['kemangi', 'selada', 'bayam', 'pakcoy', 'cabai-rawit', 'tomat-ceri', 'stroberi', 'mint', 'rosemary', 'lidah-mertua'],
-    )
+    const catalogKeys = new Set([
+      ...seedPlants.map((p) => p.key),
+      ...seedFieldCrops.map((p) => p.key),
+    ])
+    expect(seedPlants.length + seedFieldCrops.length).toBeGreaterThanOrEqual(510)
     for (const p of seedUserPlants) {
       expect(catalogKeys.has(p.catalogKey), `unknown catalog key ${p.catalogKey}`).toBe(true)
     }
+  })
+
+  it('field-crop catalog is well-formed (unique keys, pod/field division)', () => {
+    expect(seedFieldCrops.length).toBeGreaterThanOrEqual(500)
+    const keys = seedFieldCrops.map((p) => p.key)
+    expect(new Set(keys).size).toBe(keys.length)
+    const originalKeys = new Set(seedPlants.map((p) => p.key))
+    for (const k of keys) {
+      expect(originalKeys.has(k), `field crop collides with original key ${k}`).toBe(false)
+    }
+    const validCats = new Set(['herb', 'leafy', 'fruiting', 'houseplant', 'flower', 'microgreen'])
+    let field = 0
+    let pod = 0
+    for (const p of seedFieldCrops) {
+      expect(validCats.has(p.category)).toBe(true)
+      expect(Array.isArray(p.suitableFor) && p.suitableFor!.length > 0).toBe(true)
+      for (const s of p.suitableFor!) expect(['pod', 'field']).toContain(s)
+      if (p.suitableFor!.includes('field')) field += 1
+      if (p.suitableFor!.includes('pod')) pod += 1
+      expect(p.image.hash).toMatch(/^[0-9a-f]{8,}$/)
+    }
+    expect(field).toBeGreaterThan(200)
+    expect(pod).toBeGreaterThan(100)
   })
 })

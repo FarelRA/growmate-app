@@ -89,6 +89,7 @@ export default defineSchema({
     fertilizerCadenceDays: v.optional(v.number()),
     pesticideCadenceDays: v.optional(v.number()),
     nutrientNotes: v.optional(v.string()),
+    suitableFor: v.optional(v.array(v.union(v.literal('pod'), v.literal('field')))),
     sensorProfile: v.optional(plantSensorProfile),
     lifecycleProfile: lifecycleProfileValidator,
     createdAt: v.number(),

@@ -3,6 +3,7 @@
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import plantsData from "../seedData/plants";
+import fieldCropsData from "../seedData/fieldCrops";
 import { uploadSeedImageSet } from "./images";
 
 function getEnv() {
@@ -54,7 +55,8 @@ export const plants = internalAction({
 
     let created = 0;
     let skipped = 0;
-    for (const plant of plantsData) {
+    // Original 10 pod favorites first, then the ~500 field/pods catalog.
+    for (const plant of [...plantsData, ...fieldCropsData]) {
       const existing = await ctx.runQuery(internal.seedInternal.lookupPlantByKey, {
         key: plant.key,
       });
@@ -77,6 +79,11 @@ export const plants = internalAction({
         difficulty: plant.difficulty,
         wateringThreshold: plant.wateringThreshold,
         lightingThreshold: plant.lightingThreshold,
+        fertilizingThreshold: plant.fertilizingThreshold,
+        fertilizerCadenceDays: plant.fertilizerCadenceDays,
+        pesticideCadenceDays: plant.pesticideCadenceDays,
+        nutrientNotes: plant.nutrientNotes,
+        suitableFor: plant.suitableFor,
         sensorProfile: getSensorProfile(plant.sensorProfile),
         lifecycleProfile: getLifecycleProfile(plant.lifecycleProfile),
         imageUrl,

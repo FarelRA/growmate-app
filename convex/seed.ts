@@ -60,17 +60,17 @@ export const comprehensive = internalAction({
     console.log("\n─── 2/8: Plant Catalog ───");
     await ctx.runAction(internal.seed.plants);
 
-    // 3. Users (20)
-    console.log("\n─── 3/8: Users (20) ───");
+    // 3. Users (36 + demo)
+    console.log("\n─── 3/8: Users (36 + demo) ───");
     const userIds = await ctx.runAction(internal.seed.users);
     console.log(`  ${userIds.length} users created/found`);
 
-    // 4. Devices (25)
-    console.log("\n─── 4/8: Devices (25) ───");
+    // 4. Devices (41: 18 Pods + 9 Tech + 14 Tech-Addon)
+    console.log("\n─── 4/8: Devices (41) ───");
     const deviceIds = await ctx.runAction(internal.seed.devices);
     console.log(`  ${deviceIds.length} devices created/found`);
 
-    // 5. Claims + Plants (20 claims, 20 plants)
+    // 5. Claims + Plants (36 users + demo showcase)
     console.log("\n─── 5/8: Claims + Plants ───");
     await ctx.runAction(internal.seed.processClaims);
 

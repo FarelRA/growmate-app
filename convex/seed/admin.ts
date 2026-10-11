@@ -2,7 +2,7 @@
 
 import { internalAction } from "../_generated/server";
 import { api, internal } from "../_generated/api";
-import usersData from "../seedData/users";
+import usersData, { demoUser } from "../seedData/users";
 import devicesData from "../seedData/devices";
 import userPlantsData from "../seedData/userPlants";
 import type { Id } from "../_generated/dataModel";
@@ -59,7 +59,7 @@ export const users = internalAction({
     const userIds: Id<"users">[] = [];
     let created = 0;
 
-    for (const u of usersData) {
+    for (const u of [...usersData, demoUser]) {
       const result = await ctx.runAction(internal.seedInternal.signUpUser, {
         email: u.email,
         password: u.password,
@@ -73,7 +73,7 @@ export const users = internalAction({
       userIds.push(result._id);
     }
 
-    console.log(`[seed] users: ${created} created, ${userIds.length - created} already present`);
+    console.log(`[seed] users: ${created} created, ${userIds.length - created} already present (incl. demo)`);
     return userIds;
   },
 });
@@ -131,43 +131,44 @@ export const devices = internalAction({
 
 export const processClaims = internalAction({
   handler: async (ctx) => {
-    const deviceDocs = await ctx.runQuery(internal.seedInternal.listAllDevices);
+    // Collect regular user IDs in seedData order (index-addressed by userPlants)
     const userIds: Id<"users">[] = [];
-
-    // Collect all user IDs
     for (const u of usersData) {
       const user = await ctx.runQuery(internal.users.adminLookupByEmail, { email: u.email });
       if (user) userIds.push(user._id);
     }
+    const demo = await ctx.runQuery(internal.users.adminLookupByEmail, { email: demoUser.email });
 
-    if (userIds.length === 0 || deviceDocs.length === 0) {
-      console.log("[seed] No users or devices found, skipping claims");
+    if (userIds.length === 0 || !demo) {
+      console.log("[seed] Users or demo account missing (run seed:users first), skipping claims");
       return;
     }
 
-    // Claim one unclaimed device per user, bounded by both sides
-    const pairs = Math.min(userIds.length, deviceDocs.length, userPlantsData.length);
+    // Pairing is explicit per plant entry (userIndex/demo + deviceId): no
+    // dependence on table order. Every device gets exactly one owner.
     let claimed = 0;
-    for (let i = 0; i < pairs; i++) {
-      const device = deviceDocs[i];
-      const userId = userIds[i];
-      if (!device || !userId || device.userId) continue;
-
-      await ctx.runMutation(internal.seedInternal.claimDeviceByUser, {
-        deviceId: device._id,
-        userId,
-      });
-      claimed += 1;
-    }
-
-    // Refresh device docs after claiming
-    const refreshedDevices = await ctx.runQuery(internal.seedInternal.listAllDevices);
-
-    // Create plants on the claimed devices
     let planted = 0;
     for (const up of userPlantsData) {
-      const device = refreshedDevices[up.deviceIndex];
-      if (!device?.userId) continue;
+      const ownerId = up.demo ? demo._id : userIds[up.userIndex];
+      if (!ownerId) continue;
+
+      const device = await ctx.runQuery(internal.seedInternal.lookupDeviceById, {
+        deviceId: up.deviceId,
+      });
+      if (!device) {
+        console.log(`[seed] device not found, skipping plant ${up.name}: ${up.deviceId}`);
+        continue;
+      }
+      if (!device.userId) {
+        await ctx.runMutation(internal.seedInternal.claimDeviceByUser, {
+          deviceId: device._id,
+          userId: ownerId,
+        });
+        claimed += 1;
+      } else if (String(device.userId) !== String(ownerId)) {
+        continue;
+      }
+      if (device.plantId) continue;
 
       // Look up plant catalog entry for sensor/lifecycle profile
       const catalogEntry = await ctx.runQuery(internal.seedInternal.lookupPlantByKey, {
@@ -203,7 +204,7 @@ export const processClaims = internalAction({
       await ctx.runMutation(internal.seedInternal.insertGrowEvent, {
         deviceId: device._id,
         plantId,
-        userId: device.userId,
+        userId: ownerId,
         source: "user",
         entityType: "plant",
         eventType: "plant_added",
@@ -214,7 +215,7 @@ export const processClaims = internalAction({
 
       // Create user activity
       await ctx.runMutation(internal.seedInternal.insertUserActivity, {
-        userId: device.userId,
+        userId: ownerId,
         activityType: "plant_added",
         points: 50,
         relatedId: plantId,
@@ -225,7 +226,7 @@ export const processClaims = internalAction({
         await ctx.runMutation(internal.seedInternal.insertGrowEvent, {
           deviceId: device._id,
           plantId,
-          userId: device.userId,
+          userId: ownerId,
           source: "automation",
           entityType: "automation",
           eventType: "system_watering",

@@ -17,6 +17,7 @@ const {
 
   setPanel, handleSelectDevice, openSelectPlant,
   handleWater, handleLight, handleFertilize, handlePesticide, handleToggleAutomation,
+  handleStartStream, handleStopStream, isStreaming,
   handleToggleSchedule, handleSaveSchedule, handleDeleteSchedule,
   handleRemoveDevice,
   resetScheduleForm, editSchedule,
@@ -162,6 +163,9 @@ const displayPanelOptions = computed(() => {
     <LiveStreamPanel
       v-else-if="activePanel === 'stream' && showStreamTab"
       :device-id="data.device?.deviceId ?? ''"
+      :streaming="isStreaming"
+      @request-start="handleStartStream"
+      @request-stop="handleStopStream"
     />
   </div>
 

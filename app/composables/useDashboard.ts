@@ -83,8 +83,12 @@ export function useDashboard() {
     handleLight,
     handleFertilize,
     handlePesticide,
+    handleStartStream,
+    handleStopStream,
     handleToggleAutomation,
   } = useDoseActions(currentDeviceId, deviceRef)
+
+  const isStreaming = computed(() => data.value?.device?.lastStreaming ?? false)
 
   const streamUrl = computed(() => {
     if (!isV2.value) return null
@@ -268,6 +272,7 @@ export function useDashboard() {
     // methods
     setPanel, handleSelectDevice, openSelectPlant,
     handleWater, handleLight, handleFertilize, handlePesticide, handleToggleAutomation,
+    handleStartStream, handleStopStream, isStreaming,
     handleToggleSchedule, handleSaveSchedule, handleDeleteSchedule,
     handleRemoveDevice,
     resetScheduleForm, editSchedule,

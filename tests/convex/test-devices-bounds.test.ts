@@ -143,8 +143,8 @@ describe('seedInternal eventType union', () => {
     const seedUnion = eventTypeUnion(seedInternalSrc, 'export const insertGrowEvent')
     const schemaSet = new Set(literals(schemaUnion))
     const seedLiterals = literals(seedUnion)
-    // Schema union is the contract: 19 literals.
-    expect(schemaSet.size).toBe(19)
+    // Schema union is the contract: 21 literals (incl. manual_stream_started/stopped).
+    expect(schemaSet.size).toBe(21)
     expect(new Set(seedLiterals)).toEqual(schemaSet)
   })
 

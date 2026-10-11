@@ -1,5 +1,6 @@
 import type { MutationCtx, DeviceDoc } from '../../types'
 import type { Id } from '../../_generated/dataModel'
+import { ConvexError } from 'convex/values'
 import {
   getDeviceWateringDuration,
   getDeviceFertilizingDuration,
@@ -10,7 +11,10 @@ import {
   buildQueuedLightAction,
   buildQueuedFertilizerAction,
   buildQueuedPesticideAction,
+  buildQueuedVideoStartAction,
+  buildQueuedVideoStopAction,
   stagedQueuedCommands,
+  type VideoStartParams,
 } from './queued'
 import { recordGrowEvent, recordAutomationEvent } from '../events'
 
@@ -191,4 +195,82 @@ export async function executeManualLighting(
       timestamp: now,
     })
   }
+}
+
+export const DEFAULT_VIDEO_START_PARAMS: VideoStartParams = {
+  width: 640,
+  height: 480,
+  fps: 5,
+  quality: 70,
+  maxSec: 300,
+}
+
+export async function executeManualVideoStart(
+  ctx: MutationCtx,
+  user: { _id: Id<'users'>; name?: string },
+  device: DeviceDoc,
+  params: Partial<VideoStartParams> = {},
+  now = Date.now(),
+): Promise<void> {
+  const merged: VideoStartParams = { ...DEFAULT_VIDEO_START_PARAMS, ...params }
+  if (![320, 640, 1280].includes(merged.width)) throw new ConvexError('width 320|640|1280')
+  if (![240, 480, 720].includes(merged.height)) throw new ConvexError('height 240|480|720')
+  if (!Number.isInteger(merged.fps) || merged.fps < 1 || merged.fps > 10) {
+    throw new ConvexError('fps 1-10')
+  }
+  if (!Number.isInteger(merged.quality) || merged.quality < 50 || merged.quality > 85) {
+    throw new ConvexError('quality 50-85')
+  }
+  if (!Number.isInteger(merged.maxSec) || merged.maxSec < 5 || merged.maxSec > 600) {
+    throw new ConvexError('maxSec 5-600')
+  }
+  await ctx.db.patch(device._id, {
+    ...buildQueuedVideoStartAction(device, merged),
+    updatedAt: now,
+  })
+
+  await recordGrowEvent(ctx, {
+    deviceId: device._id,
+    plantId: device.plantId,
+    userId: user._id,
+    source: 'user',
+    entityType: 'device',
+    eventType: 'manual_stream_started',
+    title: 'Siaran langsung diminta',
+    detail: `${device.name} diminta memulai siaran langsung (${merged.width}x${merged.height}, maks ${merged.maxSec} dtk).`,
+    data: { width: merged.width, height: merged.height, maxSec: merged.maxSec },
+    timestamp: now,
+  })
+}
+
+export async function executeManualVideoStop(
+  ctx: MutationCtx,
+  user: { _id: Id<'users'>; name?: string },
+  device: DeviceDoc,
+  now = Date.now(),
+): Promise<void> {
+  // Clear a pending start too: otherwise the unacked start redelivers after
+  // the stop and restarts the stream the user just killed.
+  const base = stagedQueuedCommands({}, device)
+  await ctx.db.patch(device._id, {
+    queuedCommands: { ...base, videoStart: null },
+    updatedAt: now,
+  })
+  const fresh = (await ctx.db.get(device._id)) ?? device
+  await ctx.db.patch(device._id, {
+    ...buildQueuedVideoStopAction(fresh),
+    updatedAt: now,
+  })
+
+  await recordGrowEvent(ctx, {
+    deviceId: device._id,
+    plantId: device.plantId,
+    userId: user._id,
+    source: 'user',
+    entityType: 'device',
+    eventType: 'manual_stream_stopped',
+    title: 'Siaran langsung dihentikan',
+    detail: `${device.name} diminta menghentikan siaran langsung.`,
+    timestamp: now,
+  })
 }

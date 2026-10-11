@@ -52,6 +52,8 @@ export function useDoseActions(
   const { mutate: triggerLighting } = useConvexMutation(api.care.triggerLighting)
   const { mutate: triggerFertilizing } = useConvexMutation(api.care.triggerFertilizing)
   const { mutate: triggerPesticide } = useConvexMutation(api.care.triggerPesticide)
+  const { mutate: triggerVideoStart } = useConvexMutation(api.care.triggerVideoStart)
+  const { mutate: triggerVideoStop } = useConvexMutation(api.care.triggerVideoStop)
   const { mutate: updateAutomation } = useConvexMutation(api.devices.updateDeviceAutomation)
 
   const doseConfig: Record<
@@ -114,6 +116,32 @@ export function useDoseActions(
     await handleDose('pesticide')
   }
 
+  async function handleStartStream() {
+    if (!currentDeviceId.value) {
+      toast.error('Pilih perangkat terlebih dahulu')
+      return
+    }
+    try {
+      await triggerVideoStart({ deviceId: currentDeviceId.value })
+      toast.success('Permintaan siaran dikirim, kamera mulai dalam ±1 menit')
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Gagal meminta siaran langsung'))
+    }
+  }
+
+  async function handleStopStream() {
+    if (!currentDeviceId.value) {
+      toast.error('Pilih perangkat terlebih dahulu')
+      return
+    }
+    try {
+      await triggerVideoStop({ deviceId: currentDeviceId.value })
+      toast.success('Permintaan berhenti dikirim')
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Gagal menghentikan siaran'))
+    }
+  }
+
   async function handleToggleAutomation(type: AutomationType, enabled: boolean) {
     if (!deviceRef.value) {
       toast.error('Pilih perangkat terlebih dahulu')
@@ -137,6 +165,8 @@ export function useDoseActions(
     handleLight,
     handleFertilize,
     handlePesticide,
+    handleStartStream,
+    handleStopStream,
     handleToggleAutomation,
   }
 }

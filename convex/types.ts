@@ -42,6 +42,8 @@ export type GrowEventType =
   | 'manual_lighting_triggered'
   | 'manual_fertilizing_triggered'
   | 'manual_pesticide_triggered'
+  | 'manual_stream_started'
+  | 'manual_stream_stopped'
   | 'stream_registered'
 
 export type MetricPoint = {

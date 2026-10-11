@@ -9,6 +9,8 @@ const DEVICE_ONLY_EVENT_TYPES: ReadonlySet<GrowEventType> = new Set([
   'device_claimed',
   'device_unclaimed',
   'stream_registered',
+  'manual_stream_started',
+  'manual_stream_stopped',
   'automation_settings_updated',
 ])
 

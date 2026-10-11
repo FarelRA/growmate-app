@@ -47,6 +47,7 @@ const DASHBOARD_KEYS = [
   'scheduleForm', 'savingSchedule', 'deletingScheduleId', 'removingDeviceId',
   'setPanel', 'handleSelectDevice', 'openSelectPlant',
   'handleWater', 'handleLight', 'handleFertilize', 'handlePesticide', 'handleToggleAutomation',
+  'handleStartStream', 'handleStopStream', 'isStreaming',
   'handleToggleSchedule', 'handleSaveSchedule', 'handleDeleteSchedule',
   'handleRemoveDevice',
   'resetScheduleForm', 'editSchedule',

@@ -12,6 +12,8 @@ import {
   triggerLightingCore,
   triggerFertilizingCore,
   triggerPesticideCore,
+  triggerVideoStartCore,
+  triggerVideoStopCore,
 } from './care/triggers'
 
 // Re-exports: single import path for cores + schedule helpers.
@@ -34,6 +36,8 @@ export {
   triggerLightingCore,
   triggerFertilizingCore,
   triggerPesticideCore,
+  triggerVideoStartCore,
+  triggerVideoStopCore,
 } from './care/triggers'
 
 export const toggleCareSchedule = mutation({
@@ -106,6 +110,37 @@ export const triggerPesticide = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
     await triggerPesticideCore(ctx, user, args.deviceId)
+    return { success: true }
+  },
+})
+
+export const triggerVideoStart = mutation({
+  args: {
+    deviceId: v.optional(v.string()),
+    width: v.optional(v.number()),
+    height: v.optional(v.number()),
+    fps: v.optional(v.number()),
+    quality: v.optional(v.number()),
+    maxSec: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx)
+    await triggerVideoStartCore(ctx, user, args.deviceId, {
+      width: args.width,
+      height: args.height,
+      fps: args.fps,
+      quality: args.quality,
+      maxSec: args.maxSec,
+    })
+    return { success: true }
+  },
+})
+
+export const triggerVideoStop = mutation({
+  args: { deviceId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx)
+    await triggerVideoStopCore(ctx, user, args.deviceId)
     return { success: true }
   },
 })

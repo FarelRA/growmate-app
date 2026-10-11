@@ -537,6 +537,8 @@ export const insertGrowEvent = internalMutation({
       v.literal("manual_lighting_triggered"),
       v.literal("manual_fertilizing_triggered"),
       v.literal("manual_pesticide_triggered"),
+      v.literal("manual_stream_started"),
+      v.literal("manual_stream_stopped"),
       v.literal("stream_registered"),
     ),
     title: v.string(),

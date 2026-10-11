@@ -118,6 +118,24 @@ describe('useDashboard dose actions', () => {
     await dashboard.handleWater()
     expect(toastError).toHaveBeenCalledTimes(1)
   })
+
+  it.each([
+    { name: 'handleStartStream', mutation: api.care.triggerVideoStart, successToast: 'Permintaan siaran dikirim, kamera mulai dalam ±1 menit' },
+    { name: 'handleStopStream', mutation: api.care.triggerVideoStop, successToast: 'Permintaan berhenti dikirim' },
+  ] as const)('$name guards without a device and triggers the right mutation', async ({ name, mutation, successToast }) => {
+    const dashboard = useDashboard()
+
+    await dashboard[name]()
+    expect(mutateFor(mutation)).not.toHaveBeenCalled()
+    expect(toastError).toHaveBeenCalledWith('Pilih perangkat terlebih dahulu')
+
+    activeDeviceId.value = 'GM-001'
+    mutateFor(mutation).mockResolvedValue({})
+    await dashboard[name]()
+    expect(mutateFor(mutation)).toHaveBeenCalledTimes(1)
+    expect(mutateFor(mutation).mock.calls[0]?.[0]).toEqual({ deviceId: 'GM-001' })
+    expect(toastSuccess).toHaveBeenCalledWith(successToast)
+  })
 })
 
 describe('useDashboard automation toggle table', () => {

@@ -1,19 +1,27 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { authState, getAuthToken } from '@/utils/auth'
 
 // Live viewer for the tech MJPEG push (POST /api/v1/video/live).
 // A plain <img> renders the multipart/x-mixed-replace fan-out —
 // no player code, per the device docs. onload fires on the first
-// frame; onerror on failure.
+// frame; onerror on failure. Start/stop are user commands queued
+// server-side and delivered in the next sensor response.
 const props = defineProps<{
   deviceId: string
+  streaming: boolean
+}>()
+
+const emit = defineEmits<{
+  requestStart: []
+  requestStop: []
 }>()
 
 const loading = ref(true)
 const streamActive = ref(false)
 const error = ref<string | null>(null)
 const elapsed = ref('00:00')
+const requested = ref(false)
 
 let timerInterval: ReturnType<typeof setInterval> | null = null
 let startTime = 0
@@ -28,6 +36,32 @@ const streamSrc = computed(() => {
   const query = params.toString()
   return query ? `${base}?${query}` : base
 })
+
+watch(
+  () => props.streaming,
+  (active) => {
+    if (active) {
+      requested.value = false
+      loading.value = true
+      streamActive.value = false
+      error.value = null
+      cacheBuster.value += 1
+    } else {
+      streamActive.value = false
+      stopTimer()
+    }
+  },
+)
+
+watch(
+  () => props.deviceId,
+  () => {
+    requested.value = false
+    loading.value = true
+    streamActive.value = false
+    error.value = null
+  },
+)
 
 function stopTimer() {
   if (timerInterval) {
@@ -68,6 +102,15 @@ async function retry() {
   cacheBuster.value += 1
 }
 
+function requestStart() {
+  requested.value = true
+  emit('requestStart')
+}
+
+function requestStop() {
+  emit('requestStop')
+}
+
 function toggleFullscreen() {
   const img = document.getElementById('live-stream-img')
   if (!img) return
@@ -89,9 +132,31 @@ onUnmounted(() => {
       <p class="text-xs font-bold uppercase tracking-[0.2em] text-gm-primary">Kamera</p>
       <h1 class="mt-2 font-headline text-3xl font-black tracking-tight text-gm-text">Siaran langsung</h1>
       <p class="mt-3 text-sm leading-relaxed text-gm-muted">Streaming kamera perangkat secara real-time.</p>
+      <div class="mt-5 flex flex-wrap gap-3">
+        <button
+          v-if="!streaming"
+          type="button"
+          class="rounded-full bg-gm-primary px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
+          :disabled="requested"
+          @click="requestStart"
+        >
+          {{ requested ? 'Menunggu perangkat...' : 'Mulai siaran langsung' }}
+        </button>
+        <button
+          v-else
+          type="button"
+          class="rounded-full bg-[#f3f3f3] px-5 py-3 text-sm font-bold text-gm-text"
+          @click="requestStop"
+        >
+          Hentikan siaran
+        </button>
+      </div>
+      <p v-if="!streaming" class="mt-3 text-xs leading-relaxed text-gm-muted">
+        Perangkat mulai menyiarkan dalam ±1 menit dan berhenti otomatis setelah 5 menit.
+      </p>
     </article>
 
-    <article class="overflow-hidden rounded-[2rem] bg-black shadow-[0_12px_36px_rgba(15,23,42,0.1)]">
+    <article v-if="streaming" class="overflow-hidden rounded-[2rem] bg-black shadow-[0_12px_36px_rgba(15,23,42,0.1)]">
       <div class="relative">
         <img
           id="live-stream-img"

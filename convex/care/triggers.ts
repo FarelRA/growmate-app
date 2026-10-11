@@ -4,6 +4,7 @@ import {
   getSelectedDevice,
   executeManualWatering, executeManualLighting,
   executeManualFertilizing, executeManualPesticide,
+  executeManualVideoStart, executeManualVideoStop,
 } from '../helpers/devices'
 
 // Single validation source for manual triggers. Both user mutations
@@ -58,5 +59,46 @@ export async function triggerPesticideCore(
   if (device.version !== 'v2') throw new ConvexError('Aksi ini hanya tersedia untuk perangkat V2')
 
   await executeManualPesticide(ctx, user as UserDoc, device)
+  return { device }
+}
+
+export interface VideoStreamParams {
+  width?: number
+  height?: number
+  fps?: number
+  quality?: number
+  maxSec?: number
+}
+
+export async function triggerVideoStartCore(
+  ctx: MutationCtx,
+  user: CoreUser,
+  deviceId?: string,
+  params: VideoStreamParams = {},
+) {
+  const device = await getSelectedDevice(ctx, user._id, deviceId)
+  if (!device) throw new ConvexError('Perangkat tidak ditemukan')
+  if (device.version !== 'v2') throw new ConvexError('Aksi ini hanya tersedia untuk perangkat V2')
+
+  await executeManualVideoStart(ctx, user as UserDoc, device, definedVideoParams(params))
+  return { device }
+}
+
+function definedVideoParams(params: VideoStreamParams): VideoStreamParams {
+  return Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== undefined),
+  ) as VideoStreamParams
+}
+
+export async function triggerVideoStopCore(
+  ctx: MutationCtx,
+  user: CoreUser,
+  deviceId?: string,
+) {
+  const device = await getSelectedDevice(ctx, user._id, deviceId)
+  if (!device) throw new ConvexError('Perangkat tidak ditemukan')
+  if (device.version !== 'v2') throw new ConvexError('Aksi ini hanya tersedia untuk perangkat V2')
+
+  await executeManualVideoStop(ctx, user as UserDoc, device)
   return { device }
 }

@@ -59,17 +59,48 @@ describe('race fixes', () => {
       authState.token.value = prevToken
     })
 
+    it('streaming=false shows start button with no img; click emits requestStart', async () => {
+      const wrapper = mount(LiveStreamPanel, { props: { deviceId: 'dev-idle', streaming: false } })
+      mountedWrappers.push(wrapper)
+      expect(wrapper.find('img').exists()).toBe(false)
+      expect(wrapper.text()).toContain('Mulai siaran langsung')
+      await wrapper.find('button').trigger('click')
+      expect(wrapper.emitted('requestStart')).toHaveLength(1)
+      expect(wrapper.text()).toContain('Menunggu perangkat...')
+    })
+
+    it('streaming=true shows stop button; click emits requestStop', async () => {
+      const wrapper = mount(LiveStreamPanel, { props: { deviceId: 'dev-live', streaming: true } })
+      mountedWrappers.push(wrapper)
+      const stopBtn = wrapper.findAll('button').filter((b) => b.text().includes('Hentikan siaran'))
+      expect(stopBtn).toHaveLength(1)
+      await stopBtn[0]!.trigger('click')
+      expect(wrapper.emitted('requestStop')).toHaveLength(1)
+    })
+
     it('changing deviceId prop updates the img src', async () => {
-      const wrapper = mount(LiveStreamPanel, { props: { deviceId: 'dev-race' } })
+      const wrapper = mount(LiveStreamPanel, { props: { deviceId: 'dev-race', streaming: true } })
       mountedWrappers.push(wrapper)
       expect(wrapper.find('img').attributes('src')).toContain('/api/v1/video/live/dev-race')
       await wrapper.setProps({ deviceId: 'dev-race-2' })
       expect(wrapper.find('img').attributes('src')).toContain('/api/v1/video/live/dev-race-2')
     })
 
+    it('streaming false→true resets waiting state and shows the viewer', async () => {
+      const wrapper = mount(LiveStreamPanel, { props: { deviceId: 'dev-reset', streaming: false } })
+      mountedWrappers.push(wrapper)
+      await wrapper.find('button').trigger('click')
+      expect(wrapper.text()).toContain('Menunggu perangkat...')
+      await wrapper.setProps({ streaming: true })
+      await wrapper.vm.$nextTick()
+      expect(wrapper.text()).not.toContain('Menunggu perangkat...')
+      expect(wrapper.find('img').exists()).toBe(true)
+      expect(wrapper.text()).toContain('Menghubungkan ke kamera')
+    })
+
     it('load/error handlers do not crash on rapid remount', async () => {
       for (let i = 0; i < 3; i++) {
-        const wrapper = mount(LiveStreamPanel, { props: { deviceId: `dev-${i}` } })
+        const wrapper = mount(LiveStreamPanel, { props: { deviceId: `dev-${i}`, streaming: true } })
         mountedWrappers.push(wrapper)
         await wrapper.find('img').trigger('load')
         await wrapper.vm.$nextTick()
@@ -82,7 +113,7 @@ describe('race fixes', () => {
     })
 
     it('unmounts mid-connect without crashing', async () => {
-      const wrapper = mount(LiveStreamPanel, { props: { deviceId: 'dev-flaky' } })
+      const wrapper = mount(LiveStreamPanel, { props: { deviceId: 'dev-flaky', streaming: true } })
       mountedWrappers.push(wrapper)
       await wrapper.setProps({ deviceId: 'dev-flaky-2' })
       expect(() => wrapper.unmount()).not.toThrow()

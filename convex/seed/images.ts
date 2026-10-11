@@ -6,7 +6,7 @@
  * Seed binaries live as files in `public/seed-images/<hash>/<size>w.webp`
  * (served by the app at `/seed-images/...`) — dataset modules reference
  * them by content hash only, never inline bytes. At seed time the bytes are
- * fetched over HTTP(S) and uploaded to the MinIO image bucket under
+ * fetched over HTTP(S) and uploaded to the RustFS image bucket under
  * `<hash>/<size>w.webp`, matching the `<hash>` value stored as `imageUrl` in
  * DB rows and resolved by `buildImageUrl` in `shared/utils/images.ts`.
  *

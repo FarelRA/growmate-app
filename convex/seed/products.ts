@@ -16,7 +16,7 @@ function getEnv() {
 export const products = internalAction({
   handler: async (ctx) => {
     const env = getEnv();
-    const bucket = env.MINIO_BUCKET_IMAGE ?? "growmate-images";
+    const bucket = env.RUSTFS_BUCKET_IMAGE ?? "growmate-images";
     const adminEmail = env.ADMIN_EMAIL;
 
     if (!adminEmail) {

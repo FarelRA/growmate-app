@@ -26,7 +26,7 @@
  * seed writes must never be client-triggerable.
  *
  * Dataset handlers live in `./seed/` (each a `"use node"` module for
- * Buffer/MinIO uploads) and are re-exported here so `convex run
+ * Buffer/RustFS uploads) and are re-exported here so `convex run
  * seed:<name>` resolution keeps working. DB-level helpers (internal
  * queries/mutations/actions) live in `./seedInternal` and are called via
  * `internal.seedInternal.*`. The split is intentional: entry + dataset

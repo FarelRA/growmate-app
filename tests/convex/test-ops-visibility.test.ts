@@ -11,16 +11,16 @@ import {
 import { createFakeCtx, callHandler, type FakeCtx } from './test-ingest-rules-fake'
 
 const AI_KEYS = ['OPENAI_BASE_URL', 'OPENAI_API_KEY', 'OPENAI_MODEL'] as const
-const MINIO_KEYS = ['MINIO_ENDPOINT', 'MINIO_ACCESS_KEY', 'MINIO_SECRET_KEY'] as const
+const RUSTFS_KEYS = ['RUSTFS_ENDPOINT', 'RUSTFS_ACCESS_KEY', 'RUSTFS_SECRET_KEY'] as const
 
 const savedEnv: Record<string, string | undefined> = {}
 
 beforeEach(() => {
-  for (const key of [...AI_KEYS, ...MINIO_KEYS]) savedEnv[key] = process.env[key]
+  for (const key of [...AI_KEYS, ...RUSTFS_KEYS]) savedEnv[key] = process.env[key]
 })
 
 afterEach(() => {
-  for (const key of [...AI_KEYS, ...MINIO_KEYS]) {
+  for (const key of [...AI_KEYS, ...RUSTFS_KEYS]) {
     const value = savedEnv[key]
     if (value === undefined) delete process.env[key]
     else process.env[key] = value
@@ -181,7 +181,7 @@ describe('recordS3SkipWarning dedup', () => {
 
 describe('deleteRecordingS3Object skip path', () => {
   it('keeps the skip result and records a persistent warning', async () => {
-    for (const key of MINIO_KEYS) delete process.env[key]
+    for (const key of RUSTFS_KEYS) delete process.env[key]
     const ctx = createFakeCtx()
     const runMutation = vi.fn(async (_ref: any, args: any) =>
       callHandler(recordS3SkipWarning, ctx, args),

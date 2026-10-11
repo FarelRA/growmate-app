@@ -368,7 +368,7 @@ export const recordS3SkipWarning = internalMutation({
       entityType: 'automation',
       eventType: 'automation_action_executed',
       title,
-      detail: `Melewatkan penghapusan objek S3 untuk ${objectLabel} "${args.key}". Baris DB dihapus tetapi objek dapat tersisa di bucket "${bucket}". Atur MINIO_ENDPOINT/MINIO_ACCESS_KEY/MINIO_SECRET_KEY.`,
+      detail: `Melewatkan penghapusan objek S3 untuk ${objectLabel} "${args.key}". Baris DB dihapus tetapi objek dapat tersisa di bucket "${bucket}". Atur RUSTFS_ENDPOINT/RUSTFS_ACCESS_KEY/RUSTFS_SECRET_KEY.`,
       data: { key: args.key },
       timestamp: now,
     })
@@ -384,9 +384,9 @@ interface S3Creds {
 }
 
 function readS3Creds(): S3Creds | null {
-  const endpoint = process.env.MINIO_ENDPOINT
-  const accessKeyId = process.env.MINIO_ACCESS_KEY
-  const secretAccessKey = process.env.MINIO_SECRET_KEY
+  const endpoint = process.env.RUSTFS_ENDPOINT
+  const accessKeyId = process.env.RUSTFS_ACCESS_KEY
+  const secretAccessKey = process.env.RUSTFS_SECRET_KEY
   if (!endpoint || !accessKeyId || !secretAccessKey) return null
   return { endpoint, accessKeyId, secretAccessKey, region: process.env.S3_REGION ?? 'us-east-1' }
 }

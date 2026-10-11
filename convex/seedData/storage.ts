@@ -16,10 +16,10 @@ function getEnv() {
 function getClient(): S3Client {
   const env = getEnv()
   return new S3Client({
-    endpoint: env.MINIO_ENDPOINT ?? 'http://localhost:9000',
+    endpoint: env.RUSTFS_ENDPOINT ?? 'http://localhost:9000',
     credentials: {
-      accessKeyId: env.MINIO_ACCESS_KEY ?? '',
-      secretAccessKey: env.MINIO_SECRET_KEY ?? '',
+      accessKeyId: env.RUSTFS_ACCESS_KEY ?? '',
+      secretAccessKey: env.RUSTFS_SECRET_KEY ?? '',
     },
     region: 'auto',
     forcePathStyle: true,

@@ -51,7 +51,7 @@ function getLifecycleProfile(v: {
 export const plants = internalAction({
   handler: async (ctx) => {
     const env = getEnv();
-    const bucket = env.MINIO_BUCKET_IMAGE ?? "growmate-images";
+    const bucket = env.RUSTFS_BUCKET_IMAGE ?? "growmate-images";
 
     let created = 0;
     let skipped = 0;

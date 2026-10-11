@@ -22,9 +22,9 @@ beforeEach(() => {
   vi.resetModules()
   mockSend.mockReset()
   S3ClientMock.mockClear()
-  delete process.env.MINIO_ENDPOINT
-  delete process.env.MINIO_ACCESS_KEY
-  delete process.env.MINIO_SECRET_KEY
+  delete process.env.RUSTFS_ENDPOINT
+  delete process.env.RUSTFS_ACCESS_KEY
+  delete process.env.RUSTFS_SECRET_KEY
 })
 
 describe('ensureBucket', () => {
@@ -74,9 +74,9 @@ describe('ensureBucket', () => {
   })
 
   it('uses env vars for client config', async () => {
-    process.env.MINIO_ENDPOINT = 'https://storage.example.com'
-    process.env.MINIO_ACCESS_KEY = 'access'
-    process.env.MINIO_SECRET_KEY = 'secret'
+    process.env.RUSTFS_ENDPOINT = 'https://storage.example.com'
+    process.env.RUSTFS_ACCESS_KEY = 'access'
+    process.env.RUSTFS_SECRET_KEY = 'secret'
 
     mockSend.mockResolvedValueOnce(undefined)
 

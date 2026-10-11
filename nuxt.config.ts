@@ -81,8 +81,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       convexUrl: process.env.NUXT_PUBLIC_CONVEX_URL ?? process.env.VITE_CONVEX_URL ?? '',
-      imageBaseUrl: process.env.NUXT_PUBLIC_MINIO_BASE_URL ?? 'https://storage.growmate.bond',
-      minioBucketImage: process.env.NUXT_PUBLIC_MINIO_BUCKET_IMAGE ?? 'images',
+      imageBaseUrl: process.env.NUXT_PUBLIC_RUSTFS_BASE_URL ?? 'https://storage.growmate.bond',
+      rustfsBucketImage: process.env.NUXT_PUBLIC_RUSTFS_BUCKET_IMAGE ?? 'images',
     },
   },
   css: ['@/assets/main.css', 'vue-sonner/style.css'],

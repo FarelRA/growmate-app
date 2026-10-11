@@ -40,23 +40,23 @@ services:
     image: ghcr.io/farelra/growmate-app@sha256:34df02f9752af46786b76c29e7eea81e9c6427e810bc43c15c98ca3bdaac3765
     restart: unless-stopped
     environment:
-      NUXT_PUBLIC_MINIO_BASE_URL: ${NUXT_PUBLIC_MINIO_BASE_URL}
-      NUXT_PUBLIC_MINIO_BUCKET_IMAGE: ${NUXT_PUBLIC_MINIO_BUCKET_IMAGE}
+      NUXT_PUBLIC_RUSTFS_BASE_URL: ${NUXT_PUBLIC_RUSTFS_BASE_URL}
+      NUXT_PUBLIC_RUSTFS_BUCKET_IMAGE: ${NUXT_PUBLIC_RUSTFS_BUCKET_IMAGE}
       NUXT_PUBLIC_CONVEX_URL: ${NUXT_PUBLIC_CONVEX_URL}
       CONVEX_SITE_URL: ${CONVEX_SITE_URL}
       # In-cluster Convex API (server/utils/convex.ts prefers this over the public hairpin).
       CONVEX_INTERNAL_URL: http://convex:3210
-      MINIO_ENDPOINT: http://minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_BUCKET_IMAGE: ${MINIO_BUCKET_IMAGE}
+      RUSTFS_ENDPOINT: http://rustfs:9000
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+      RUSTFS_BUCKET_IMAGE: ${RUSTFS_BUCKET_IMAGE}
       DEVICE_API_KEY: ${DEVICE_API_KEY}
     depends_on:
       # convex stays service_started: convex-backend image contents are unverifiable
       # without pulling, so no in-container probe can be trusted (see convex service).
       convex:
         condition: service_started
-      minio:
+      rustfs:
         condition: service_healthy
     # node:24-alpine ships busybox wget — no new deps.
     # `/` is the only unauthenticated cheap probe: every /api/* route needs a
@@ -89,34 +89,39 @@ services:
       - traefik.http.routers.growmate-www.service=growmate
       - traefik.http.routers.growmate-www.middlewares=www-to-apex
 
-  minio:
-    # NOTE: upstream removed official images from Docker Hub (Aug 2026).
-    # This tag is the last matching GitHub release; mirror it to a private
-    # registry (or build from source) before fresh pulls stop working.
-    image: minio/minio:RELEASE.2025-10-15T17-29-55Z
+  rustfs:
+    # Pinned deliberately: 1.0.1 ships amd64+arm64, S3 API on :9000 and the
+    # console on :9001. Re-pin deliberately on upgrades, never :latest.
+    image: rustfs/rustfs:1.0.1
     restart: unless-stopped
-    command: server /data
+    # Positional data-dir arg per upstream docs; address/console/creds via env.
+    command: /data
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_REGION: ${S3_REGION:-us-east-1}
     volumes:
-      - minio-data:/data
-    # NOTE: minio image is not cached locally and pulls are out of scope, so curl
-    # presence is unverifiable (`docker exec <minio> which curl` on first deploy);
-    # use busybox-compatible wget probe instead.
+      - rustfs-data:/data
+    # Verified against 1.0.1: the image ships sh + curl and
+    # GET /health answers {"status":"ok","service":"rustfs-endpoint",...}.
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/minio/health/live > /dev/null"]
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/health > /dev/null"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
     labels:
       - traefik.enable=true
-      - traefik.http.routers.minio.rule=Host(`storage.growmate.bond`)
-      - traefik.http.routers.minio.entrypoints=websecure
-      - traefik.http.routers.minio.tls.certresolver=letsencrypt
-      - traefik.http.routers.minio.middlewares=api-ratelimit
-      - traefik.http.services.minio.loadbalancer.server.port=9000
+      - traefik.http.routers.rustfs.rule=Host(`storage.growmate.bond`)
+      - traefik.http.routers.rustfs.entrypoints=websecure
+      - traefik.http.routers.rustfs.tls.certresolver=letsencrypt
+      - traefik.http.routers.rustfs.middlewares=api-ratelimit
+      - traefik.http.services.rustfs.loadbalancer.server.port=9000
+      # Console (:9001) stays unrouted — reach it over an SSH tunnel when
+      # bucket inspection is needed.
 
   convex:
     # Pinned by digest to the image `latest` resolved to on 2026-09-28.
@@ -138,10 +143,10 @@ services:
       INSTANCE_SECRET: ${CONVEX_INSTANCE_SECRET}
       # Fail-closed device auth (convex/sensors.ts, convex/streams.ts read container env).
       DEVICE_API_KEY: ${DEVICE_API_KEY}
-      MINIO_ENDPOINT: http://minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_BUCKET_IMAGE: ${MINIO_BUCKET_IMAGE}
+      RUSTFS_ENDPOINT: http://rustfs:9000
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+      RUSTFS_BUCKET_IMAGE: ${RUSTFS_BUCKET_IMAGE}
       # S3 signing region (convex/crons.ts defaults to us-east-1 when unset).
       S3_REGION: ${S3_REGION:-us-east-1}
       # AI assistant action (convex/openai.ts reads all three from container env).
@@ -176,6 +181,6 @@ services:
       - traefik.http.services.convex-site.loadbalancer.server.port=3211
 
 volumes:
-  minio-data:
+  rustfs-data:
   traefik-data:
   convex-data:

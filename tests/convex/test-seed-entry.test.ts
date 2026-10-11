@@ -29,7 +29,7 @@
  *
  * The handlers themselves are NOT invoked here: they require
  * ctx.runQuery/runMutation/runAction (absent from the repo's db-only fake
- * ctx), plus live MinIO/Auth and 1.6MB of fixture data — an integration
+ * ctx), plus live RustFS/Auth and 1.6MB of fixture data — an integration
  * concern, not a unit one.
  */
 import { describe, it, expect } from 'vitest'

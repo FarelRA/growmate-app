@@ -30,7 +30,7 @@ export const community = internalAction({
     }
 
     const env = getEnv();
-    const bucket = env.MINIO_BUCKET_IMAGE ?? "growmate-images";
+    const bucket = env.RUSTFS_BUCKET_IMAGE ?? "growmate-images";
 
     let listings = 0;
     for (const listing of communityListingsData) {

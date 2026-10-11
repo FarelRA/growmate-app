@@ -31,10 +31,10 @@ beforeEach(() => {
   S3ClientMock.mockClear()
   PutBucketPolicyMock.mockClear()
   CreateBucketMock.mockClear()
-  delete process.env.MINIO_ENDPOINT
-  delete process.env.MINIO_ACCESS_KEY
-  delete process.env.MINIO_SECRET_KEY
-  delete process.env.NUXT_PUBLIC_MINIO_BASE_URL
+  delete process.env.RUSTFS_ENDPOINT
+  delete process.env.RUSTFS_ACCESS_KEY
+  delete process.env.RUSTFS_SECRET_KEY
+  delete process.env.NUXT_PUBLIC_RUSTFS_BASE_URL
 })
 
 describe('bucket visibility split', () => {
@@ -121,8 +121,8 @@ describe('bucket visibility split', () => {
 
 describe('presigned URL host', () => {
   it('signing client uses the PUBLIC host, not the internal endpoint', async () => {
-    process.env.MINIO_ENDPOINT = 'http://minio:9000'
-    process.env.NUXT_PUBLIC_MINIO_BASE_URL = 'https://storage.example.com'
+    process.env.RUSTFS_ENDPOINT = 'http://rustfs:9000'
+    process.env.NUXT_PUBLIC_RUSTFS_BASE_URL = 'https://storage.example.com'
 
     const { s3PublicClient } = await import('../../../../server/utils/storage')
     s3PublicClient()
@@ -133,7 +133,7 @@ describe('presigned URL host', () => {
   })
 
   it('strips trailing slashes from the public base URL', async () => {
-    process.env.NUXT_PUBLIC_MINIO_BASE_URL = 'https://storage.example.com/'
+    process.env.NUXT_PUBLIC_RUSTFS_BASE_URL = 'https://storage.example.com/'
 
     const { s3PublicClient } = await import('../../../../server/utils/storage')
     s3PublicClient()
@@ -144,15 +144,15 @@ describe('presigned URL host', () => {
   })
 
   it('server transport still uses the internal endpoint when a public URL is set', async () => {
-    process.env.MINIO_ENDPOINT = 'http://minio:9000'
-    process.env.NUXT_PUBLIC_MINIO_BASE_URL = 'https://storage.example.com'
+    process.env.RUSTFS_ENDPOINT = 'http://rustfs:9000'
+    process.env.NUXT_PUBLIC_RUSTFS_BASE_URL = 'https://storage.example.com'
     mockSend.mockResolvedValueOnce(undefined)
 
     const { ensureBucket } = await import('../../../../server/utils/storage')
     await ensureBucket('images', { publicRead: true })
 
     expect(S3ClientMock).toHaveBeenCalledWith(
-      expect.objectContaining({ endpoint: 'http://minio:9000' }),
+      expect.objectContaining({ endpoint: 'http://rustfs:9000' }),
     )
   })
 })

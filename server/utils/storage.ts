@@ -15,10 +15,10 @@ export const RECORDINGS_BUCKET = 'recordings'
 function getClient(): S3Client {
   if (!_client) {
     _client = new S3Client({
-      endpoint: process.env.MINIO_ENDPOINT ?? 'http://localhost:9000',
+      endpoint: process.env.RUSTFS_ENDPOINT ?? 'http://localhost:9000',
       credentials: {
-        accessKeyId: process.env.MINIO_ACCESS_KEY ?? '',
-        secretAccessKey: process.env.MINIO_SECRET_KEY ?? '',
+        accessKeyId: process.env.RUSTFS_ACCESS_KEY ?? '',
+        secretAccessKey: process.env.RUSTFS_SECRET_KEY ?? '',
       },
       region: 'auto',
       forcePathStyle: true,
@@ -27,28 +27,28 @@ function getClient(): S3Client {
   return _client
 }
 
-/** Browser-reachable MinIO base URL. Never the internal docker hostname. */
+/** Browser-reachable RustFS base URL. Never the internal docker hostname. */
 function publicBaseUrl(): string {
   const raw =
-    process.env.NUXT_PUBLIC_MINIO_BASE_URL ??
-    process.env.MINIO_ENDPOINT ??
+    process.env.NUXT_PUBLIC_RUSTFS_BASE_URL ??
+    process.env.RUSTFS_ENDPOINT ??
     'http://localhost:9000'
   return raw.replace(/\/+$/, '')
 }
 
 /**
- * Signing-only S3 client pointed at the PUBLIC MinIO host.
+ * Signing-only S3 client pointed at the PUBLIC RustFS host.
  * Presigning is local crypto (no transport), so this client must use the
  * browser-reachable base URL — signing with the internal endpoint bakes an
- * unresolvable hostname (e.g. http://minio:9000) into every URL.
+ * unresolvable hostname (e.g. http://rustfs:9000) into every URL.
  * Built fresh per call so env changes are always honored.
  */
 export function s3PublicClient(): S3Client {
   return new S3Client({
     endpoint: publicBaseUrl(),
     credentials: {
-      accessKeyId: process.env.MINIO_ACCESS_KEY ?? '',
-      secretAccessKey: process.env.MINIO_SECRET_KEY ?? '',
+      accessKeyId: process.env.RUSTFS_ACCESS_KEY ?? '',
+      secretAccessKey: process.env.RUSTFS_SECRET_KEY ?? '',
     },
     region: 'auto',
     forcePathStyle: true,

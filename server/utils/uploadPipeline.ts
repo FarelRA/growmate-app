@@ -4,7 +4,7 @@ import { uploadFile, s3Client } from '~~/server/utils/storage'
 
 export const IMAGE_SIZES = [50, 200, 400, 800, 1200]
 export const MAX_IMAGE_BYTES = 20 * 1024 * 1024
-export const IMAGE_BUCKET = process.env.MINIO_BUCKET_IMAGE ?? 'images'
+export const IMAGE_BUCKET = process.env.RUSTFS_BUCKET_IMAGE ?? 'images'
 
 export interface UploadPipelineOptions {
   bucket?: string

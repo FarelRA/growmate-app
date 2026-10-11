@@ -59,8 +59,8 @@ describe('renderMarkdown', () => {
 })
 
 describe('getImageUrl', () => {
-  const ENV_BASE = 'NUXT_PUBLIC_MINIO_BASE_URL'
-  const ENV_BUCKET = 'NUXT_PUBLIC_MINIO_BUCKET_IMAGE'
+  const ENV_BASE = 'NUXT_PUBLIC_RUSTFS_BASE_URL'
+  const ENV_BUCKET = 'NUXT_PUBLIC_RUSTFS_BUCKET_IMAGE'
   let savedBase: string | undefined
   let savedBucket: string | undefined
 

@@ -5,7 +5,7 @@
 
 Smart urban farming platform — monitor IoT devices, get AI gardening advice, connect with the community, and manage your grow operations from a mobile-friendly PWA.
 
-Built with **Nuxt 4**, **Vue 3**, **Convex**, **MinIO**, and **Tailwind CSS v4**. Managed with **Bun**.
+Built with **Nuxt 4**, **Vue 3**, **Convex**, **RustFS**, and **Tailwind CSS v4**. Managed with **Bun**.
 
 ## Features
 
@@ -164,7 +164,7 @@ Self-hosted deployment uses four containers behind Traefik with automatic TLS:
 | Nuxt app | `ghcr.io/farelra/growmate-app` | `growmate.bond` | 3000 |
 | Convex backend (API) | `ghcr.io/get-convex/convex-backend` | `convex.growmate.bond` | 3210 |
 | Convex backend (Site) | `ghcr.io/get-convex/convex-backend` | `convex.growmate.bond` | 3211 |
-| MinIO S3 | `minio/minio:RELEASE.2025-10-15T17-29-55Z` | `storage.growmate.bond` | 9000 |
+| RustFS S3 | `rustfs/rustfs:1.0.1` | `storage.growmate.bond` | 9000 |
 
 ### Prerequisites
 
@@ -191,8 +191,8 @@ At minimum you need to set:
 | Variable | How to get |
 |---|---|
 | `CONVEX_INSTANCE_SECRET` | `openssl rand -hex 32` |
-| `MINIO_ACCESS_KEY` | Any random string (20+ chars) |
-| `MINIO_SECRET_KEY` | Any random string (20+ chars) |
+| `RUSTFS_ACCESS_KEY` | Any random string (20+ chars) |
+| `RUSTFS_SECRET_KEY` | Any random string (20+ chars) |
 | `DEVICE_API_KEY` | Any random string — MUST equal the firmware build token (`APP_API_TOKEN`) |
 | `OPENAI_API_KEY` | OpenAI API key |
 
@@ -219,7 +219,7 @@ CONVEX_SELF_HOSTED_ADMIN_KEY=<value>
 Leave `CONVEX_SELF_HOSTED_ADMIN_KEY` blank in `.env`, then start only Convex:
 
 ```sh
-docker compose up -d minio convex
+docker compose up -d rustfs convex
 ```
 
 Watch the logs for the admin key:
@@ -256,9 +256,27 @@ Test endpoints:
 
 ```sh
 curl -sI https://convex.growmate.bond   # → 200 (Convex)
-curl -sI https://storage.growmate.bond  # → 200 (MinIO)
+curl -sI https://storage.growmate.bond  # → 200 (RustFS)
 curl -sI https://growmate.bond          # → 200 (Nuxt)
 ```
+
+#### Migrating an existing MinIO deployment
+
+RustFS cannot read MinIO's on-disk format, so cut over to a fresh volume —
+no `mc` steps are needed, the app self-provisions everything:
+
+```sh
+docker compose down
+docker volume rm growmate-app_minio-data   # exact name: docker volume ls | grep minio
+cp .env.example .env   # re-apply: MINIO_* keys are now RUSTFS_* (same values work)
+docker compose up -d   # buckets (images public, recordings private) auto-create on first upload
+npx convex run seed:comprehensive   # re-uploads seed images into the fresh buckets
+```
+
+Past `recordings` objects do not carry over (30-day TTL regenerates history);
+seed images re-upload automatically since every hash is missing. After seeding,
+confirm a catalog image loads, e.g. open any `https://storage.growmate.bond/images/<hash>/400w.webp`
+URL shown in the plant library.
 
 ### 4. Deploy Convex functions
 
@@ -301,11 +319,11 @@ npx convex env set OPENAI_BASE_URL "$OPENAI_BASE_URL"
 npx convex env set OPENAI_API_KEY "$OPENAI_API_KEY"
 npx convex env set OPENAI_MODEL "$OPENAI_MODEL"
 
-# MinIO access
-npx convex env set MINIO_ENDPOINT "$MINIO_ENDPOINT"
-npx convex env set MINIO_ACCESS_KEY "$MINIO_ACCESS_KEY"
-npx convex env set MINIO_SECRET_KEY "$MINIO_SECRET_KEY"
-npx convex env set MINIO_BUCKET_IMAGE "$MINIO_BUCKET_IMAGE"
+# RustFS access
+npx convex env set RUSTFS_ENDPOINT "$RUSTFS_ENDPOINT"
+npx convex env set RUSTFS_ACCESS_KEY "$RUSTFS_ACCESS_KEY"
+npx convex env set RUSTFS_SECRET_KEY "$RUSTFS_SECRET_KEY"
+npx convex env set RUSTFS_BUCKET_IMAGE "$RUSTFS_BUCKET_IMAGE"
 ```
 
 ### 6. Seed initial data
@@ -355,18 +373,18 @@ internet ── :443 ──▶ traefik ─┬─ growmate.bond ─────�
                                ├─ api.growmate.bond ────▶ growmate:3000 (device fleet API)
                                ├─ convex.growmate.bond ─▶ convex:3210 (/api/*, /instance_name)
                                │                          └▶ convex:3211 (everything else)
-                               └─ storage.growmate.bond ─▶ minio:9000 (S3)
+                               └─ storage.growmate.bond ─▶ rustfs:9000 (S3)
 ```
 
 The browser opens 3 connections: same-origin pages/API via Nitro, Convex queries/subscriptions direct to the Convex host, and images direct to the storage host. The browser bypasses Nitro for Convex data — deliberate (realtime subscriptions); auth is enforced inside Convex functions, not at the edge.
 
 - Device fleet API (firmware contract, no firmware edits needed): `POST api.growmate.bond/v1/sensors` + `/v1/camera` (compiled firmware paths) and the `/api/v1/*` aliases serve the same handlers. Auth is `Authorization: Bearer <DEVICE_API_KEY>` — the key MUST equal the firmware build token (pods `APP_API_TOKEN`, tech `APP_API_TOKEN` env), mirrored via `npx convex env set DEVICE_API_KEY`. Fleet IDs are no-dash: pods `IAET01` to `IAET18`, tech `IAFU01` to `IAFU09`, tech-addon `IAFT01` to `IAFT14` (v1 rows carry no variant, v2 rows carry `tech` or `tech-addon`). Nitro `requireDeviceKey` fails closed (500 when unset) → Convex mutation re-checks `deviceKey` (`convex/sensors.ts`). Responses carry `{commands[] (always with id), config?, claim?, minFirmware?, firmwareUrl?}` under 3KB; telemetry dedups on `snapshotId`; commands redeliver until acked in `acceptedCommandIds`; pods pump/light are XOR-paced server-side. Tech live video: `POST /api/v1/video/live` (chunked MJPEG) → `GET /api/v1/video/live/:id` + `/api/v1/video/latest/:id.jpg` for viewers.
 - Nitro reaches Convex over `CONVEX_INTERNAL_URL` (`http://convex:3210`), never the public hairpin (`server/utils/convex.ts`).
-- Live video (tech MJPEG push): device `POST /api/v1/video/live` while streaming → viewers `GET /api/v1/video/live/:id` (multipart, plain `<img>`) or `GET /api/v1/video/latest/:id.jpg`, both `?token=` + ownership-checked. Completed sessions are stored as multipart `.mjpeg` recordings (private bucket + `videoRecordings` rows, 30d TTL, newest 20/device) and replay in history via `<img>`; legacy `.h264` rows keep the WebCodecs player. Users start/stop streams from the Stream tab (v2-only, validated params); recordings require `Bearer` plus ownership and are served as 1h presigned URLs from the private `recordings` bucket (signed against the public MinIO host, `server/utils/storage.ts`).
+- Live video (tech MJPEG push): device `POST /api/v1/video/live` while streaming → viewers `GET /api/v1/video/live/:id` (multipart, plain `<img>`) or `GET /api/v1/video/latest/:id.jpg`, both `?token=` + ownership-checked. Completed sessions are stored as multipart `.mjpeg` recordings (private bucket + `videoRecordings` rows, 30d TTL, newest 20/device) and replay in history via `<img>`; legacy `.h264` rows keep the WebCodecs player. Users start/stop streams from the Stream tab (v2-only, validated params); recordings require `Bearer` plus ownership and are served as 1h presigned URLs from the private `recordings` bucket (signed against the public RustFS host, `server/utils/storage.ts`).
 - Stream registration runs an SSRF guard (`isBlockedStreamHost`): loopback / link-local / RFC-1918 / service names rejected, Tailscale `100.64/10` intentionally allowed.
-- Edge hardening (compose + Nuxt): `api-ratelimit` (100 avg / 200 burst) on the MinIO + Convex API routers, `www` → apex redirect, digest-pinned app + Convex images, healthchecks + `restart: unless-stopped`, tightened CSP (`connect-src` limited to self + Convex + storage hosts).
+- Edge hardening (compose + Nuxt): `api-ratelimit` (100 avg / 200 burst) on the RustFS + Convex API routers, `www` → apex redirect, digest-pinned app + Convex images, healthchecks + `restart: unless-stopped`, tightened CSP (`connect-src` limited to self + Convex + storage hosts).
 
-Secrets (`DEVICE_API_KEY`, `MINIO_SECRET_KEY`, `CONVEX_INTERNAL_URL`, …) live only in server/container env — the browser sees just `NUXT_PUBLIC_CONVEX_URL`, `NUXT_PUBLIC_MINIO_BASE_URL`, and the image bucket name.
+Secrets (`DEVICE_API_KEY`, `RUSTFS_SECRET_KEY`, `CONVEX_INTERNAL_URL`, …) live only in server/container env — the browser sees just `NUXT_PUBLIC_CONVEX_URL`, `NUXT_PUBLIC_RUSTFS_BASE_URL`, and the image bucket name.
 
 ## Environment Reference
 
@@ -383,10 +401,10 @@ Secrets (`DEVICE_API_KEY`, `MINIO_SECRET_KEY`, `CONVEX_INTERNAL_URL`, …) live 
 | `CONVEX_SELF_HOSTED_ADMIN_KEY` | Convex CLI | Admin key for `npx convex deploy` |
 | `CONVEX_INTERNAL_URL` | Nitro (`server/utils/convex.ts`) | In-cluster Convex API URL, hardcoded to `http://convex:3210` in compose |
 | `CONVEX_TIMEOUT_MS` | Nitro (optional) | Convex client timeout in ms, default 8000 |
-| `MINIO_ACCESS_KEY` | MinIO, Convex | S3 access key |
-| `MINIO_SECRET_KEY` | MinIO, Convex | S3 secret key |
-| `MINIO_BUCKET_IMAGE` | Nuxt, Convex | S3 bucket for plant images |
-| `NUXT_PUBLIC_MINIO_BASE_URL` | Nuxt | Public MinIO URL |
+| `RUSTFS_ACCESS_KEY` | RustFS, Convex | S3 access key |
+| `RUSTFS_SECRET_KEY` | RustFS, Convex | S3 secret key |
+| `RUSTFS_BUCKET_IMAGE` | Nuxt, Convex | S3 bucket for plant images |
+| `NUXT_PUBLIC_RUSTFS_BASE_URL` | Nuxt | Public RustFS URL |
 | `NUXT_PUBLIC_CONVEX_URL` | Nuxt | Public Convex URL (for browser) |
 | `DEVICE_API_KEY` | Nitro device routes + Convex ingest/stream mutations | IoT device auth |
 | `OPENAI_BASE_URL` | Convex (AI assistant action) | OpenAI-compatible gateway endpoint |
@@ -402,10 +420,10 @@ Secrets (`DEVICE_API_KEY`, `MINIO_SECRET_KEY`, `CONVEX_INTERNAL_URL`, …) live 
 | `ADMIN_EMAIL` | `seed:admin` | `npx convex env set ADMIN_EMAIL ...` |
 | `ADMIN_PASSWORD` | `seed:admin` | `npx convex env set ADMIN_PASSWORD ...` |
 | `DEVICE_API_KEY` | Device ingest/stream mutations | `npx convex env set DEVICE_API_KEY ...` (same value as firmware `APP_API_TOKEN`) |
-| `MINIO_ENDPOINT` | Seed functions (S3 upload) | `npx convex env set MINIO_ENDPOINT ...` |
-| `MINIO_ACCESS_KEY` | Seed functions | `npx convex env set MINIO_ACCESS_KEY ...` |
-| `MINIO_SECRET_KEY` | Seed functions | `npx convex env set MINIO_SECRET_KEY ...` |
-| `MINIO_BUCKET_IMAGE` | Seed functions | `npx convex env set MINIO_BUCKET_IMAGE ...` |
+| `RUSTFS_ENDPOINT` | Seed functions (S3 upload) | `npx convex env set RUSTFS_ENDPOINT ...` |
+| `RUSTFS_ACCESS_KEY` | Seed functions | `npx convex env set RUSTFS_ACCESS_KEY ...` |
+| `RUSTFS_SECRET_KEY` | Seed functions | `npx convex env set RUSTFS_SECRET_KEY ...` |
+| `RUSTFS_BUCKET_IMAGE` | Seed functions | `npx convex env set RUSTFS_BUCKET_IMAGE ...` |
 | `S3_REGION` | Retention deletes (`convex/crons.ts`) | `npx convex env set S3_REGION us-east-1` |
 | `OPENAI_BASE_URL` | AI assistant (`convex/openai.ts`) | `npx convex env set OPENAI_BASE_URL ...` |
 | `OPENAI_API_KEY` | AI assistant (`convex/openai.ts`) | `npx convex env set OPENAI_API_KEY ...` |
@@ -417,8 +435,8 @@ Secrets (`DEVICE_API_KEY`, `MINIO_SECRET_KEY`, `CONVEX_INTERNAL_URL`, …) live 
 | Config key | Env var | Default |
 |---|---|---|
 | `public.convexUrl` | `NUXT_PUBLIC_CONVEX_URL` | `VITE_CONVEX_URL` fallback |
-| `public.imageBaseUrl` | `NUXT_PUBLIC_MINIO_BASE_URL` | `https://storage.growmate.bond` |
-| `public.minioBucketImage` | `NUXT_PUBLIC_MINIO_BUCKET_IMAGE` | `images` |
+| `public.imageBaseUrl` | `NUXT_PUBLIC_RUSTFS_BASE_URL` | `https://storage.growmate.bond` |
+| `public.rustfsBucketImage` | `NUXT_PUBLIC_RUSTFS_BUCKET_IMAGE` | `images` |
 
 ## Database
 
@@ -458,7 +476,7 @@ Plus internal auth tables managed by `@convex-dev/auth`.
 ## Stack
 
 - **Frontend:** Nuxt 4, Vue 3, Tailwind v4, PWA
-- **Backend:** Convex (schema, auth, real-time queries), MinIO (S3-compatible storage)
+- **Backend:** Convex (schema, auth, real-time queries), RustFS (S3-compatible storage)
 - **AI:** Google Gemini via OpenAI-compatible API
 - **Auth:** Convex Auth with password providers
 - **Infra:** Bun, Nitro, sharp (image optimization)

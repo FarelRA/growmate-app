@@ -35,7 +35,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 115,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "3ffa5f70bf86e37c" },
   },
   {
     key: "padi-ciherang",
@@ -67,7 +67,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 115,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3ffa5f70bf86e37c" },
   },
   {
     key: "padi-inpari-32",
@@ -99,7 +99,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 115,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "3ffa5f70bf86e37c" },
   },
   {
     key: "padi-inpari-42",
@@ -131,7 +131,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 115,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "3ffa5f70bf86e37c" },
   },
   {
     key: "padi-mekongga",
@@ -163,7 +163,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 115,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3ffa5f70bf86e37c" },
   },
   {
     key: "padi-situ-bagendit",
@@ -195,7 +195,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 115,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "3ffa5f70bf86e37c" },
   },
   {
     key: "padi-ciliwung",
@@ -227,7 +227,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 115,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "3ffa5f70bf86e37c" },
   },
   {
     key: "padi-bondoyudo",
@@ -259,7 +259,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 115,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3ffa5f70bf86e37c" },
   },
   {
     key: "jagung-manis-bonanza",
@@ -291,7 +291,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "f6664b960e534ba5" },
   },
   {
     key: "jagung-manis-paragon",
@@ -323,7 +323,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "f6664b960e534ba5" },
   },
   {
     key: "jagung-manis-master-sweet",
@@ -355,7 +355,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "f6664b960e534ba5" },
   },
   {
     key: "jagung-manis-talenta",
@@ -387,7 +387,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "f6664b960e534ba5" },
   },
   {
     key: "jagung-hibrida-bisi-18",
@@ -419,7 +419,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "f6664b960e534ba5" },
   },
   {
     key: "jagung-hibrida-nk7328",
@@ -451,7 +451,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "f6664b960e534ba5" },
   },
   {
     key: "jagung-hibrida-p27",
@@ -483,7 +483,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "f6664b960e534ba5" },
   },
   {
     key: "jagung-hibrida-pulut",
@@ -515,7 +515,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "f6664b960e534ba5" },
   },
   {
     key: "jagung-hibrida-popcorn",
@@ -547,7 +547,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "f6664b960e534ba5" },
   },
   {
     key: "kedelai-anjasmoro",
@@ -579,7 +579,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "51fb22acb971dc1e" },
   },
   {
     key: "kedelai-grobogan",
@@ -611,7 +611,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "51fb22acb971dc1e" },
   },
   {
     key: "kedelai-dena-1",
@@ -643,7 +643,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "51fb22acb971dc1e" },
   },
   {
     key: "kedelai-devon-1",
@@ -675,7 +675,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "51fb22acb971dc1e" },
   },
   {
     key: "kedelai-argomulyo",
@@ -707,7 +707,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "51fb22acb971dc1e" },
   },
   {
     key: "kacang-hijau-vima-1",
@@ -739,7 +739,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 65,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "b9e182ba4714755e" },
   },
   {
     key: "kacang-hijau-vima-4",
@@ -771,7 +771,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 65,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "b9e182ba4714755e" },
   },
   {
     key: "kacang-hijau-kutilang",
@@ -803,7 +803,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 65,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "b9e182ba4714755e" },
   },
   {
     key: "kacang-hijau-murai",
@@ -835,7 +835,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 65,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "b9e182ba4714755e" },
   },
   {
     key: "kacang-hijau-perkutut",
@@ -867,7 +867,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 65,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "b9e182ba4714755e" },
   },
   {
     key: "kacang-tanah-gajah",
@@ -899,7 +899,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "be58e7a4e84a77a6" },
   },
   {
     key: "kacang-tanah-kelinci",
@@ -931,7 +931,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "be58e7a4e84a77a6" },
   },
   {
     key: "kacang-tanah-rusa",
@@ -963,7 +963,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "be58e7a4e84a77a6" },
   },
   {
     key: "kacang-tanah-bison",
@@ -995,7 +995,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "be58e7a4e84a77a6" },
   },
   {
     key: "kacang-tanah-hypoma",
@@ -1027,7 +1027,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "be58e7a4e84a77a6" },
   },
   {
     key: "ubi-kayu-kaspro",
@@ -1059,7 +1059,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 270,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "dd872bef0be02671" },
   },
   {
     key: "ubi-kayu-adira-4",
@@ -1091,7 +1091,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 270,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "dd872bef0be02671" },
   },
   {
     key: "ubi-kayu-uj-5",
@@ -1123,7 +1123,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 270,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "dd872bef0be02671" },
   },
   {
     key: "ubi-kayu-malang-6",
@@ -1155,7 +1155,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 270,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "dd872bef0be02671" },
   },
   {
     key: "ubi-kayu-mentega",
@@ -1187,7 +1187,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 270,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "dd872bef0be02671" },
   },
   {
     key: "ubi-jalar-cilembu",
@@ -1219,7 +1219,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 120,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "fd35f0a67e330c6f" },
   },
   {
     key: "ubi-jalar-antin-3",
@@ -1251,7 +1251,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 120,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "fd35f0a67e330c6f" },
   },
   {
     key: "ubi-jalar-beta-2",
@@ -1283,7 +1283,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 120,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "fd35f0a67e330c6f" },
   },
   {
     key: "ubi-jalar-kidal",
@@ -1315,7 +1315,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 120,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "fd35f0a67e330c6f" },
   },
   {
     key: "ubi-jalar-sari",
@@ -1347,7 +1347,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 120,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "fd35f0a67e330c6f" },
   },
   {
     key: "sorgum-numbu",
@@ -1379,7 +1379,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "8218817042ec4f54" },
   },
   {
     key: "sorgum-kawali",
@@ -1411,7 +1411,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "8218817042ec4f54" },
   },
   {
     key: "sorgum-super-2",
@@ -1443,7 +1443,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "8218817042ec4f54" },
   },
   {
     key: "sorgum-samurai",
@@ -1475,7 +1475,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "8218817042ec4f54" },
   },
   {
     key: "talas-bogor",
@@ -1507,7 +1507,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 210,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "6fe8dced86b79569" },
   },
   {
     key: "talas-belitung",
@@ -1539,7 +1539,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 210,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "6fe8dced86b79569" },
   },
   {
     key: "talas-pratama",
@@ -1571,7 +1571,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 210,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "6fe8dced86b79569" },
   },
   {
     key: "ganyong-merah",
@@ -1603,7 +1603,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "42139caa7dbd363a" },
   },
   {
     key: "ganyong-hijau",
@@ -1635,7 +1635,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "42139caa7dbd363a" },
   },
   {
     key: "garut-lokal",
@@ -1667,7 +1667,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "c6856a5713b462ea" },
   },
   {
     key: "porang-lokal",
@@ -1699,7 +1699,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "b645aea5108e071d" },
   },
   {
     key: "gandum-tropis-dewata",
@@ -1731,7 +1731,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 80,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "1edb546800f65f2e" },
   },
   {
     key: "gandum-tropis-selayar",
@@ -1763,7 +1763,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 80,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "1edb546800f65f2e" },
   },
   {
     key: "wijen-lokal",
@@ -1795,7 +1795,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 80,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "035b6902b2cbd992" },
   },
   {
     key: "wijen-genjah",
@@ -1827,7 +1827,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 80,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "035b6902b2cbd992" },
   },
   {
     key: "cabai-merah-besar-tw",
@@ -1859,7 +1859,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "74e0f7582c402eb6" },
   },
   {
     key: "cabai-merah-besar-hot-beauty",
@@ -1891,7 +1891,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "74e0f7582c402eb6" },
   },
   {
     key: "cabai-merah-besar-vega",
@@ -1923,7 +1923,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "74e0f7582c402eb6" },
   },
   {
     key: "cabai-merah-besar-pilar",
@@ -1955,7 +1955,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "74e0f7582c402eb6" },
   },
   {
     key: "cabai-keriting-lado",
@@ -1987,7 +1987,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "f8c901b54cbf0673" },
   },
   {
     key: "cabai-keriting-kastilo",
@@ -2019,7 +2019,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "f8c901b54cbf0673" },
   },
   {
     key: "cabai-keriting-icema",
@@ -2051,7 +2051,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "f8c901b54cbf0673" },
   },
   {
     key: "cabai-rawit-hijau",
@@ -2083,7 +2083,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "c4cf1d5b4bd23438" },
   },
   {
     key: "cabai-rawit-merah",
@@ -2115,7 +2115,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "c4cf1d5b4bd23438" },
   },
   {
     key: "cabai-rawit-orange",
@@ -2147,7 +2147,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "c4cf1d5b4bd23438" },
   },
   {
     key: "cabai-rawit-putih",
@@ -2179,7 +2179,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "c4cf1d5b4bd23438" },
   },
   {
     key: "cabai-rawit-ungu",
@@ -2211,7 +2211,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "c4cf1d5b4bd23438" },
   },
   {
     key: "tomat-servo",
@@ -2243,7 +2243,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "7993345dee52f3c0" },
   },
   {
     key: "tomat-ratna",
@@ -2275,7 +2275,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "7993345dee52f3c0" },
   },
   {
     key: "tomat-intan",
@@ -2307,7 +2307,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "7993345dee52f3c0" },
   },
   {
     key: "tomat-beef-mawar",
@@ -2339,7 +2339,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "7993345dee52f3c0" },
   },
   {
     key: "terong-ungu-panjang",
@@ -2371,7 +2371,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "3652bca25f0b83d3" },
   },
   {
     key: "terong-bulat-hijau",
@@ -2403,7 +2403,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "3652bca25f0b83d3" },
   },
   {
     key: "terong-putih",
@@ -2435,7 +2435,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3652bca25f0b83d3" },
   },
   {
     key: "terong-telunjuk",
@@ -2467,7 +2467,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "3652bca25f0b83d3" },
   },
   {
     key: "pare-hijau",
@@ -2499,7 +2499,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "e01234a1174269ae" },
   },
   {
     key: "pare-putih",
@@ -2531,7 +2531,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "e01234a1174269ae" },
   },
   {
     key: "pare-mini",
@@ -2563,7 +2563,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "e01234a1174269ae" },
   },
   {
     key: "mentimun-baby",
@@ -2595,7 +2595,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 40,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "2313d7b40026cc2c" },
   },
   {
     key: "mentimun-jepang",
@@ -2627,7 +2627,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 40,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "2313d7b40026cc2c" },
   },
   {
     key: "mentimun-lokal",
@@ -2659,7 +2659,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 40,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "2313d7b40026cc2c" },
   },
   {
     key: "mentimun-wuku",
@@ -2691,7 +2691,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 40,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "2313d7b40026cc2c" },
   },
   {
     key: "gambas-panjang",
@@ -2723,7 +2723,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "77dcf0710f032594" },
   },
   {
     key: "gambas-pendek",
@@ -2755,7 +2755,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "77dcf0710f032594" },
   },
   {
     key: "gambas-hibrida",
@@ -2787,7 +2787,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "77dcf0710f032594" },
   },
   {
     key: "labu-siam-hijau",
@@ -2819,7 +2819,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "6ccd8dbe127f8b84" },
   },
   {
     key: "labu-siam-putih",
@@ -2851,7 +2851,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "6ccd8dbe127f8b84" },
   },
   {
     key: "labu-kuning-bokor",
@@ -2883,7 +2883,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 80,
       maturitySenescenceDays: 120,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "6306afa3cede9ebb" },
   },
   {
     key: "labu-kuning-berastagi",
@@ -2915,7 +2915,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 80,
       maturitySenescenceDays: 120,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "6306afa3cede9ebb" },
   },
   {
     key: "kacang-panjang-ungu",
@@ -2947,7 +2947,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 65,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "07be4c719edc9373" },
   },
   {
     key: "kacang-panjang-hijau",
@@ -2979,7 +2979,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 65,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "07be4c719edc9373" },
   },
   {
     key: "kacang-panjang-putih",
@@ -3011,7 +3011,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 65,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "07be4c719edc9373" },
   },
   {
     key: "buncis-baby",
@@ -3043,7 +3043,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 40,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "b251978ccd6fa6ee" },
   },
   {
     key: "buncis-tegak",
@@ -3075,7 +3075,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 40,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "b251978ccd6fa6ee" },
   },
   {
     key: "buncis-rambat",
@@ -3107,7 +3107,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 40,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "b251978ccd6fa6ee" },
   },
   {
     key: "kapri-manis",
@@ -3139,7 +3139,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 70,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "d62d59f392f4758b" },
   },
   {
     key: "kapri-bunga-ungu",
@@ -3171,7 +3171,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 70,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "d62d59f392f4758b" },
   },
   {
     key: "okra-hijau",
@@ -3203,7 +3203,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "0d81c0a71d5bf786" },
   },
   {
     key: "okra-merah",
@@ -3235,7 +3235,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "0d81c0a71d5bf786" },
   },
   {
     key: "leunca-hitam",
@@ -3267,7 +3267,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 70,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "596b2dd2889645bd" },
   },
   {
     key: "leunca-manis",
@@ -3299,7 +3299,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 70,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "596b2dd2889645bd" },
   },
   {
     key: "tekokak-bulat",
@@ -3331,7 +3331,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 180,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "544e7fb84239a983" },
   },
   {
     key: "tekokak-rimbang",
@@ -3363,7 +3363,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 180,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "544e7fb84239a983" },
   },
   {
     key: "paprika-merah",
@@ -3395,7 +3395,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "bdadbbde5a22063f" },
   },
   {
     key: "paprika-kuning",
@@ -3427,7 +3427,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "bdadbbde5a22063f" },
   },
   {
     key: "paprika-hijau",
@@ -3459,7 +3459,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 75,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "bdadbbde5a22063f" },
   },
   {
     key: "sawi-hijau-shinta",
@@ -3491,7 +3491,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 35,
       maturitySenescenceDays: 45,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "140b3cbe9c6b650d" },
   },
   {
     key: "sawi-hijau-tosakan",
@@ -3523,7 +3523,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 35,
       maturitySenescenceDays: 45,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "140b3cbe9c6b650d" },
   },
   {
     key: "sawi-hijau-dakota",
@@ -3555,7 +3555,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 35,
       maturitySenescenceDays: 45,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "140b3cbe9c6b650d" },
   },
   {
     key: "sawi-putih-manis",
@@ -3587,7 +3587,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 40,
       maturitySenescenceDays: 55,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "33cb77ee4a54e268" },
   },
   {
     key: "sawi-putih-hibrida",
@@ -3619,7 +3619,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 40,
       maturitySenescenceDays: 55,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "33cb77ee4a54e268" },
   },
   {
     key: "kailan-hijau",
@@ -3651,7 +3651,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 40,
       maturitySenescenceDays: 55,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "c473c0c4b0b40360" },
   },
   {
     key: "kailan-hibrida",
@@ -3683,7 +3683,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 40,
       maturitySenescenceDays: 55,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "c473c0c4b0b40360" },
   },
   {
     key: "selada-air-lokal",
@@ -3715,7 +3715,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 35,
       maturitySenescenceDays: 45,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "a236ef3f609df135" },
   },
   {
     key: "kangkung-darat",
@@ -3747,7 +3747,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 25,
       maturitySenescenceDays: 35,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "64c81ddf4488aba6" },
   },
   {
     key: "kangkung-air",
@@ -3779,7 +3779,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 25,
       maturitySenescenceDays: 35,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "64c81ddf4488aba6" },
   },
   {
     key: "kangkung-bangkok",
@@ -3811,7 +3811,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 25,
       maturitySenescenceDays: 35,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "64c81ddf4488aba6" },
   },
   {
     key: "wortel-nantes",
@@ -3843,7 +3843,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "a22c768d3daaea6e" },
   },
   {
     key: "wortel-kuroda",
@@ -3875,7 +3875,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "a22c768d3daaea6e" },
   },
   {
     key: "wortel-lokal-berastagi",
@@ -3907,7 +3907,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "a22c768d3daaea6e" },
   },
   {
     key: "lobak-putih",
@@ -3939,7 +3939,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 30,
       maturitySenescenceDays: 40,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "408f46ee077d1f41" },
   },
   {
     key: "lobak-merah",
@@ -3971,7 +3971,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 30,
       maturitySenescenceDays: 40,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "408f46ee077d1f41" },
   },
   {
     key: "bit-merah",
@@ -4003,7 +4003,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "62865acd4b71da57" },
   },
   {
     key: "bit-kuning",
@@ -4035,7 +4035,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "62865acd4b71da57" },
   },
   {
     key: "bayam-hijau",
@@ -4067,7 +4067,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 30,
       maturitySenescenceDays: 45,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "e5425f198b9ad030" },
   },
   {
     key: "bayam-merah",
@@ -4099,7 +4099,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 30,
       maturitySenescenceDays: 45,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "e5425f198b9ad030" },
   },
   {
     key: "bayam-cabut",
@@ -4131,7 +4131,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 30,
       maturitySenescenceDays: 45,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "e5425f198b9ad030" },
   },
   {
     key: "kol-hijau",
@@ -4163,7 +4163,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "5571ad7e5dadaa5e" },
   },
   {
     key: "kol-ungu",
@@ -4195,7 +4195,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "5571ad7e5dadaa5e" },
   },
   {
     key: "kol-grand",
@@ -4227,7 +4227,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "5571ad7e5dadaa5e" },
   },
   {
     key: "kembang-kol-putih",
@@ -4259,7 +4259,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "e529a90de83b797f" },
   },
   {
     key: "kembang-kol-ungu",
@@ -4291,7 +4291,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "e529a90de83b797f" },
   },
   {
     key: "brokoli-hijau",
@@ -4323,7 +4323,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "bc42b029d83a536d" },
   },
   {
     key: "brokoli-ungu",
@@ -4355,7 +4355,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "bc42b029d83a536d" },
   },
   {
     key: "kale-keriting",
@@ -4387,7 +4387,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "134cffc51f8b07a9" },
   },
   {
     key: "kale-nero",
@@ -4419,7 +4419,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "134cffc51f8b07a9" },
   },
   {
     key: "kale-redbor",
@@ -4451,7 +4451,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "134cffc51f8b07a9" },
   },
   {
     key: "arugula-lokal",
@@ -4483,7 +4483,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 30,
       maturitySenescenceDays: 40,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "3641ece6248eb341" },
   },
   {
     key: "spinach-hibrida",
@@ -4515,7 +4515,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 35,
       maturitySenescenceDays: 45,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "5b1f10dbbb31431a" },
   },
   {
     key: "spinach-lokal",
@@ -4547,7 +4547,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 35,
       maturitySenescenceDays: 45,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "5b1f10dbbb31431a" },
   },
   {
     key: "seledri-daun",
@@ -4579,7 +4579,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "cc116ed1197f3fd4" },
   },
   {
     key: "seledri-tangkai",
@@ -4611,7 +4611,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "cc116ed1197f3fd4" },
   },
   {
     key: "daun-bawang-hijau",
@@ -4643,7 +4643,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "d28f9364e1983872" },
   },
   {
     key: "daun-bawang-putih",
@@ -4675,7 +4675,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "d28f9364e1983872" },
   },
   {
     key: "kucai-lokal",
@@ -4707,7 +4707,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "f703dd2a29c84981" },
   },
   {
     key: "kucai-china",
@@ -4739,7 +4739,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "f703dd2a29c84981" },
   },
   {
     key: "bawang-bombai-merah",
@@ -4771,7 +4771,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 120,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "95433765c332502b" },
   },
   {
     key: "bawang-bombai-kuning",
@@ -4803,7 +4803,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 120,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "95433765c332502b" },
   },
   {
     key: "kenikir-kuning",
@@ -4835,7 +4835,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 35,
       maturitySenescenceDays: 50,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "616fec715d9e7bc0" },
   },
   {
     key: "kenikir-oranye",
@@ -4867,7 +4867,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 35,
       maturitySenescenceDays: 50,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "616fec715d9e7bc0" },
   },
   {
     key: "pegagan-lokal",
@@ -4899,7 +4899,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "1ecc7f7997f3ffab" },
   },
   {
     key: "pegagan-jumbo",
@@ -4931,7 +4931,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "1ecc7f7997f3ffab" },
   },
   {
     key: "kelor-lokal",
@@ -4963,7 +4963,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "165bce9dde5ccfd6" },
   },
   {
     key: "kelor-genjah",
@@ -4995,7 +4995,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "165bce9dde5ccfd6" },
   },
   {
     key: "katuk-hijau",
@@ -5027,7 +5027,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "1f96200ac781a969" },
   },
   {
     key: "katuk-manis",
@@ -5059,7 +5059,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "1f96200ac781a969" },
   },
   {
     key: "beluntas-lokal",
@@ -5091,7 +5091,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 180,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "5200d27d3e0588d8" },
   },
   {
     key: "pohpohan-lokal",
@@ -5123,7 +5123,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "f2dd7cfdd2c2250b" },
   },
   {
     key: "ketumbar-lokal",
@@ -5155,7 +5155,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 30,
       maturitySenescenceDays: 45,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "a451913d946e18f7" },
   },
   {
     key: "ketumbar-slow-bolt",
@@ -5187,7 +5187,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 30,
       maturitySenescenceDays: 45,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "a451913d946e18f7" },
   },
   {
     key: "dill-lokal",
@@ -5219,7 +5219,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 40,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "8bf121534d38d9b6" },
   },
   {
     key: "thyme-inggris",
@@ -5251,7 +5251,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "b0b42e83a9ccf130" },
   },
   {
     key: "thyme-lemon",
@@ -5283,7 +5283,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "b0b42e83a9ccf130" },
   },
   {
     key: "oregano-yunani",
@@ -5315,7 +5315,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "97290957fef4a290" },
   },
   {
     key: "oregano-italia",
@@ -5347,7 +5347,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "cef1a372d1588604" },
+    image: { hash: "97290957fef4a290" },
   },
   {
     key: "basil-italia-genovese",
@@ -5379,7 +5379,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 40,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "cef1a372d1588604" },
+    image: { hash: "508be70d29149899" },
   },
   {
     key: "basil-italia-purple",
@@ -5411,7 +5411,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 40,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "508be70d29149899" },
   },
   {
     key: "parsley-keriting",
@@ -5443,7 +5443,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "fbac3c86fc722205" },
   },
   {
     key: "parsley-italia",
@@ -5475,7 +5475,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "fbac3c86fc722205" },
   },
   {
     key: "jahe-gajah",
@@ -5507,7 +5507,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 270,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "1c6cdd6cca7a221f" },
   },
   {
     key: "jahe-emprit",
@@ -5539,7 +5539,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 270,
     },
-    image: { hash: "cef1a372d1588604" },
+    image: { hash: "1c6cdd6cca7a221f" },
   },
   {
     key: "jahe-merah",
@@ -5571,7 +5571,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 270,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "1c6cdd6cca7a221f" },
   },
   {
     key: "kunyit-kuning",
@@ -5603,7 +5603,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 270,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "08cc9ab5f2819b3d" },
   },
   {
     key: "kunyit-putih",
@@ -5635,7 +5635,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 270,
     },
-    image: { hash: "cef1a372d1588604" },
+    image: { hash: "08cc9ab5f2819b3d" },
   },
   {
     key: "lengkuas-putih",
@@ -5667,7 +5667,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 270,
     },
-    image: { hash: "cef1a372d1588604" },
+    image: { hash: "d4680de9593bb1c7" },
   },
   {
     key: "lengkuas-merah",
@@ -5699,7 +5699,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 270,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "d4680de9593bb1c7" },
   },
   {
     key: "kencur-lokal",
@@ -5731,7 +5731,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "5deff57831e3a78a" },
   },
   {
     key: "kencur-gajah",
@@ -5763,7 +5763,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "5deff57831e3a78a" },
   },
   {
     key: "temulawak-lokal",
@@ -5795,7 +5795,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 270,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "fd04bb0a0986fad8" },
   },
   {
     key: "temu-hitam-lokal",
@@ -5827,7 +5827,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 270,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "7e5ce3cc264afd24" },
   },
   {
     key: "serai-wangi",
@@ -5859,7 +5859,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 120,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "cef1a372d1588604" },
+    image: { hash: "5f8dd41b23e010a8" },
   },
   {
     key: "serai-dapur",
@@ -5891,7 +5891,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 120,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "5f8dd41b23e010a8" },
   },
   {
     key: "daun-salam-lokal",
@@ -5923,7 +5923,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "e9deda09a1b631b2" },
   },
   {
     key: "daun-jeruk-lokal",
@@ -5955,7 +5955,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "cef1a372d1588604" },
+    image: { hash: "c485c6507e32046f" },
   },
   {
     key: "pandan-wangi",
@@ -5987,7 +5987,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "2964f4613362d224" },
   },
   {
     key: "pandan-besar",
@@ -6019,7 +6019,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "cef1a372d1588604" },
+    image: { hash: "2964f4613362d224" },
   },
   {
     key: "lidah-buaya-besar",
@@ -6051,7 +6051,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "795dbd53fa29b4a3" },
   },
   {
     key: "lidah-buaya-mini",
@@ -6083,7 +6083,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "795dbd53fa29b4a3" },
   },
   {
     key: "selada-butterhead",
@@ -6115,7 +6115,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 30,
       maturitySenescenceDays: 40,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "4bbf797ae69b58cf" },
   },
   {
     key: "selada-merah",
@@ -6147,7 +6147,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 30,
       maturitySenescenceDays: 40,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "4bbf797ae69b58cf" },
   },
   {
     key: "pakcoy-mini",
@@ -6179,7 +6179,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 30,
       maturitySenescenceDays: 40,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "33cb77ee4a54e268" },
   },
   {
     key: "microgreen-sawi-hijau",
@@ -6211,7 +6211,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 10,
       maturitySenescenceDays: 12,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "140b3cbe9c6b650d" },
   },
   {
     key: "microgreen-lobak-merah",
@@ -6243,7 +6243,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 10,
       maturitySenescenceDays: 12,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "408f46ee077d1f41" },
   },
   {
     key: "microgreen-brokoli-hijau",
@@ -6275,7 +6275,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 10,
       maturitySenescenceDays: 12,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "e0885434c939b458" },
   },
   {
     key: "microgreen-bunga-matahari-kuning",
@@ -6307,7 +6307,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 10,
       maturitySenescenceDays: 12,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "720026d771c1a089" },
   },
   {
     key: "microgreen-kacang-hijau-vima",
@@ -6339,7 +6339,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 10,
       maturitySenescenceDays: 12,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "a73b9007bb04e5ab" },
   },
   {
     key: "lidah-mertua-kuning",
@@ -6371,7 +6371,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "dcef527404b50761" },
   },
   {
     key: "lidah-mertua-hitam",
@@ -6403,7 +6403,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "dcef527404b50761" },
   },
   {
     key: "lidah-mertua-mini",
@@ -6435,7 +6435,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "dcef527404b50761" },
   },
   {
     key: "aglonema-red-anjamani",
@@ -6467,7 +6467,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "0115afe5d18bf103" },
   },
   {
     key: "aglonema-big-roy",
@@ -6499,7 +6499,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "0115afe5d18bf103" },
   },
   {
     key: "aglonema-dud-unyamanee",
@@ -6531,7 +6531,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "0115afe5d18bf103" },
   },
   {
     key: "aglonema-suksom",
@@ -6563,7 +6563,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "0115afe5d18bf103" },
   },
   {
     key: "monstera-variegata",
@@ -6595,7 +6595,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "fcd869eb9bce45e2" },
   },
   {
     key: "monstera-borsigiana",
@@ -6627,7 +6627,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "fcd869eb9bce45e2" },
   },
   {
     key: "philodendron-birkin",
@@ -6659,7 +6659,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "3e92170fe5c20898" },
   },
   {
     key: "philodendron-moonlight",
@@ -6691,7 +6691,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "3e92170fe5c20898" },
   },
   {
     key: "keladi-red-star",
@@ -6723,7 +6723,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "c14d62f66ef5aa88" },
   },
   {
     key: "keladi-white-christmas",
@@ -6755,7 +6755,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "c14d62f66ef5aa88" },
   },
   {
     key: "keladi-candidum",
@@ -6787,7 +6787,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "c14d62f66ef5aa88" },
   },
   {
     key: "anggrek-bulan-putih",
@@ -6819,7 +6819,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "f5e2996ec834d5eb" },
   },
   {
     key: "anggrek-bulan-ungu",
@@ -6851,7 +6851,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "f5e2996ec834d5eb" },
   },
   {
     key: "anggrek-bulan-kuning",
@@ -6883,7 +6883,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "f5e2996ec834d5eb" },
   },
   {
     key: "anggrek-dendrobium-ungu",
@@ -6915,7 +6915,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "6a4aa13b0d8db648" },
   },
   {
     key: "anggrek-dendrobium-putih",
@@ -6947,7 +6947,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "6a4aa13b0d8db648" },
   },
   {
     key: "anggrek-dendrobium-kuning",
@@ -6979,7 +6979,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "6a4aa13b0d8db648" },
   },
   {
     key: "mawar-merah",
@@ -7011,7 +7011,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "37330dcac31331f5" },
   },
   {
     key: "mawar-putih",
@@ -7043,7 +7043,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "37330dcac31331f5" },
   },
   {
     key: "mawar-kuning",
@@ -7075,7 +7075,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "37330dcac31331f5" },
   },
   {
     key: "mawar-pink",
@@ -7107,7 +7107,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "37330dcac31331f5" },
   },
   {
     key: "melati-putih",
@@ -7139,7 +7139,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "08c72bccdc010e61" },
   },
   {
     key: "melati-susun-ganda",
@@ -7171,7 +7171,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "08c72bccdc010e61" },
   },
   {
     key: "kenanga-kuning",
@@ -7203,7 +7203,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "d0bce864d6709c41" },
   },
   {
     key: "kamboja-putih-kuning",
@@ -7235,7 +7235,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "acf23cfd6384e15b" },
   },
   {
     key: "kamboja-merah",
@@ -7267,7 +7267,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "acf23cfd6384e15b" },
   },
   {
     key: "bougenville-merah",
@@ -7299,7 +7299,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "ca03c48d96f7631c" },
   },
   {
     key: "bougenville-ungu",
@@ -7331,7 +7331,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "ca03c48d96f7631c" },
   },
   {
     key: "bougenville-oranye",
@@ -7363,7 +7363,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "ca03c48d96f7631c" },
   },
   {
     key: "bougenville-putih",
@@ -7395,7 +7395,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "ca03c48d96f7631c" },
   },
   {
     key: "krisan-putih",
@@ -7427,7 +7427,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3ff669f9b4497d8d" },
   },
   {
     key: "krisan-kuning",
@@ -7459,7 +7459,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3ff669f9b4497d8d" },
   },
   {
     key: "krisan-ungu",
@@ -7491,7 +7491,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3ff669f9b4497d8d" },
   },
   {
     key: "anyelir-merah",
@@ -7523,7 +7523,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "b309b9ec7d4be15e" },
   },
   {
     key: "anyelir-pink",
@@ -7555,7 +7555,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "b309b9ec7d4be15e" },
   },
   {
     key: "petunia-ungu",
@@ -7587,7 +7587,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "d91c8d0023c03590" },
   },
   {
     key: "petunia-merah",
@@ -7619,7 +7619,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "d91c8d0023c03590" },
   },
   {
     key: "marigold-kuning",
@@ -7651,7 +7651,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "af4def20d1c13087" },
   },
   {
     key: "marigold-oranye",
@@ -7683,7 +7683,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "af4def20d1c13087" },
   },
   {
     key: "bunga-matahari-raksasa",
@@ -7715,7 +7715,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "96cb3d08715698bc" },
   },
   {
     key: "bunga-matahari-mini",
@@ -7747,7 +7747,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "96cb3d08715698bc" },
   },
   {
     key: "lavender-inggris",
@@ -7779,7 +7779,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "1e8e6d5f4a235fd9" },
   },
   {
     key: "lavender-prancis",
@@ -7811,7 +7811,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "1e8e6d5f4a235fd9" },
   },
   {
     key: "stroberi-california",
@@ -7843,7 +7843,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "118060167b07b0c9" },
   },
   {
     key: "stroberi-sweet-charlie",
@@ -7875,7 +7875,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "118060167b07b0c9" },
   },
   {
     key: "stroberi-mencir",
@@ -7907,7 +7907,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "118060167b07b0c9" },
   },
   {
     key: "stroberi-festival",
@@ -7939,7 +7939,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "118060167b07b0c9" },
   },
   {
     key: "blueberry-sunshine",
@@ -7971,7 +7971,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 120,
       maturitySenescenceDays: 180,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "e3727daee97dc0cd" },
   },
   {
     key: "blueberry-misty",
@@ -8003,7 +8003,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 120,
       maturitySenescenceDays: 180,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "e3727daee97dc0cd" },
   },
   {
     key: "anggur-ninel",
@@ -8035,7 +8035,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 120,
       maturitySenescenceDays: 180,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "7813358456dfa6f2" },
   },
   {
     key: "anggur-jupiter",
@@ -8067,7 +8067,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 120,
       maturitySenescenceDays: 180,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "7813358456dfa6f2" },
   },
   {
     key: "anggur-transfigurasi",
@@ -8099,7 +8099,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 120,
       maturitySenescenceDays: 180,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "7813358456dfa6f2" },
   },
   {
     key: "apel-manalagi",
@@ -8131,7 +8131,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 210,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "3bce4c1d857a4244" },
   },
   {
     key: "apel-rome-beauty",
@@ -8163,7 +8163,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 210,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "3bce4c1d857a4244" },
   },
   {
     key: "apel-anna",
@@ -8195,7 +8195,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 210,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3bce4c1d857a4244" },
   },
   {
     key: "jeruk-siam-madu",
@@ -8227,7 +8227,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "701f0de162a0fd35" },
   },
   {
     key: "jeruk-keprok-batu",
@@ -8259,7 +8259,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "701f0de162a0fd35" },
   },
   {
     key: "jeruk-lemon-california",
@@ -8291,7 +8291,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "701f0de162a0fd35" },
   },
   {
     key: "mangga-harum-manis",
@@ -8323,7 +8323,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "47486c131f5bc1e6" },
   },
   {
     key: "mangga-gedong-gincu",
@@ -8355,7 +8355,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "47486c131f5bc1e6" },
   },
   {
     key: "mangga-arumanis",
@@ -8387,7 +8387,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "47486c131f5bc1e6" },
   },
   {
     key: "pepaya-california",
@@ -8419,7 +8419,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 180,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "adf1f0aaafdf4e3b" },
   },
   {
     key: "pepaya-bangkok",
@@ -8451,7 +8451,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 180,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "adf1f0aaafdf4e3b" },
   },
   {
     key: "pepaya-merah-delima",
@@ -8483,7 +8483,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 180,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "adf1f0aaafdf4e3b" },
   },
   {
     key: "pisang-cavendish",
@@ -8515,7 +8515,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "c5d2cddeaedfd5af" },
   },
   {
     key: "pisang-raja",
@@ -8547,7 +8547,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "c5d2cddeaedfd5af" },
   },
   {
     key: "pisang-kepok",
@@ -8579,7 +8579,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "c5d2cddeaedfd5af" },
   },
   {
     key: "nanas-cayenne",
@@ -8611,7 +8611,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "f22f3ff8a2c4be6a" },
   },
   {
     key: "nanas-queen",
@@ -8643,7 +8643,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "f22f3ff8a2c4be6a" },
   },
   {
     key: "nanas-madu",
@@ -8675,7 +8675,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "f22f3ff8a2c4be6a" },
   },
   {
     key: "alpukat-hass",
@@ -8707,7 +8707,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "ba99f1a07bbc9301" },
   },
   {
     key: "alpukat-mentega",
@@ -8739,7 +8739,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "ba99f1a07bbc9301" },
   },
   {
     key: "alpukat-aligator",
@@ -8771,7 +8771,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "ba99f1a07bbc9301" },
   },
   {
     key: "durian-musang-king",
@@ -8803,7 +8803,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 240,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "e8629cb163f29858" },
   },
   {
     key: "durian-montong",
@@ -8835,7 +8835,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 240,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "e8629cb163f29858" },
   },
   {
     key: "durian-bawor",
@@ -8867,7 +8867,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 240,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "e8629cb163f29858" },
   },
   {
     key: "rambutan-binjai",
@@ -8899,7 +8899,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "02ec0f15cc112929" },
   },
   {
     key: "rambutan-garuda",
@@ -8931,7 +8931,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "02ec0f15cc112929" },
   },
   {
     key: "rambutan-antalagi",
@@ -8963,7 +8963,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "02ec0f15cc112929" },
   },
   {
     key: "belimbing-madu",
@@ -8995,7 +8995,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "66dbe6bfc3f640a9" },
   },
   {
     key: "belimbing-wuluh",
@@ -9027,7 +9027,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "66dbe6bfc3f640a9" },
   },
   {
     key: "jambu-air-citra",
@@ -9059,7 +9059,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "72eb87fe09880055" },
   },
   {
     key: "jambu-air-dalhari",
@@ -9091,7 +9091,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "72eb87fe09880055" },
   },
   {
     key: "jambu-air-madu-deli",
@@ -9123,7 +9123,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "72eb87fe09880055" },
   },
   {
     key: "jambu-biji-kristal",
@@ -9155,7 +9155,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "84af12cf3db36df6" },
   },
   {
     key: "jambu-biji-sukun",
@@ -9187,7 +9187,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "84af12cf3db36df6" },
   },
   {
     key: "jambu-biji-merah",
@@ -9219,7 +9219,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "84af12cf3db36df6" },
   },
   {
     key: "sawo-manila",
@@ -9251,7 +9251,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "1afdd9abe048c2ed" },
   },
   {
     key: "sawo-jumbo",
@@ -9283,7 +9283,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "1afdd9abe048c2ed" },
   },
   {
     key: "manggis-ratu-buah-lokal",
@@ -9315,7 +9315,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 240,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "d1eb860d83b2c4f0" },
   },
   {
     key: "manggis-wanayasa",
@@ -9347,7 +9347,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 240,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "d1eb860d83b2c4f0" },
   },
   {
     key: "duku-palembang",
@@ -9379,7 +9379,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 240,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "5e17aea8646fc79b" },
   },
   {
     key: "duku-meto",
@@ -9411,7 +9411,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 240,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "5e17aea8646fc79b" },
   },
   {
     key: "salak-pondoh",
@@ -9443,7 +9443,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "1a7f7f013a3ff2ca" },
   },
   {
     key: "salak-gula-pasir",
@@ -9475,7 +9475,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "1a7f7f013a3ff2ca" },
   },
   {
     key: "salak-sidempuan",
@@ -9507,7 +9507,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "1a7f7f013a3ff2ca" },
   },
   {
     key: "kelengkeng-itoh",
@@ -9539,7 +9539,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "65712dc2d4866e45" },
   },
   {
     key: "kelengkeng-diamond-river",
@@ -9571,7 +9571,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "65712dc2d4866e45" },
   },
   {
     key: "kelengkeng-pingpong",
@@ -9603,7 +9603,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "65712dc2d4866e45" },
   },
   {
     key: "markisa-ungu",
@@ -9635,7 +9635,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 150,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "908a871e53975b70" },
   },
   {
     key: "markisa-kuning",
@@ -9667,7 +9667,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 150,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "908a871e53975b70" },
   },
   {
     key: "sirsak-ratu",
@@ -9699,7 +9699,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "b8196ab28546b7b5" },
   },
   {
     key: "sirsak-madu",
@@ -9731,7 +9731,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "b8196ab28546b7b5" },
   },
   {
     key: "srikaya-jumbo",
@@ -9763,7 +9763,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "4f628509def2eb7c" },
   },
   {
     key: "srikaya-merah",
@@ -9795,7 +9795,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "4f628509def2eb7c" },
   },
   {
     key: "delima-merah",
@@ -9827,7 +9827,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "920aa0f9a0ceed2e" },
   },
   {
     key: "delima-putih",
@@ -9859,7 +9859,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 150,
       maturitySenescenceDays: 240,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "920aa0f9a0ceed2e" },
   },
   {
     key: "timun-suri-lokal",
@@ -9891,7 +9891,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 65,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "ff4a7f0bbdf49a04" },
   },
   {
     key: "blewah-lokal",
@@ -9923,7 +9923,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 65,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "ff4a7f0bbdf49a04" },
   },
   {
     key: "nangka-mini",
@@ -9955,7 +9955,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "71f6e5053778a153" },
   },
   {
     key: "nangka-jumbo",
@@ -9987,7 +9987,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "71f6e5053778a153" },
   },
   {
     key: "kopi-arabika-gayo",
@@ -10019,7 +10019,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "552c0dedfbc631e5" },
   },
   {
     key: "kopi-robusta-lampung",
@@ -10051,7 +10051,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "552c0dedfbc631e5" },
   },
   {
     key: "kopi-liberika",
@@ -10083,7 +10083,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "552c0dedfbc631e5" },
   },
   {
     key: "kakao-sulawesi-1",
@@ -10115,7 +10115,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "3c9fe310bb519319" },
   },
   {
     key: "kakao-mcc-02",
@@ -10147,7 +10147,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3c9fe310bb519319" },
   },
   {
     key: "kakao-sca-6",
@@ -10179,7 +10179,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "3c9fe310bb519319" },
   },
   {
     key: "teh-tri-2025",
@@ -10211,7 +10211,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "7d8ffc7a7ca545ad" },
   },
   {
     key: "teh-gambung",
@@ -10243,7 +10243,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "7d8ffc7a7ca545ad" },
   },
   {
     key: "teh-kiara",
@@ -10275,7 +10275,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "7d8ffc7a7ca545ad" },
   },
   {
     key: "tebu-kidang-kencana",
@@ -10307,7 +10307,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 330,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "b6d53af0b92ac314" },
   },
   {
     key: "tebu-ps-881",
@@ -10339,7 +10339,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 330,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "b6d53af0b92ac314" },
   },
   {
     key: "tebu-bululawang",
@@ -10371,7 +10371,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 330,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "b6d53af0b92ac314" },
   },
   {
     key: "tembakau-virginia",
@@ -10403,7 +10403,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "cc54b5fb5f5603cf" },
   },
   {
     key: "tembakau-besuki",
@@ -10435,7 +10435,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "cc54b5fb5f5603cf" },
   },
   {
     key: "tembakau-maesan",
@@ -10467,7 +10467,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "cc54b5fb5f5603cf" },
   },
   {
     key: "kelapa-hibrida",
@@ -10499,7 +10499,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 240,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "a8e2183bd508c99f" },
   },
   {
     key: "kelapa-dalam",
@@ -10531,7 +10531,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 240,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "a8e2183bd508c99f" },
   },
   {
     key: "kelapa-genjah-kuning",
@@ -10563,7 +10563,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 240,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "a8e2183bd508c99f" },
   },
   {
     key: "cengkeh-lokal",
@@ -10595,7 +10595,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 240,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "6683a5efffecb803" },
   },
   {
     key: "pala-banda",
@@ -10627,7 +10627,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 240,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "6da48ef95a283da0" },
   },
   {
     key: "pala-papua",
@@ -10659,7 +10659,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 240,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "6da48ef95a283da0" },
   },
   {
     key: "lada-hitam",
@@ -10691,7 +10691,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "c2ebec0caa7e4b23" },
   },
   {
     key: "lada-putih",
@@ -10723,7 +10723,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "c2ebec0caa7e4b23" },
   },
   {
     key: "vanili-planifolia",
@@ -10755,7 +10755,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 240,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "37524cc45ebe790b" },
   },
   {
     key: "asparagus-mary-washington",
@@ -10787,7 +10787,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 120,
       maturitySenescenceDays: 180,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "51da994560f0ca76" },
   },
   {
     key: "asparagus-uc",
@@ -10819,7 +10819,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 120,
       maturitySenescenceDays: 180,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "51da994560f0ca76" },
   },
   {
     key: "bawang-merah-brebes",
@@ -10851,7 +10851,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 80,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "ebd639f3628b9a21" },
   },
   {
     key: "bawang-merah-bauji",
@@ -10883,7 +10883,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 80,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "ebd639f3628b9a21" },
   },
   {
     key: "bawang-merah-mentes",
@@ -10915,7 +10915,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 80,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "ebd639f3628b9a21" },
   },
   {
     key: "bawang-merah-tajuk",
@@ -10947,7 +10947,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 80,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "ebd639f3628b9a21" },
   },
   {
     key: "bawang-putih-lumbu-hijau",
@@ -10979,7 +10979,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 120,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "75ca180faac48cc0" },
   },
   {
     key: "bawang-putih-lumbu-kuning",
@@ -11011,7 +11011,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 120,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "75ca180faac48cc0" },
   },
   {
     key: "bawang-putih-sangga-sembalun",
@@ -11043,7 +11043,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 90,
       maturitySenescenceDays: 120,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "75ca180faac48cc0" },
   },
   {
     key: "cabai-paprika-mini-habanero",
@@ -11075,7 +11075,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 80,
       maturitySenescenceDays: 120,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "8122f2a9ed1fab1e" },
   },
   {
     key: "cabai-paprika-mini-carolina",
@@ -11107,7 +11107,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 80,
       maturitySenescenceDays: 120,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "8122f2a9ed1fab1e" },
   },
   {
     key: "cabai-setan-setan",
@@ -11139,7 +11139,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "c4cf1d5b4bd23438" },
   },
   {
     key: "cabai-setan-domba",
@@ -11171,7 +11171,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "c4cf1d5b4bd23438" },
   },
   {
     key: "melon-golden",
@@ -11203,7 +11203,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "ff4a7f0bbdf49a04" },
   },
   {
     key: "melon-rock",
@@ -11235,7 +11235,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "ff4a7f0bbdf49a04" },
   },
   {
     key: "melon-madu",
@@ -11267,7 +11267,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 90,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "ff4a7f0bbdf49a04" },
   },
   {
     key: "semangka-merah",
@@ -11299,7 +11299,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 80,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "5a463e565411b524" },
   },
   {
     key: "semangka-kuning",
@@ -11331,7 +11331,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 80,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "5a463e565411b524" },
   },
   {
     key: "semangka-tanpa-biji",
@@ -11363,7 +11363,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 80,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "5a463e565411b524" },
   },
   {
     key: "buah-naga-merah",
@@ -11395,7 +11395,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "e91516fd320799d2" },
   },
   {
     key: "buah-naga-putih",
@@ -11427,7 +11427,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "e91516fd320799d2" },
   },
   {
     key: "buah-naga-kuning",
@@ -11459,7 +11459,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 300,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "e91516fd320799d2" },
   },
   {
     key: "sukun-lokal",
@@ -11491,7 +11491,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "9119e7e79ee3f013" },
   },
   {
     key: "jengkol-lokal",
@@ -11523,7 +11523,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "d5bce40c9e60092a" },
   },
   {
     key: "petai-papan",
@@ -11555,7 +11555,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "03657eeaa82ccded" },
   },
   {
     key: "petai-kacang",
@@ -11587,7 +11587,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "03657eeaa82ccded" },
   },
   {
     key: "cempedak-king",
@@ -11619,7 +11619,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "5ff7568cb0a41d1a" },
   },
   {
     key: "cempedak-lokal",
@@ -11651,7 +11651,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "5ff7568cb0a41d1a" },
   },
   {
     key: "jeruk-bali-merah",
@@ -11683,7 +11683,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "5348d7ff37eb1997" },
   },
   {
     key: "jeruk-bali-putih",
@@ -11715,7 +11715,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "5348d7ff37eb1997" },
   },
   {
     key: "jeruk-nipis-besar",
@@ -11747,7 +11747,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "53625d4aeb0ceae9" },
   },
   {
     key: "jeruk-nipis-kecil",
@@ -11779,7 +11779,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "53625d4aeb0ceae9" },
   },
   {
     key: "kedondong-besar",
@@ -11811,7 +11811,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "4164396c8a05ad64" },
   },
   {
     key: "kedondong-mini",
@@ -11843,7 +11843,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "4164396c8a05ad64" },
   },
   {
     key: "leci-lokal",
@@ -11875,7 +11875,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "e3376678fc6a4ae1" },
   },
   {
     key: "rosella-merah",
@@ -11907,7 +11907,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "e6d59ad164d68ecd" },
   },
   {
     key: "rosella-ungu",
@@ -11939,7 +11939,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "e6d59ad164d68ecd" },
   },
   {
     key: "bunga-telang-biru",
@@ -11971,7 +11971,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "44877568a05e9eb0" },
   },
   {
     key: "bunga-telang-putih",
@@ -12003,7 +12003,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "44877568a05e9eb0" },
   },
   {
     key: "stevia-lokal",
@@ -12035,7 +12035,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "53309aabd6734fa0" },
   },
   {
     key: "sambiloto-lokal",
@@ -12067,7 +12067,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "f05f068a6bd2512a" },
   },
   {
     key: "kumis-kucing-ungu",
@@ -12099,7 +12099,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "cef1a372d1588604" },
+    image: { hash: "79527e68894ad840" },
   },
   {
     key: "kumis-kucing-putih",
@@ -12131,7 +12131,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "79527e68894ad840" },
   },
   {
     key: "tempuyung-lokal",
@@ -12163,7 +12163,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "7f720eb63144096e" },
   },
   {
     key: "mengkudu-lokal",
@@ -12195,7 +12195,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "0342abce704ab42a" },
   },
   {
     key: "mahkota-dewa-merah",
@@ -12227,7 +12227,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "e6ec22bcfdddfcc0" },
   },
   {
     key: "temu-putih-lokal",
@@ -12259,7 +12259,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "f66d58f9535cd860" },
   },
   {
     key: "temu-mangga-lokal",
@@ -12291,7 +12291,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "cef1a372d1588604" },
+    image: { hash: "5f799b58dd9b353b" },
   },
   {
     key: "bangle-lokal",
@@ -12323,7 +12323,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "03b15330b93242d3" },
   },
   {
     key: "lempuyang-gajah",
@@ -12355,7 +12355,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "116ee3c40477cc60" },
   },
   {
     key: "secang-merah",
@@ -12387,7 +12387,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "b9b72d218852276c" },
   },
   {
     key: "kayu-manis-cassia",
@@ -12419,7 +12419,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "12ad2e8d3480ad05" },
   },
   {
     key: "kapulaga-lokal",
@@ -12451,7 +12451,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "b19144a8d60089f4" },
   },
   {
     key: "andaliman-toba",
@@ -12483,7 +12483,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "cef1a372d1588604" },
+    image: { hash: "c8b5243122df3bad" },
   },
   {
     key: "kluwek-lokal",
@@ -12515,7 +12515,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "01245c2cf4f0d0d6" },
   },
   {
     key: "asam-jawa-manis",
@@ -12547,7 +12547,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "6e23ce59e391307a" },
   },
   {
     key: "asam-gelugur-kering",
@@ -12579,7 +12579,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "51e100ffaef171ff" },
   },
   {
     key: "nilam-aceh",
@@ -12611,7 +12611,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "7b52cad7c1622181" },
   },
   {
     key: "akar-wangi-garut",
@@ -12643,7 +12643,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "a4278b33a4e625ff" },
   },
   {
     key: "kemangi-thailand",
@@ -12675,7 +12675,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "cef1a372d1588604" },
+    image: { hash: "508be70d29149899" },
   },
   {
     key: "kemangi-lemon",
@@ -12707,7 +12707,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "508be70d29149899" },
   },
   {
     key: "rosemary-tegak",
@@ -12739,7 +12739,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "fdba071595271339" },
   },
   {
     key: "rosemary-merambat",
@@ -12771,7 +12771,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "fdba071595271339" },
   },
   {
     key: "tomat-ceri-merah",
@@ -12803,7 +12803,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "8993c67d2118d107" },
   },
   {
     key: "tomat-ceri-kuning",
@@ -12835,7 +12835,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "8993c67d2118d107" },
   },
   {
     key: "tomat-ceri-cokelat",
@@ -12867,7 +12867,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "8993c67d2118d107" },
   },
   {
     key: "labu-air-panjang",
@@ -12899,7 +12899,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "1d7a13e0b3a900ce" },
   },
   {
     key: "labu-air-botol",
@@ -12931,7 +12931,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "1d7a13e0b3a900ce" },
   },
   {
     key: "kecipir-hijau",
@@ -12963,7 +12963,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "c603c6aef972b6bd" },
   },
   {
     key: "kecipir-ungu",
@@ -12995,7 +12995,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "c603c6aef972b6bd" },
   },
   {
     key: "kacang-merah-besar",
@@ -13027,7 +13027,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "ff0aca7575399fd4" },
   },
   {
     key: "kacang-merah-kecil",
@@ -13059,7 +13059,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "ff0aca7575399fd4" },
   },
   {
     key: "jewawut-kuning",
@@ -13091,7 +13091,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "c4abf4b398762ba7" },
   },
   {
     key: "jewawut-putih",
@@ -13123,7 +13123,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "c4abf4b398762ba7" },
   },
   {
     key: "genjer-lokal",
@@ -13155,7 +13155,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "7e3b627062626e66" },
   },
   {
     key: "kimpul-putih",
@@ -13187,7 +13187,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "6c4f3500c5fb4bd7" },
   },
   {
     key: "suweg-lokal",
@@ -13219,7 +13219,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "af1e514ae5d9e026" },
   },
   {
     key: "binahong-hijau",
@@ -13251,7 +13251,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "3fd0a9e30fb5bbeb" },
   },
   {
     key: "gendola-hijau",
@@ -13283,7 +13283,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "0e66b181308c7eaa" },
   },
   {
     key: "gendola-merah",
@@ -13315,7 +13315,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "0e66b181308c7eaa" },
   },
   {
     key: "siomak-tong-ho",
@@ -13347,7 +13347,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "072adafcb6f3eb04" },
   },
   {
     key: "dahlia-merah",
@@ -13379,7 +13379,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "753b37bf2892c7f4" },
   },
   {
     key: "dahlia-kuning",
@@ -13411,7 +13411,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "753b37bf2892c7f4" },
   },
   {
     key: "dahlia-ungu",
@@ -13443,7 +13443,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "753b37bf2892c7f4" },
   },
   {
     key: "gladiol-merah",
@@ -13475,7 +13475,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "c34a6afdfce046cb" },
   },
   {
     key: "gladiol-putih",
@@ -13507,7 +13507,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "c34a6afdfce046cb" },
   },
   {
     key: "gladiol-pink",
@@ -13539,7 +13539,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "c34a6afdfce046cb" },
   },
   {
     key: "sedap-malam-putih",
@@ -13571,7 +13571,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "8db3f2c8a8a93907" },
   },
   {
     key: "sedap-malam-kuning",
@@ -13603,7 +13603,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "8db3f2c8a8a93907" },
   },
   {
     key: "pacar-air-merah",
@@ -13635,7 +13635,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "ae2fc01ab12bbb7e" },
   },
   {
     key: "pacar-air-pink",
@@ -13667,7 +13667,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "ae2fc01ab12bbb7e" },
   },
   {
     key: "tapak-dara-putih",
@@ -13699,7 +13699,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "c663df44e2448da4" },
   },
   {
     key: "tapak-dara-pink",
@@ -13731,7 +13731,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "c663df44e2448da4" },
   },
   {
     key: "tapak-dara-merah",
@@ -13763,7 +13763,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "c663df44e2448da4" },
   },
   {
     key: "zinnia-merah",
@@ -13795,7 +13795,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "92e6ad3e3b1032c2" },
   },
   {
     key: "zinnia-kuning",
@@ -13827,7 +13827,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "92e6ad3e3b1032c2" },
   },
   {
     key: "zinnia-campur",
@@ -13859,7 +13859,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "92e6ad3e3b1032c2" },
   },
   {
     key: "kosmos-kuning",
@@ -13891,7 +13891,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "08fdc9a4c6fee4dd" },
   },
   {
     key: "kosmos-oranye",
@@ -13923,7 +13923,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "08fdc9a4c6fee4dd" },
   },
   {
     key: "snapdragon-campur",
@@ -13955,7 +13955,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "f34412efff0bed1a" },
   },
   {
     key: "snapdragon-kuning",
@@ -13987,7 +13987,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "f34412efff0bed1a" },
   },
   {
     key: "gerbera-merah",
@@ -14019,7 +14019,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "758bbb2a726f6967" },
   },
   {
     key: "gerbera-kuning",
@@ -14051,7 +14051,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "758bbb2a726f6967" },
   },
   {
     key: "gerbera-pink",
@@ -14083,7 +14083,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "758bbb2a726f6967" },
   },
   {
     key: "lili-putih",
@@ -14115,7 +14115,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3229c10017f325ec" },
   },
   {
     key: "lili-oranye",
@@ -14147,7 +14147,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3229c10017f325ec" },
   },
   {
     key: "vanda-tricolor",
@@ -14179,7 +14179,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "0a1b3020e8c31a58" },
   },
   {
     key: "vanda-biru",
@@ -14211,7 +14211,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "0a1b3020e8c31a58" },
   },
   {
     key: "cattleya-ungu",
@@ -14243,7 +14243,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "cb4937430e1f1674" },
   },
   {
     key: "cattleya-putih",
@@ -14275,7 +14275,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "cb4937430e1f1674" },
   },
   {
     key: "selada-italia-radicchio",
@@ -14307,7 +14307,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "81e337a473f66877" },
   },
   {
     key: "aren-dalam",
@@ -14339,7 +14339,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "147a6346a3f13ea3" },
   },
   {
     key: "sawi-manis-shinta-baru",
@@ -14371,7 +14371,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "140b3cbe9c6b650d" },
   },
   {
     key: "sawi-manis-pakcoy-kailan",
@@ -14403,7 +14403,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "140b3cbe9c6b650d" },
   },
   {
     key: "bayam-bangkok-lebar",
@@ -14435,7 +14435,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "e5425f198b9ad030" },
   },
   {
     key: "kangkung-serasi-cabut",
@@ -14467,7 +14467,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "64c81ddf4488aba6" },
   },
   {
     key: "padi-gogo-situ-patenggang",
@@ -14499,7 +14499,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 80,
       maturitySenescenceDays: 105,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3ffa5f70bf86e37c" },
   },
   {
     key: "padi-gogo-inpago",
@@ -14531,7 +14531,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 80,
       maturitySenescenceDays: 105,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "3ffa5f70bf86e37c" },
   },
   {
     key: "jagung-pulut-putih",
@@ -14563,7 +14563,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "f6664b960e534ba5" },
   },
   {
     key: "jagung-pulut-ungu",
@@ -14595,7 +14595,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "f6664b960e534ba5" },
   },
   {
     key: "padi-tambahan-inpari-30",
@@ -14627,7 +14627,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 85,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "3ffa5f70bf86e37c" },
   },
   {
     key: "padi-tambahan-logawa",
@@ -14659,7 +14659,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 85,
       maturitySenescenceDays: 110,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3ffa5f70bf86e37c" },
   },
   {
     key: "jagung-manis-tambahan-sweet-boy",
@@ -14691,7 +14691,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "f6664b960e534ba5" },
   },
   {
     key: "jagung-manis-tambahan-golden-era",
@@ -14723,7 +14723,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 65,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "f6664b960e534ba5" },
   },
   {
     key: "kedelai-tambahan-dega",
@@ -14755,7 +14755,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "51fb22acb971dc1e" },
   },
   {
     key: "kedelai-tambahan-wilis",
@@ -14787,7 +14787,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 60,
       maturitySenescenceDays: 85,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "51fb22acb971dc1e" },
   },
   {
     key: "kacang-hijau-tambahan-gelatik",
@@ -14819,7 +14819,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 65,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "b9e182ba4714755e" },
   },
   {
     key: "kacang-hijau-tambahan-sriti",
@@ -14851,7 +14851,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 50,
       maturitySenescenceDays: 65,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "b9e182ba4714755e" },
   },
   {
     key: "bawang-merah-tambahan-bima",
@@ -14883,7 +14883,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "ebd639f3628b9a21" },
   },
   {
     key: "bawang-merah-tambahan-pikatan",
@@ -14915,7 +14915,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "ebd639f3628b9a21" },
   },
   {
     key: "cabai-merah-tambahan-hot-chili",
@@ -14947,7 +14947,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "74e0f7582c402eb6" },
   },
   {
     key: "cabai-merah-tambahan-imperial",
@@ -14979,7 +14979,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "74e0f7582c402eb6" },
   },
   {
     key: "tomat-tambahan-tymoti",
@@ -15011,7 +15011,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "7993345dee52f3c0" },
   },
   {
     key: "tomat-tambahan-fortuna",
@@ -15043,7 +15043,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "7993345dee52f3c0" },
   },
   {
     key: "terong-tambahan-gelatik",
@@ -15075,7 +15075,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3652bca25f0b83d3" },
   },
   {
     key: "terong-tambahan-kopek",
@@ -15107,7 +15107,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "3652bca25f0b83d3" },
   },
   {
     key: "mawar-tambahan-avant-garde",
@@ -15139,7 +15139,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "37330dcac31331f5" },
   },
   {
     key: "mawar-tambahan-black-magic",
@@ -15171,7 +15171,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "37330dcac31331f5" },
   },
   {
     key: "anggrek-bulan-tambahan-amabilis-jawa",
@@ -15203,7 +15203,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "f5e2996ec834d5eb" },
   },
   {
     key: "anggrek-bulan-tambahan-sogo",
@@ -15235,7 +15235,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "f5e2996ec834d5eb" },
   },
   {
     key: "krisan-tambahan-reagan",
@@ -15267,7 +15267,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3ff669f9b4497d8d" },
   },
   {
     key: "krisan-tambahan-fiji",
@@ -15299,7 +15299,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "3ff669f9b4497d8d" },
   },
   {
     key: "kembang-sepatu-merah",
@@ -15331,7 +15331,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "391c610b637d8816" },
   },
   {
     key: "kembang-sepatu-kuning",
@@ -15363,7 +15363,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "391c610b637d8816" },
   },
   {
     key: "kembang-sepatu-pink",
@@ -15395,7 +15395,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "391c610b637d8816" },
   },
   {
     key: "soka-merah",
@@ -15427,7 +15427,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "a762bf2fc7966a3b" },
   },
   {
     key: "soka-kuning",
@@ -15459,7 +15459,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "a762bf2fc7966a3b" },
   },
   {
     key: "soka-pink",
@@ -15491,7 +15491,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "a762bf2fc7966a3b" },
   },
   {
     key: "alamanda-kuning",
@@ -15523,7 +15523,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "c9f6f7973bd17974" },
   },
   {
     key: "alamanda-ungu",
@@ -15555,7 +15555,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "c9f6f7973bd17974" },
   },
   {
     key: "kana-merah",
@@ -15587,7 +15587,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "6f4a7e02cb90c777" },
   },
   {
     key: "kana-kuning",
@@ -15619,7 +15619,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "6f4a7e02cb90c777" },
   },
   {
     key: "amarilis-merah",
@@ -15651,7 +15651,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "82f387125ea0f71c" },
   },
   {
     key: "amarilis-putih",
@@ -15683,7 +15683,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "82f387125ea0f71c" },
   },
   {
     key: "calathea-orbifolia",
@@ -15715,7 +15715,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "7c71f7311d52f0f9" },
   },
   {
     key: "calathea-medallion",
@@ -15747,7 +15747,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "7c71f7311d52f0f9" },
   },
   {
     key: "peperomia-hijau",
@@ -15779,7 +15779,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "e80d5d25b1bdd894" },
   },
   {
     key: "peperomia-variegata",
@@ -15811,7 +15811,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "e80d5d25b1bdd894" },
   },
   {
     key: "begonia-rex",
@@ -15843,7 +15843,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "c6140a9a826906a4" },
   },
   {
     key: "begonia-hias-daun",
@@ -15875,7 +15875,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "c6140a9a826906a4" },
   },
   {
     key: "begonia-gantung",
@@ -15907,7 +15907,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "c6140a9a826906a4" },
   },
   {
     key: "alocasia-frydek",
@@ -15939,7 +15939,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "2daada36ffb3d28d" },
   },
   {
     key: "alocasia-black-velvet",
@@ -15971,7 +15971,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "2daada36ffb3d28d" },
   },
   {
     key: "anthurium-jemani",
@@ -16003,7 +16003,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "a7e3636abd8e516a" },
   },
   {
     key: "anthurium-gelombang-cinta",
@@ -16035,7 +16035,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "a7e3636abd8e516a" },
   },
   {
     key: "suplir-lokal",
@@ -16067,7 +16067,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "e98724c80b4f3fd5" },
   },
   {
     key: "kadaka-lokal",
@@ -16099,7 +16099,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "c87a2f63125a7344" },
   },
   {
     key: "fittonia-merah",
@@ -16131,7 +16131,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 180,
       maturitySenescenceDays: 365,
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "99ad250407533bcc" },
   },
   {
     key: "air-mata-pengantin-pink",
@@ -16163,7 +16163,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "658e772af1e0397f" },
   },
   {
     key: "wijaya-kusuma-putih",
@@ -16195,7 +16195,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "7c43a7503dbc7b48" },
   },
   {
     key: "selada-lollo-hijau",
@@ -16227,7 +16227,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "4bbf797ae69b58cf" },
   },
   {
     key: "selada-lollo-merah",
@@ -16259,7 +16259,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 45,
       maturitySenescenceDays: 60,
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "4bbf797ae69b58cf" },
   },
   {
     key: "microgreen-kangkung-hijau",
@@ -16291,7 +16291,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 10,
       maturitySenescenceDays: 12,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "64c81ddf4488aba6" },
   },
   {
     key: "microgreen-bayam-merah",
@@ -16323,7 +16323,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 10,
       maturitySenescenceDays: 12,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "d84313e34ac0c5e1" },
   },
   {
     key: "microgreen-kemangi-genovese",
@@ -16355,7 +16355,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 10,
       maturitySenescenceDays: 12,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "508be70d29149899" },
   },
   {
     key: "microgreen-wortel-nantes",
@@ -16387,7 +16387,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 10,
       maturitySenescenceDays: 12,
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "a22c768d3daaea6e" },
   },
   {
     key: "langsat-kuning",
@@ -16419,7 +16419,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "5e17aea8646fc79b" },
   },
   {
     key: "kecapi-merah",
@@ -16451,7 +16451,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "548b606ebd575080" },
   },
   {
     key: "gandaria-ungu",
@@ -16483,7 +16483,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "fe187fe1a2791afb" },
   },
   {
     key: "menteng-merah",
@@ -16515,7 +16515,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "596d019c52de23b2" },
   },
   {
     key: "buni-hitam",
@@ -16547,7 +16547,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "650a22eaab9b30c6" },
   },
   {
     key: "jambu-bol-merah",
@@ -16579,7 +16579,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "6bb18c2805003acc" },
   },
   {
     key: "jambu-bol-putih",
@@ -16611,7 +16611,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "6bb18c2805003acc" },
   },
   {
     key: "sawo-kecik-cokelat",
@@ -16643,7 +16643,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "0feeddb5f558354c" },
   },
   {
     key: "koro-benguk-putih",
@@ -16675,7 +16675,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "421f16ff02f08be9" },
   },
   {
     key: "uwi-ungu",
@@ -16707,7 +16707,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "6e4babe2fcfd809d" },
   },
   {
     key: "uwi-putih",
@@ -16739,7 +16739,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "6e4babe2fcfd809d" },
   },
   {
     key: "jagung-ketan-hitam-hitam",
@@ -16771,7 +16771,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 95,
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "f6664b960e534ba5" },
   },
   {
     key: "jintan-hitam-lokal",
@@ -16803,7 +16803,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "cef1a372d1588604" },
+    image: { hash: "e93d86a6ba1a1de2" },
   },
   {
     key: "adas-manis",
@@ -16835,7 +16835,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 55,
       maturitySenescenceDays: 75,
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "71c4f9a8e12b4efa" },
   },
   {
     key: "cengkeh-zanzibar-super",
@@ -16867,7 +16867,7 @@ const seedData: PlantSeedData[] = [
       floweringReproductionDays: 70,
       maturitySenescenceDays: 100,
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "6683a5efffecb803" },
   },
 ]
 

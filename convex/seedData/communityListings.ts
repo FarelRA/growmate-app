@@ -3,9 +3,6 @@
 // (Listing photos are a deferred fix: all share one placeholder for now.)
 import type { SeedImage } from './types'
 
-// Image bytes live in public/seed-images/3e3a2499e0a0bd1a/ — this module carries only the hash.
-const SHARED_COMMUNITY_IMAGE: SeedImage = { hash: "3e3a2499e0a0bd1a" }
-
 interface SeedCommunityListing {
   sellerIndex: number
   title: string
@@ -30,7 +27,7 @@ const seedData: SeedCommunityListing[] = [
     priceUnit: "IDR",
     locationLabel: "Sleman",
     contactPreference: "chat",
-    image: SHARED_COMMUNITY_IMAGE,
+    image: { hash: "f6a1ac078c4f911b" },
   },
   {
     sellerIndex: 3,
@@ -42,7 +39,7 @@ const seedData: SeedCommunityListing[] = [
     priceUnit: "IDR",
     locationLabel: "Sleman",
     contactPreference: "chat",
-    image: SHARED_COMMUNITY_IMAGE,
+    image: { hash: "1ebb537a685c4e14" },
   },
   {
     sellerIndex: 5,
@@ -54,7 +51,7 @@ const seedData: SeedCommunityListing[] = [
     priceUnit: "IDR",
     locationLabel: "Bantul",
     contactPreference: "pickup",
-    image: SHARED_COMMUNITY_IMAGE,
+    image: { hash: "7ac09affedbf6d35" },
   },
   {
     sellerIndex: 7,
@@ -66,7 +63,7 @@ const seedData: SeedCommunityListing[] = [
     priceUnit: "IDR",
     locationLabel: "Yogyakarta",
     contactPreference: "chat",
-    image: SHARED_COMMUNITY_IMAGE,
+    image: { hash: "f5bc7f80ca87cb07" },
   },
   {
     sellerIndex: 10,
@@ -78,7 +75,7 @@ const seedData: SeedCommunityListing[] = [
     priceUnit: "IDR",
     locationLabel: "Solo",
     contactPreference: "delivery",
-    image: SHARED_COMMUNITY_IMAGE,
+    image: { hash: "c3bfa79e29f873da" },
   },
   {
     sellerIndex: 2,
@@ -90,7 +87,7 @@ const seedData: SeedCommunityListing[] = [
     priceUnit: "IDR",
     locationLabel: "Sleman",
     contactPreference: "pickup",
-    image: SHARED_COMMUNITY_IMAGE,
+    image: { hash: "991ec0bc317a345d" },
   },
   {
     sellerIndex: 12,
@@ -102,7 +99,7 @@ const seedData: SeedCommunityListing[] = [
     priceUnit: "IDR",
     locationLabel: "Magelang",
     contactPreference: "chat",
-    image: SHARED_COMMUNITY_IMAGE,
+    image: { hash: "6ba142c2aae5096d" },
   },
   {
     sellerIndex: 16,
@@ -114,7 +111,7 @@ const seedData: SeedCommunityListing[] = [
     priceUnit: "IDR",
     locationLabel: "Sleman",
     contactPreference: "chat",
-    image: SHARED_COMMUNITY_IMAGE,
+    image: { hash: "91e308b970ffe2e0" },
   },
   {
     sellerIndex: 21,
@@ -126,7 +123,7 @@ const seedData: SeedCommunityListing[] = [
     priceUnit: "IDR",
     locationLabel: "Kulon Progo",
     contactPreference: "pickup",
-    image: SHARED_COMMUNITY_IMAGE,
+    image: { hash: "b0b4152e1766e52d" },
   },
   {
     sellerIndex: 24,
@@ -138,7 +135,7 @@ const seedData: SeedCommunityListing[] = [
     priceUnit: "IDR",
     locationLabel: "Bantul",
     contactPreference: "pickup",
-    image: SHARED_COMMUNITY_IMAGE,
+    image: { hash: "12d027f348f1e695" },
   },
   {
     sellerIndex: 29,
@@ -150,7 +147,7 @@ const seedData: SeedCommunityListing[] = [
     priceUnit: "IDR",
     locationLabel: "Bantul",
     contactPreference: "delivery",
-    image: SHARED_COMMUNITY_IMAGE,
+    image: { hash: "a3970c83909ca53b" },
   },
   {
     sellerIndex: 31,
@@ -162,7 +159,7 @@ const seedData: SeedCommunityListing[] = [
     priceUnit: "IDR",
     locationLabel: "Gunungkidul",
     contactPreference: "chat",
-    image: SHARED_COMMUNITY_IMAGE,
+    image: { hash: "85555ee834dfed39" },
   },
   {
     sellerIndex: 33,
@@ -174,7 +171,7 @@ const seedData: SeedCommunityListing[] = [
     priceUnit: "IDR",
     locationLabel: "Wonosari",
     contactPreference: "pickup",
-    image: SHARED_COMMUNITY_IMAGE,
+    image: { hash: "c63fd6c4ee894ed8" },
   },
   {
     sellerIndex: 34,
@@ -186,7 +183,7 @@ const seedData: SeedCommunityListing[] = [
     priceUnit: "IDR",
     locationLabel: "Sleman",
     contactPreference: "delivery",
-    image: SHARED_COMMUNITY_IMAGE,
+    image: { hash: "344299af54e5119e" },
   },
 ]
 

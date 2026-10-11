@@ -24,6 +24,8 @@ import seedPlants from '../../convex/seedData/plants'
 import seedFieldCrops from '../../convex/seedData/fieldCrops'
 import seedCommunityPosts from '../../convex/seedData/communityPosts'
 import seedCommunityListings from '../../convex/seedData/communityListings'
+import seedBlog from '../../convex/seedData/blog'
+import seedProducts from '../../convex/seedData/products'
 import seedThreads from '../../convex/seedData/threads'
 import seedTickets from '../../convex/seedData/tickets'
 import seedDrafts from '../../convex/seedData/drafts'
@@ -197,6 +199,15 @@ describe('seed fleet shape (36 users + demo, 41 devices)', () => {
     for (let i = 0; i < 36; i++) {
       expect(perUser.get(i) ?? 0, `user ${i} must post >= 2`).toBeGreaterThanOrEqual(2)
     }
+  })
+
+  it('every blog post, listing, and product has its own content-matched image', () => {
+    const blogHashes = seedBlog.map((p) => p.image.hash)
+    expect(new Set(blogHashes).size).toBe(seedBlog.length)
+    const listingHashes = seedCommunityListings.map((l) => l.image.hash)
+    expect(new Set(listingHashes).size).toBe(seedCommunityListings.length)
+    const productHashes = seedProducts.map((p) => p.image.hash)
+    expect(new Set(productHashes).size).toBe(seedProducts.length)
   })
 
   it('marketplace threads reference real listings and users', () => {

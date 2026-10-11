@@ -48,7 +48,7 @@ const seedData: PlantSeedData[] = [
           "floweringReproductionDays": 60,
           "maturitySenescenceDays": 80
     },
-    image: { hash: "2754a45b3d44c4d6" },
+    image: { hash: "dcef527404b50761" },
   },
   {
     key: "selada",

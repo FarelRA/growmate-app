@@ -48,7 +48,7 @@ const seedData: PlantSeedData[] = [
           "floweringReproductionDays": 60,
           "maturitySenescenceDays": 80
     },
-    image: { hash: "dcef527404b50761" },
+    image: { hash: "508be70d29149899" },
   },
   {
     key: "selada",
@@ -95,7 +95,7 @@ const seedData: PlantSeedData[] = [
           "floweringReproductionDays": 50,
           "maturitySenescenceDays": 60
     },
-    image: { hash: "5e2974eb81cc1072" },
+    image: { hash: "4bbf797ae69b58cf" },
   },
   {
     key: "bayam",
@@ -142,7 +142,7 @@ const seedData: PlantSeedData[] = [
           "floweringReproductionDays": 45,
           "maturitySenescenceDays": 55
     },
-    image: { hash: "b55428c3751a70c5" },
+    image: { hash: "e5425f198b9ad030" },
   },
   {
     key: "pakcoy",
@@ -189,7 +189,7 @@ const seedData: PlantSeedData[] = [
           "floweringReproductionDays": 45,
           "maturitySenescenceDays": 55
     },
-    image: { hash: "b287ae68c18f47a4" },
+    image: { hash: "33cb77ee4a54e268" },
   },
   {
     key: "cabai-rawit",
@@ -236,7 +236,7 @@ const seedData: PlantSeedData[] = [
           "floweringReproductionDays": 70,
           "maturitySenescenceDays": 100
     },
-    image: { hash: "424cd1e34b6555b0" },
+    image: { hash: "c4cf1d5b4bd23438" },
   },
   {
     key: "tomat-ceri",
@@ -283,7 +283,7 @@ const seedData: PlantSeedData[] = [
           "floweringReproductionDays": 65,
           "maturitySenescenceDays": 90
     },
-    image: { hash: "cd80d45348e20603" },
+    image: { hash: "8993c67d2118d107" },
   },
   {
     key: "stroberi",
@@ -330,7 +330,7 @@ const seedData: PlantSeedData[] = [
           "floweringReproductionDays": 80,
           "maturitySenescenceDays": 120
     },
-    image: { hash: "7fdca9d1aeb76d87" },
+    image: { hash: "118060167b07b0c9" },
   },
   {
     key: "mint",
@@ -377,7 +377,7 @@ const seedData: PlantSeedData[] = [
           "floweringReproductionDays": 55,
           "maturitySenescenceDays": 70
     },
-    image: { hash: "ca886bf93c89ccd9" },
+    image: { hash: "29d4259584f937c4" },
   },
   {
     key: "rosemary",
@@ -424,7 +424,7 @@ const seedData: PlantSeedData[] = [
           "floweringReproductionDays": 90,
           "maturitySenescenceDays": 150
     },
-    image: { hash: "cef1a372d1588604" },
+    image: { hash: "fdba071595271339" },
   },
   {
     key: "lidah-mertua",
@@ -471,7 +471,7 @@ const seedData: PlantSeedData[] = [
           "floweringReproductionDays": 180,
           "maturitySenescenceDays": 365
     },
-    image: { hash: "5fd5992256ddd19c" },
+    image: { hash: "dcef527404b50761" },
   },
 ]
 

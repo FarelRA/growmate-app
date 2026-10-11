@@ -74,8 +74,8 @@ export const comprehensive = internalAction({
     console.log("\n─── 5/8: Claims + Plants ───");
     await ctx.runAction(internal.seed.processClaims);
 
-    // 6. Official Products (2)
-    console.log("\n─── 6/8: Official Products (2) ───");
+    // 6. Official Products (4)
+    console.log("\n─── 6/8: Official Products (4) ───");
     await ctx.runAction(internal.seed.products);
 
     // 7. Community (14 listings + 60 posts)

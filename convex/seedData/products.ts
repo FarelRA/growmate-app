@@ -4,25 +4,50 @@ import type { ProductSeedData } from './types'
 
 const seedData: ProductSeedData[] = [
   {
-    title: "GrowMate v1",
-    description: "GrowMate v1 adalah perangkat hidroponik pintar generasi pertama yang dirancang untuk pemula dan hobiis. Dilengkapi sensor kelembaban tanah, sensor cahaya, dan pompa air otomatis. Mendukung kontrol penyiraman dan pencahayaan berbasis threshold. Cocok untuk budidaya sayuran daun dan herba di rumah dengan sistem hidroponik skala kecil hingga menengah.",
+    title: "GrowMate Pods",
+    description:
+      "GrowMate Pods (v1) adalah perangkat hidroponik indoor otomatis untuk satu tanaman. Dilengkapi sensor kelembaban tanah, sensor cahaya, dan pompa air otomatis dengan kontrol penyiraman serta pencahayaan berbasis threshold. Tanpa modem dan panel surya — cukup sambungkan ke Wi-Fi rumah. Cocok untuk dapur, ruang tamu, dan apartemen.",
     category: "hardware",
     featured: true,
-    price: 349000,
+    price: 803000,
     quantityAvailable: 100,
     priceUnit: "IDR",
-    shopeeUrl: "https://shopee.co.id/growmate-v1",
+    shopeeUrl: "https://shopee.co.id/growmate-pods",
     image: { hash: "3e3a2499e0a0bd1a" },
   },
   {
-    title: "GrowMate v2",
-    description: "GrowMate v2 adalah perangkat hidroponik pintar generasi terbaru dengan peningkatan fitur signifikan. Dilengkapi sensor multi-spektrum, konektivitas Wi-Fi dan seluler, panel surya terintegrasi, serta baterai kapasitas besar. Mendukung kontrol otomatis penuh untuk penyiraman, pencahayaan, dan pemantauan nutrisi secara real-time melalui aplikasi. Ideal untuk greenhouse dan pertanian urban skala menengah hingga besar.",
+    title: "GrowMate Tech",
+    description:
+      "GrowMate Tech (v2) adalah perangkat lahan outdoor untuk kebun dan sawah. Sensor multi-spektrum, tangki besar, dan otomatisasi penuh untuk penyiraman serta pemantauan nutrisi real-time via aplikasi. Ideal untuk cabai, jagung, kacang-kacangan, dan hortikultura pada Musim Tanam Pertama.",
     category: "hardware",
     featured: true,
-    price: 599000,
+    price: 2083000,
     quantityAvailable: 100,
     priceUnit: "IDR",
-    shopeeUrl: "https://shopee.co.id/growmate-v2",
+    shopeeUrl: "https://shopee.co.id/growmate-tech",
+    image: { hash: "3e3a2499e0a0bd1a" },
+  },
+  {
+    title: "GrowMate Tech Add-on",
+    description:
+      "GrowMate Tech Add-on (v2) adalah varian lapangan lengkap dengan modem seluler dan panel surya terintegrasi plus baterai berkapasitas besar. Tetap online dan menyiram di lahan tanpa listrik maupun Wi-Fi. Pilihan tepat untuk greenhouse desa, kebun surya, dan stasiun irigasi terpencil.",
+    category: "hardware",
+    featured: true,
+    price: 2409000,
+    quantityAvailable: 100,
+    priceUnit: "IDR",
+    shopeeUrl: "https://shopee.co.id/growmate-tech-addon",
+    image: { hash: "3e3a2499e0a0bd1a" },
+  },
+  {
+    title: "GrowMate Advance Subscription",
+    description:
+      "Langganan Advance membuka asisten AI Floral tanpa batas harian, analitik pertumbuhan tanaman, rekomendasi nutrisi personal, riwayat sensor penuh, dan prioritas sinkronisasi perangkat. Ditagih per bulan per akun dan dapat dibatalkan kapan saja.",
+    category: "subscription",
+    featured: true,
+    price: 9000,
+    quantityAvailable: 10000,
+    priceUnit: "bulan",
     image: { hash: "3e3a2499e0a0bd1a" },
   },
 ]

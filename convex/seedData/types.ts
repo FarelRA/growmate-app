@@ -1,8 +1,12 @@
 export type SeedImageSize = '50w' | '200w' | '400w' | '800w' | '1200w'
 
+/**
+ * Reference to a seed image asset set. Binaries live in
+ * `public/seed-images/<hash>/<size>w.webp`; dataset modules carry only the
+ * hash — never inline bytes. See `convex/seed/images.ts`.
+ */
 export interface SeedImage {
   hash: string
-  sizes: Record<SeedImageSize, string>
 }
 
 export interface SeedSensorRange {

@@ -2,6 +2,7 @@ import {
   S3Client,
   PutObjectCommand,
   HeadBucketCommand,
+  HeadObjectCommand,
   CreateBucketCommand,
   PutBucketPolicyCommand,
 } from '@aws-sdk/client-s3'
@@ -52,6 +53,17 @@ export async function ensureBucket(bucket: string): Promise<void> {
       }),
     }),
   )
+}
+
+/** True when the object already exists. Any error (missing bucket/key, ACL
+ * denial, network blip) resolves false so callers fall through to upload. */
+export async function objectExists(bucket: string, key: string): Promise<boolean> {
+  try {
+    await getClient().send(new HeadObjectCommand({ Bucket: bucket, Key: key }))
+    return true
+  } catch {
+    return false
+  }
 }
 
 export async function uploadFile(

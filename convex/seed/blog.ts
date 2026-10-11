@@ -3,33 +3,12 @@
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import blogData from "../seedData/blog";
-import { ensureBucket, uploadFile } from "../seedData/storage";
+import { uploadSeedImageSet } from "./images";
 
 function getEnv() {
   return (
     globalThis as { process?: { env?: Record<string, string | undefined> } }
   ).process?.env ?? {};
-}
-
-function parseDataUri(uri: string): Buffer {
-  const base64 = uri.split(",")[1]!;
-  return Buffer.from(base64, "base64");
-}
-
-const IMAGE_SIZES_FOR_SEED = ["50w", "200w", "400w", "800w", "1200w"] as const;
-
-async function uploadSeedImages(
-  bucket: string,
-  hash: string,
-  sizes: Record<string, string>,
-): Promise<string> {
-  for (const size of IMAGE_SIZES_FOR_SEED) {
-    const uri = sizes[size];
-    if (!uri) continue;
-    const buffer = parseDataUri(uri);
-    await uploadFile(bucket, `${hash}/${size}.webp`, buffer, "image/webp");
-  }
-  return hash;
 }
 
 // ─── Blog Posts ───────────────────────────────────────────
@@ -53,21 +32,18 @@ export const blog = internalAction({
       return;
     }
 
-    await ensureBucket(bucket);
-
+    let created = 0;
+    let skipped = 0;
     for (const post of blogData) {
       const existing = await ctx.runQuery(internal.seedInternal.lookupBlogPostByTitle, {
         title: post.title,
       });
       if (existing) {
+        skipped += 1;
         continue;
       }
 
-      const imageUrl = await uploadSeedImages(
-        bucket,
-        post.image.hash,
-        post.image.sizes,
-      );
+      const imageUrl = await uploadSeedImageSet(bucket, post.image.hash);
 
       await ctx.runMutation(internal.seedInternal.insertBlogPost, {
         title: post.title,
@@ -78,7 +54,8 @@ export const blog = internalAction({
         imageUrl,
         authorId: admin._id,
       });
-
+      created += 1;
     }
+    console.log(`[seed] blog: ${created} created, ${skipped} already present`);
   },
 });

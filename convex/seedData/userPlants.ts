@@ -1,5 +1,5 @@
-// Auto-generated seed data for user plants — do not edit manually
-
+// Seed dataset — hand-maintained. Image bytes live in public/seed-images/<hash>/;
+// this module carries only content hashes (see convex/seed/images.ts).
 type GrowthStage = "seed_dormancy" | "germination" | "seedling_development" | "vegetative_growth" | "flowering_reproduction" | "maturity_senescence"
 
 interface SeedUserPlant {

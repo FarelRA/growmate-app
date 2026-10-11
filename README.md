@@ -276,6 +276,15 @@ npx convex env set MINIO_BUCKET_IMAGE "$MINIO_BUCKET_IMAGE"
 
 ### 6. Seed initial data
 
+Seed image bytes live as files in `public/seed-images/<hash>/` (served by the
+app at `/seed-images/...`) — dataset modules carry only content hashes. The
+app must be reachable before image seeds run, and Convex needs its base URL:
+
+```sh
+npx convex env set SEED_ASSET_BASE_URL https://growmate.bond
+# local dev (with `bun dev` running): npx convex env set SEED_ASSET_BASE_URL http://localhost:3000
+```
+
 ```sh
 npx convex run seed:admin
 npx convex run seed:plants
@@ -355,6 +364,7 @@ Secrets (`DEVICE_API_KEY`, `MINIO_SECRET_KEY`, `CONVEX_INTERNAL_URL`, …) live 
 | `MINIO_ACCESS_KEY` | Seed functions | `npx convex env set MINIO_ACCESS_KEY ...` |
 | `MINIO_SECRET_KEY` | Seed functions | `npx convex env set MINIO_SECRET_KEY ...` |
 | `MINIO_BUCKET_IMAGE` | Seed functions | `npx convex env set MINIO_BUCKET_IMAGE ...` |
+| `SEED_ASSET_BASE_URL` | Seed image fetch (`/seed-images`) | `npx convex env set SEED_ASSET_BASE_URL https://growmate.bond` |
 
 **Nuxt runtime config** (used in browser and server):
 

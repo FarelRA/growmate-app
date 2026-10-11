@@ -30,15 +30,18 @@ usePublicSeo({
 
 // Concurrent: sequential top-level awaits would stack each SSR timeout
 // (4 x 8s) when the backend is unreachable; Promise.all bounds it to one.
-const [marketplaceAsync, communityAsync, plantLibraryAsync, blogPostsAsync] = await Promise.all([
+const CURATED_PRESET_KEYS = ['selada', 'tomat-ceri', 'stroberi', 'cabai-rawit']
+const [marketplaceAsync, communityAsync, plantLibraryAsync, curatedPresetsAsync, blogPostsAsync] = await Promise.all([
   usePublicConvexQuery<Record<string, unknown>, MarketplaceData>('public-marketplace-home', api.marketplace.marketplace, {}),
   usePublicConvexQuery<Record<string, unknown>, CommunityData>('public-community-home', api.community.community, {}),
   usePublicConvexQuery<Record<string, unknown>, PlantPreset[]>('public-plant-library-home', api.plants.plantLibrary, {}),
+  usePublicConvexQuery<Record<string, unknown>, PlantPreset[]>('public-plant-presets-home', api.plants.plantPresetsByKeys, { keys: CURATED_PRESET_KEYS }),
   usePublicConvexQuery<Record<string, unknown>, BlogPost[]>('public-blog-home', api.blog.publicBlog, {}),
 ])
 const marketplace = marketplaceAsync.data
 const community = communityAsync.data
 const plantLibrary = plantLibraryAsync.data
+const curatedPresets = curatedPresetsAsync.data
 const blogPosts = blogPostsAsync.data
 
 interface MarketplaceProduct {
@@ -85,10 +88,23 @@ const communityProducts = computed(() => marketplace.value?.community ?? [])
 const featuredProduct = computed(() => marketplace.value?.featured ?? officialProducts.value[0] ?? null)
 const stories = computed(() => community.value?.posts ?? [])
 const presets = computed(() => plantLibrary.value ?? [])
+// Curated picks resolve from the by-key query first, falling back to the
+// windowed library list so a backend without the new query still renders.
+const curatedByKey = computed(() => {
+  const fromQuery = curatedPresets.value ?? []
+  const fromLibrary = presets.value
+  return (key: string) =>
+    fromQuery.find((preset) => preset.key === key)
+    ?? fromLibrary.find((preset) => preset.key === key)
+})
 
 const saleCards = computed(() => orderByTitles(communityProducts.value, SALE_CARD_TITLES, 4))
 const gardenCards = computed(() => officialProducts.value.slice(0, 4))
-const podCards = computed(() => orderByKeys(presets.value, POD_CARD_KEYS, 4))
+const podCards = computed(() => {
+  const picked = POD_CARD_KEYS.flatMap((key) => curatedByKey.value(key) ?? [])
+  const rest = presets.value.filter((preset) => !POD_CARD_KEYS.includes(preset.key))
+  return [...picked, ...rest].slice(0, 4)
+})
 const blogCards = computed(() => blogPosts.value ?? [])
 const carouselStories = computed(() => stories.value.slice(0, 5))
 
@@ -105,12 +121,6 @@ const SALE_CARD_TITLES = [
   'Stroberi Petik 250 Gram',
 ]
 
-function orderByKeys<T extends { key: string }>(items: T[], keys: string[], count: number): T[] {
-  const picked = keys.flatMap((key) => items.find((item) => item.key === key) ?? [])
-  const rest = items.filter((item) => !keys.includes(item.key))
-  return [...picked, ...rest].slice(0, count)
-}
-
 function orderByTitles<T extends { title: string }>(items: T[], titles: string[], count: number): T[] {
   const picked = titles.flatMap((title) => items.find((item) => item.title === title) ?? [])
   const rest = items.filter((item) => !titles.includes(item.title))
@@ -118,7 +128,7 @@ function orderByTitles<T extends { title: string }>(items: T[], titles: string[]
 }
 
 const heroImages = computed(() => {
-  const presetByKey = (key: string) => presets.value.find((preset) => preset.key === key)?.imageUrl
+  const presetByKey = (key: string) => curatedByKey.value(key)?.imageUrl
   // Exactly one product slot (the Pods flagship); the rest are person-free
   // crop close-ups, then query-order fallbacks.
   const pool = [

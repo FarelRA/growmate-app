@@ -14,17 +14,6 @@ function getEnv() {
   ).process?.env ?? {};
 }
 
-const POST_COMMENTS = [
-  "Wah, terima kasih infonya! Sangat membantu.",
-  "Saya juga pernah mengalami hal serupa. Ternyata solusinya mudah ya.",
-  "Mantap! Hasil panennya kelihatan segar sekali.",
-  "Good info! Langsung saya coba tipsnya.",
-  "Baru tahu kalau ada cara semudah ini. Makasih sharingnya!",
-  "Keren banget! Semoga saya bisa seperti ini suatu hari.",
-  "Aku juga pakai GrowMate dan puas banget hasilnya.",
-  "Wah saya baru mau coba, jadi tambah semangat!",
-];
-
 // ─── Community Listings ───────────────────────────────────
 
 export const community = internalAction({
@@ -65,10 +54,9 @@ export const community = internalAction({
       listings += 1;
     }
 
-    // Community posts + comments + likes
+    // Community posts + comments + likes (all explicit in dataset)
     let posts = 0;
-    for (let i = 0; i < communityPostsData.length; i++) {
-      const post = communityPostsData[i]!;
+    for (const post of communityPostsData) {
       const authorId = userIds[post.userIndex % userIds.length];
       if (!authorId) continue;
 
@@ -84,25 +72,23 @@ export const community = internalAction({
       });
       posts += 1;
 
-      // Add a like from another user (never the author)
-      const likerId = userIds[(post.userIndex + 3) % userIds.length];
-      if (likerId && likerId !== authorId) {
+      for (const likerIndex of post.likes) {
+        const likerId = userIds[likerIndex % userIds.length];
+        if (!likerId || likerId === authorId) continue;
         await ctx.runMutation(internal.seedInternal.insertPostLike, {
           postId,
           userId: likerId,
         });
       }
 
-      // Add a comment on ~30% of posts
-      if (i % 3 === 0) {
-        const commenterId = userIds[(post.userIndex + 5) % userIds.length];
-        if (commenterId) {
-          await ctx.runMutation(internal.seedInternal.insertPostComment, {
-            postId,
-            userId: commenterId,
-            body: POST_COMMENTS[i % POST_COMMENTS.length]!,
-          });
-        }
+      for (const comment of post.comments.slice(0, 6)) {
+        const commenterId = userIds[comment.userIndex % userIds.length];
+        if (!commenterId) continue;
+        await ctx.runMutation(internal.seedInternal.insertPostComment, {
+          postId,
+          userId: commenterId,
+          body: comment.body,
+        });
       }
     }
 

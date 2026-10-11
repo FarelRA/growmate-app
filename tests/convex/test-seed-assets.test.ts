@@ -22,6 +22,7 @@ import seedDevices from '../../convex/seedData/devices'
 import seedUserPlants from '../../convex/seedData/userPlants'
 import seedPlants from '../../convex/seedData/plants'
 import seedFieldCrops from '../../convex/seedData/fieldCrops'
+import seedCommunityPosts from '../../convex/seedData/communityPosts'
 
 const root = process.cwd()
 const seedDataDir = join(root, 'convex/seedData')
@@ -164,6 +165,33 @@ describe('seed fleet shape (36 users + demo, 41 devices)', () => {
     expect(seedPlants.length + seedFieldCrops.length).toBeGreaterThanOrEqual(510)
     for (const p of seedUserPlants) {
       expect(catalogKeys.has(p.catalogKey), `unknown catalog key ${p.catalogKey}`).toBe(true)
+    }
+  })
+
+  it('community posts are authentic: every user posts >= 2, comments 2-6, no images', () => {
+    expect(seedCommunityPosts.length).toBeGreaterThanOrEqual(72)
+    const perUser = new Map<number, number>()
+    for (const p of seedCommunityPosts) {
+      perUser.set(p.userIndex, (perUser.get(p.userIndex) ?? 0) + 1)
+      expect(p.title.length).toBeGreaterThan(5)
+      expect(p.body.length).toBeGreaterThan(20)
+      expect(p.image, `post "${p.title}" must have no image`).toBeUndefined()
+      expect(p.comments.length, `post "${p.title}" comments`).toBeGreaterThanOrEqual(2)
+      expect(p.comments.length, `post "${p.title}" comments`).toBeLessThanOrEqual(6)
+      expect(p.likes.length, `post "${p.title}" likes`).toBeGreaterThanOrEqual(2)
+      for (const c of p.comments) {
+        expect(c.userIndex).toBeGreaterThanOrEqual(0)
+        expect(c.userIndex).toBeLessThan(36)
+        expect(c.body.length).toBeGreaterThan(3)
+      }
+      for (const l of p.likes) {
+        expect(l).toBeGreaterThanOrEqual(0)
+        expect(l).toBeLessThan(36)
+        expect(l, 'liker must not be the author').not.toBe(p.userIndex)
+      }
+    }
+    for (let i = 0; i < 36; i++) {
+      expect(perUser.get(i) ?? 0, `user ${i} must post >= 2`).toBeGreaterThanOrEqual(2)
     }
   })
 

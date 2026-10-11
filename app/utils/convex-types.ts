@@ -101,10 +101,13 @@ export type AdminBlogPostItem = Omit<Doc<'blogPosts'>, 'imageUrl'> & {
   relativeTime: string
 }
 
-/** Care schedule with its cadence/next-run labels attached. */
-export interface CareScheduleItem extends Doc<'careSchedules'> {
+/** Care schedule with its cadence/next-run labels attached (dashboard view).
+ * timeOfDayMinutes/timeLabel are null for hourly cadences (convex
+ * normalizeScheduleCadence/formatScheduleTime) — never undefined. */
+export interface CareScheduleItem extends Omit<Doc<'careSchedules'>, 'timeOfDayMinutes'> {
+  timeOfDayMinutes: number | null
   cadenceLabel: string
-  timeLabel: string
+  timeLabel: string | null
   nextRunLabel: string
   lastRunLabel: string | null
 }

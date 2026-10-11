@@ -6,6 +6,10 @@ definePageMeta({
   requiresSetup: true,
 })
 
+function reloadPage() {
+  window.location.reload()
+}
+
 const {
   searchQuery,
   selectedCategory,
@@ -117,7 +121,7 @@ const {
       <button
         type="button"
         class="rounded-full bg-[#f3f3f3] px-5 py-3 text-sm font-bold text-gm-text"
-        @click="window.location.reload()"
+        @click="reloadPage"
       >
         Muat ulang
       </button>

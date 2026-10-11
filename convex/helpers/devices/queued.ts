@@ -1,17 +1,6 @@
 import type { DeviceDoc, DeviceQueuedCommands, QueuedDeviceAction } from '../../types'
 import { newCommandId } from '../../types'
 
-export function emptyQueuedCommands(): DeviceQueuedCommands {
-  return {
-    pump: null,
-    light: null,
-    fertilizer: null,
-    pesticide: null,
-    videoStart: null,
-    videoStop: null,
-  }
-}
-
 export function getQueuedDeviceCommands(device: DeviceDoc): DeviceQueuedCommands {
   return {
     ...(device.queuedCommands ?? {

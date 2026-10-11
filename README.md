@@ -260,24 +260,6 @@ curl -sI https://storage.growmate.bond  # → 200 (RustFS)
 curl -sI https://growmate.bond          # → 200 (Nuxt)
 ```
 
-#### Migrating an existing MinIO deployment
-
-RustFS cannot read MinIO's on-disk format, so cut over to a fresh volume —
-no `mc` steps are needed, the app self-provisions everything:
-
-```sh
-docker compose down
-docker volume rm growmate-app_minio-data   # exact name: docker volume ls | grep minio
-cp .env.example .env   # re-apply: MINIO_* keys are now RUSTFS_* (same values work)
-docker compose up -d   # buckets (images public, recordings private) auto-create on first upload
-npx convex run seed:comprehensive   # re-uploads seed images into the fresh buckets
-```
-
-Past `recordings` objects do not carry over (30-day TTL regenerates history);
-seed images re-upload automatically since every hash is missing. After seeding,
-confirm a catalog image loads, e.g. open any `https://storage.growmate.bond/images/<hash>/400w.webp`
-URL shown in the plant library.
-
 ### 4. Deploy Convex functions
 
 ```sh

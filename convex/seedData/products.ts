@@ -18,7 +18,7 @@ const seedData: ProductSeedData[] = [
   {
     title: "GrowMate Tech",
     description:
-      "GrowMate Tech adalah perangkat lahan outdoor untuk kebun dan sawah. Sensor multi-spektrum, tangki besar, dan otomatisasi penuh untuk penyiraman serta pemantauan nutrisi real-time via aplikasi. Ideal untuk cabai, jagung, kacang-kacangan, dan hortikultura pada Musim Tanam Pertama.",
+      "GrowMate Tech adalah perangkat lahan outdoor untuk kebun dan sawah. Sensor multi-spektrum, tangki pupuk dan pestisida, dan otomatisasi penuh untuk penyiraman serta pemantauan nutrisi real-time via aplikasi. Ideal untuk cabai, jagung, kacang-kacangan, dan hortikultura pada Musim Tanam Pertama.",
     category: "hardware",
     featured: true,
     price: 2083000,

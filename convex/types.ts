@@ -5,10 +5,12 @@ export type { QueryCtx, MutationCtx }
 
 export type Ctx = QueryCtx | MutationCtx
 
-export type SensorKind = 'soil' | 'light' | 'temperature' | 'air' | 'water'
+export type SensorKind = 'soil' | 'light' | 'temperature' | 'air' | 'water' | 'current'
 export type SensorStatus = 'low' | 'optimal' | 'high'
 export type SensorRange = { min: number; max: number }
-export type PlantSensorProfile = Record<SensorKind, SensorRange>
+/** Plant-care kinds: everything except device telemetry (`current`). */
+export type PlantCareKind = Exclude<SensorKind, 'current'>
+export type PlantSensorProfile = Record<PlantCareKind, SensorRange>
 export type PlantHealth = 'excellent' | 'good' | 'fair' | 'poor'
 export type UserDoc = Doc<'users'>
 export type PlantDoc = Doc<'plants'>
@@ -74,16 +76,33 @@ export type ScheduleCadence = {
 }
 
 export type QueuedDeviceAction =
-  | { kind: 'pump'; durationMs: number }
-  | { kind: 'light'; enabled: boolean }
-  | { kind: 'fertilizer'; durationMs: number }
-  | { kind: 'pesticide'; durationMs: number }
+  | { kind: 'pump'; durationMs: number; id: string }
+  | { kind: 'light'; enabled: boolean; id: string }
+  | { kind: 'fertilizer'; durationMs: number; id: string }
+  | { kind: 'pesticide'; durationMs: number; id: string }
+  | {
+      kind: 'video_start'
+      width: number
+      height: number
+      fps: number
+      quality: number
+      maxSec: number
+      id: string
+    }
+  | { kind: 'video_stop'; id: string }
 
 export type DeviceQueuedCommands = {
   pump: Extract<QueuedDeviceAction, { kind: 'pump' }> | null
   light: Extract<QueuedDeviceAction, { kind: 'light' }> | null
   fertilizer: Extract<QueuedDeviceAction, { kind: 'fertilizer' }> | null
   pesticide: Extract<QueuedDeviceAction, { kind: 'pesticide' }> | null
+  videoStart: Extract<QueuedDeviceAction, { kind: 'video_start' }> | null
+  videoStop: Extract<QueuedDeviceAction, { kind: 'video_stop' }> | null
+}
+
+export function newCommandId(): string {
+  const rand = Math.floor(Math.random() * 46656).toString(36)
+  return `cmd-${Date.now().toString(36)}${rand}`.slice(0, 31)
 }
 
 export type LifecycleProfile = {
@@ -121,7 +140,7 @@ export const lifecycleStages = [
   { key: 'maturity_senescence', label: 'Kematangan / senesens', durationKey: 'maturitySenescenceDays' as const },
 ] as const
 
-export const sensorKinds: SensorKind[] = ['soil', 'light', 'temperature', 'air', 'water']
+export const sensorKinds: SensorKind[] = ['soil', 'light', 'temperature', 'air', 'water', 'current']
 
 export const defaultPlantSensorProfile: PlantSensorProfile = {
   soil: { min: 30, max: 80 },
@@ -137,7 +156,8 @@ export const DEFAULT_WATERING_DURATION = 8
 export const DEFAULT_WATERING_COOLDOWN = 6 * 60 * 60
 export const DEFAULT_LIGHTING_HYSTERESIS = 8
 export const ADC_RAW_MIN = 0
-export const ADC_RAW_MAX = 65535
+// Tech leg full-scale (firmware truth: sensors.py raw 0-32767, 06-api).
+export const ADC_RAW_MAX = 32767
 export const MAX_SENSORS_PER_POST = 8
 
 export const DEFAULT_FERTILIZING_THRESHOLD = 35

@@ -47,9 +47,9 @@ import { runUploadPipeline, IMAGE_SIZES } from '../../../../server/utils/uploadP
 
 const RECORDING_SRC = '../../../../server/api/v2/stream/recording.post'
 
-function recordingEvent(apiKey?: string) {
+function recordingEvent(bearerKey?: string) {
   const event: any = { headers: new Headers() }
-  if (apiKey !== undefined) event.headers.set('x-api-key', apiKey)
+  if (bearerKey !== undefined) event.headers.set('authorization', `Bearer ${bearerKey}`)
   return event
 }
 

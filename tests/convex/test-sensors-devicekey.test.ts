@@ -71,20 +71,50 @@ describe('sensors deviceKey auth', () => {
       deviceId: 'GM-AUTH',
       sensors: [{ kind: 'soil', value: 50, unit: '%' }],
     })
-    expect(res.success).toBe(true)
-    expect(res.updated).toBe(1)
+    expect(res.commands).toEqual([])
     expect(ctx.db.all('sensors')).toHaveLength(1)
     expect(ctx.db.all('sensorReadings')).toHaveLength(1)
   })
 
-  it('ingestAndAckSensorData with key acks queued commands', async () => {
-    const res = await callHandler(ingestAndAckSensorData, ctx, {
+  it('ingestAndAckSensorData with key acks queued commands via acceptedCommandIds', async () => {
+    await ctx.db.insert('devices', {
+      deviceId: 'GM-AUTH',
+      name: 'Auth Pod',
+      version: 'v1',
+      autoWatering: false,
+      autoLighting: false,
+      wateringThreshold: 35,
+      wateringDuration: 8,
+      wateringCooldown: 21600,
+      lightingThreshold: 40,
+      lightingHysteresis: 8,
+      lightEnabled: false,
+      queuedCommands: {
+        pump: { kind: 'pump', durationMs: 8000, id: 'cmd-ack-1' },
+        light: null,
+        fertilizer: null,
+        pesticide: null,
+      },
+    })
+    // Without the ack the queued pump redelivers on every ingest…
+    const redelivered = await callHandler(ingestAndAckSensorData, ctx, {
       deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-AUTH',
       sensors: [{ kind: 'soil', value: 50, unit: '%' }],
     })
-    expect(res.success).toBe(true)
-    expect(res.updated).toBe(1)
+    expect(redelivered.commands).toEqual([
+      expect.objectContaining({ kind: 'pump', durationMs: 8000, id: 'cmd-ack-1' }),
+    ])
+    // …echoing its id clears it (soil 50 triggers no new automation).
+    const acked = await callHandler(ingestAndAckSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
+      deviceId: 'GM-AUTH',
+      acceptedCommandIds: ['cmd-ack-1'],
+      sensors: [{ kind: 'soil', value: 50, unit: '%' }],
+    })
+    expect(acked.commands).toEqual([])
+    const device = ctx.db.all('devices').find((d) => d.deviceId === 'GM-AUTH')!
+    expect(device.queuedCommands.pump).toBeNull()
   })
 
   it('clearDeviceCommands with key keeps identical semantics', async () => {

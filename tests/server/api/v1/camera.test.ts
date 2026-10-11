@@ -32,6 +32,12 @@ function mockEvent() {
   return { headers: new Headers() }
 }
 
+function bearerEvent(key: string) {
+  const event = mockEvent()
+  event.headers.set('authorization', `Bearer ${key}`)
+  return event
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   mockMutation.mockReset()
@@ -47,13 +53,27 @@ beforeEach(() => {
 
 describe('POST /api/v1/camera', () => {
   describe('authentication', () => {
-    it('returns 401 when API key does not match', async () => {
+    it('returns 401 when Bearer token does not match', async () => {
       vi.resetModules()
       process.env.DEVICE_API_KEY = 'secret-key'
       const { default: cameraHandler } = await import(SRC)
 
       const event = mockEvent()
-      event.headers.set('x-api-key', 'wrong-key')
+      event.headers.set('authorization', 'Bearer wrong-key')
+
+      await expect(cameraHandler(event)).rejects.toMatchObject({
+        statusCode: 401,
+        statusMessage: 'Unauthorized',
+      })
+    })
+
+    it('returns 401 when Authorization header is missing', async () => {
+      vi.resetModules()
+      process.env.DEVICE_API_KEY = 'secret-key'
+      const { default: cameraHandler } = await import(SRC)
+
+      const event = mockEvent()
+      event.headers.set('x-device-id', 'device-1')
 
       await expect(cameraHandler(event)).rejects.toMatchObject({
         statusCode: 401,
@@ -66,7 +86,7 @@ describe('POST /api/v1/camera', () => {
       delete process.env.DEVICE_API_KEY
       const { default: cameraHandler } = await import(SRC)
 
-      const event = mockEvent()
+      const event = bearerEvent('any-key')
       event.headers.set('x-device-id', 'device-1')
 
       await expect(cameraHandler(event)).rejects.toMatchObject({
@@ -86,8 +106,7 @@ describe('POST /api/v1/camera', () => {
     })
 
     it('returns 400 without x-device-id header', async () => {
-      const event = mockEvent()
-      event.headers.set('x-api-key', 'valid-key')
+      const event = bearerEvent('valid-key')
 
       await expect(cameraHandler(event)).rejects.toMatchObject({
         statusCode: 400,
@@ -96,8 +115,7 @@ describe('POST /api/v1/camera', () => {
     })
 
     it('returns 400 with empty device ID', async () => {
-      const event = mockEvent()
-      event.headers.set('x-api-key', 'valid-key')
+      const event = bearerEvent('valid-key')
       event.headers.set('x-device-id', '  ')
 
       await expect(cameraHandler(event)).rejects.toMatchObject({
@@ -107,8 +125,7 @@ describe('POST /api/v1/camera', () => {
     })
 
     it('returns 400 with non-image content type', async () => {
-      const event = mockEvent()
-      event.headers.set('x-api-key', 'valid-key')
+      const event = bearerEvent('valid-key')
       event.headers.set('x-device-id', 'device-1')
       event.headers.set('content-type', 'text/plain')
 
@@ -118,24 +135,22 @@ describe('POST /api/v1/camera', () => {
       })
     })
 
-    it('returns 413 when content-length exceeds max', async () => {
-      const event = mockEvent()
-      event.headers.set('x-api-key', 'valid-key')
+    it('returns 400 when content-length exceeds 1MB', async () => {
+      const event = bearerEvent('valid-key')
       event.headers.set('x-device-id', 'device-1')
       event.headers.set('content-type', 'image/jpeg')
-      event.headers.set('content-length', String(30 * 1024 * 1024))
+      event.headers.set('content-length', String(2 * 1024 * 1024))
 
       await expect(cameraHandler(event)).rejects.toMatchObject({
-        statusCode: 413,
-        statusMessage: 'Image too large (max 20MB)',
+        statusCode: 400,
+        statusMessage: 'frame over 1MB',
       })
     })
 
     it('returns 400 when raw body is empty', async () => {
       globalThis.readRawBody = vi.fn().mockResolvedValue(undefined)
 
-      const event = mockEvent()
-      event.headers.set('x-api-key', 'valid-key')
+      const event = bearerEvent('valid-key')
       event.headers.set('x-device-id', 'device-1')
       event.headers.set('content-type', 'image/jpeg')
 
@@ -148,8 +163,7 @@ describe('POST /api/v1/camera', () => {
     it('returns 400 when raw body is empty string', async () => {
       globalThis.readRawBody = vi.fn().mockResolvedValue('')
 
-      const event = mockEvent()
-      event.headers.set('x-api-key', 'valid-key')
+      const event = bearerEvent('valid-key')
       event.headers.set('x-device-id', 'device-1')
       event.headers.set('content-type', 'image/jpeg')
 
@@ -159,19 +173,18 @@ describe('POST /api/v1/camera', () => {
       })
     })
 
-    it('returns 413 when raw body exceeds max size', async () => {
+    it('returns 400 when raw body exceeds 1MB', async () => {
       globalThis.readRawBody = vi.fn().mockResolvedValue(
-        Buffer.alloc(25 * 1024 * 1024).toString(),
+        Buffer.alloc(2 * 1024 * 1024).toString(),
       )
 
-      const event = mockEvent()
-      event.headers.set('x-api-key', 'valid-key')
+      const event = bearerEvent('valid-key')
       event.headers.set('x-device-id', 'device-1')
       event.headers.set('content-type', 'image/jpeg')
 
       await expect(cameraHandler(event)).rejects.toMatchObject({
-        statusCode: 413,
-        statusMessage: 'Image too large (max 20MB)',
+        statusCode: 400,
+        statusMessage: 'frame over 1MB',
       })
     })
   })
@@ -202,8 +215,7 @@ describe('POST /api/v1/camera', () => {
       globalThis.readRawBody = vi.fn().mockResolvedValue(rawBody)
 
       const before = Date.now()
-      const event = mockEvent()
-      event.headers.set('x-api-key', 'valid-key')
+      const event = bearerEvent('valid-key')
       event.headers.set('x-device-id', 'device-42')
       event.headers.set('content-type', 'image/jpeg')
 
@@ -266,8 +278,7 @@ describe('POST /api/v1/camera', () => {
       globalThis.readRawBody = vi.fn().mockResolvedValue('data')
       mockMutation.mockResolvedValue(undefined)
 
-      const event = mockEvent()
-      event.headers.set('x-api-key', 'valid-key')
+      const event = bearerEvent('valid-key')
       event.headers.set('x-device-id', 'device-1')
 
       await cameraHandler(event)

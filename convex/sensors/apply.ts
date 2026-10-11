@@ -1,8 +1,8 @@
 import { ConvexError } from 'convex/values'
 import type { MutationCtx } from '../_generated/server'
-import type { DeviceDoc, PlantDoc } from '../types'
+import type { DeviceDoc, DeviceQueuedCommands, PlantDoc } from '../types'
 import {
-  getQueuedDeviceCommands, buildDeviceCommandList, buildQueuedPumpAction,
+  getQueuedDeviceCommands, buildQueuedPumpAction,
   buildQueuedLightAction, buildQueuedFertilizerAction, buildQueuedPesticideAction,
   stagedQueuedCommands,
 } from '../helpers/devices'
@@ -269,54 +269,30 @@ export async function applyLightingRule(
   }
 }
 
-export async function finalizeIngest(
+export async function mergeQueuedCommands(
   ctx: MutationCtx,
   device: DeviceDoc,
   deviceUpdates: DeviceUpdates,
-  opts: { ack: boolean },
-): Promise<{ commands: ReturnType<typeof buildDeviceCommandList> }> {
+): Promise<DeviceQueuedCommands> {
   // Merge queuedCommands field-wise against a fresh read: staged (this
   // ingest) wins per-key when present, otherwise keep the stored value
   // (concurrent manual trigger). Prevents last-writer-wins wiping commands.
+  // No ack-clear here: commands stay queued until the device echoes their id
+  // in acceptedCommandIds (at-least-once both ways, 06-api retry/ack).
   if (Object.prototype.hasOwnProperty.call(deviceUpdates, 'queuedCommands')) {
     const staged = stagedQueuedCommands(deviceUpdates, device)
     const fresh: DeviceDoc | null = await ctx.db.get(device._id)
     const stored = fresh ? getQueuedDeviceCommands(fresh) : getQueuedDeviceCommands(device)
-    deviceUpdates.queuedCommands = {
+    return {
       pump: staged.pump ?? stored.pump ?? null,
       light: staged.light ?? stored.light ?? null,
       fertilizer: staged.fertilizer ?? stored.fertilizer ?? null,
       pesticide: staged.pesticide ?? stored.pesticide ?? null,
+      videoStart: staged.videoStart ?? stored.videoStart ?? null,
+      videoStop: staged.videoStop ?? stored.videoStop ?? null,
     }
   }
 
-  await ctx.db.patch(device._id, deviceUpdates)
-
-  const nextQueuedCommands = stagedQueuedCommands(deviceUpdates, device)
-
-  const commands = buildDeviceCommandList({
-    ...device,
-    queuedCommands: nextQueuedCommands,
-  })
-
-  if (opts.ack && commands.length > 0) {
-    // Ack-clear only the keys that were returned; preserve concurrently
-    // queued commands for other keys (delayed ack after new queue).
-    const freshBeforeAck: DeviceDoc | null = await ctx.db.get(device._id)
-    const storedBeforeAck = freshBeforeAck
-      ? getQueuedDeviceCommands(freshBeforeAck)
-      : getQueuedDeviceCommands({ ...device, queuedCommands: nextQueuedCommands })
-    const returnedKinds = new Set(commands.map((c) => c.kind))
-    await ctx.db.patch(device._id, {
-      queuedCommands: {
-        pump: returnedKinds.has('pump') ? null : (storedBeforeAck.pump ?? null),
-        light: returnedKinds.has('light') ? null : (storedBeforeAck.light ?? null),
-        fertilizer: returnedKinds.has('fertilizer') ? null : (storedBeforeAck.fertilizer ?? null),
-        pesticide: returnedKinds.has('pesticide') ? null : (storedBeforeAck.pesticide ?? null),
-      },
-      updatedAt: Date.now(),
-    })
-  }
-
-  return { commands }
+  const fresh: DeviceDoc | null = await ctx.db.get(device._id)
+  return fresh ? getQueuedDeviceCommands(fresh) : getQueuedDeviceCommands(device)
 }

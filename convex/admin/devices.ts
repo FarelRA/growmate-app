@@ -12,7 +12,9 @@ import {
   DEFAULT_FERTILIZING_THRESHOLD, DEFAULT_FERTILIZING_DURATION, DEFAULT_FERTILIZING_COOLDOWN,
   DEFAULT_PESTICIDE_THRESHOLD, DEFAULT_PESTICIDE_DURATION, DEFAULT_PESTICIDE_COOLDOWN,
   DEFAULT_TANK_CAPACITY, DEFAULT_TANK_MIN_LEVEL,
+  newCommandId,
 } from '../types'
+import { getQueuedDeviceCommands } from '../helpers/devices/queued'
 import { batchGetPlants, batchGetUsers } from './stats'
 
 // AUTH POLICY: `requireAdmin` gates live ONLY in the thin delegates in
@@ -387,5 +389,192 @@ async function deleteCareSchedulesByPlant(ctx: MutationCtx, plantId: Id<'plants'
       .take(CASCADE_BATCH)
     if (rows.length === 0) break
     await Promise.all(rows.map((row) => ctx.db.delete(row._id)))
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Fleet operator staging (firmware contract 06-api + 08-server-changes).
+// Staged values ride the NEXT sensor POST response for the named deviceId
+// and are redelivered until the device acks (appliedConfigRev advance for
+// config, new-deviceId report for claim) or the operator clears them.
+// ---------------------------------------------------------------------------
+
+const CLAIM_ID_RE = /^[A-Za-z0-9_-]{1,31}$/
+
+async function requireDeviceByExternalId(ctx: MutationCtx, deviceId: string) {
+  const device = await getDeviceByExternalId(ctx, deviceId.trim())
+  if (!device) {
+    throw new ConvexError('Perangkat tidak ditemukan')
+  }
+  return device
+}
+
+export async function stageDeviceConfig(
+  ctx: MutationCtx,
+  args: { deviceId: string; reportIntervalSec: number },
+) {
+  const device = await requireDeviceByExternalId(ctx, args.deviceId)
+  const interval = args.reportIntervalSec
+  if (!Number.isFinite(interval) || interval < 10 || interval > 3600) {
+    throw new ConvexError('reportIntervalSec must be between 10-3600')
+  }
+  const rev = (device.pendingConfigRev ?? device.appliedConfigRev ?? 0) + 1
+  await ctx.db.patch(device._id, {
+    pendingConfigRev: rev,
+    pendingReportIntervalSec: Math.round(interval),
+    updatedAt: Date.now(),
+  })
+  return { success: true, rev, reportIntervalSec: Math.round(interval) }
+}
+
+export async function stageDeviceClaim(
+  ctx: MutationCtx,
+  args: { deviceId: string; claimDeviceId: string },
+) {
+  const device = await requireDeviceByExternalId(ctx, args.deviceId)
+  const claim = args.claimDeviceId.trim()
+  if (!CLAIM_ID_RE.test(claim)) {
+    throw new ConvexError('claim must match [A-Za-z0-9_-] <=31')
+  }
+  const taken = await getDeviceByExternalId(ctx, claim)
+  if (taken && String(taken._id) !== String(device._id)) {
+    throw new ConvexError('ID perangkat tersebut sudah digunakan')
+  }
+  await ctx.db.patch(device._id, {
+    pendingClaimDeviceId: claim,
+    updatedAt: Date.now(),
+  })
+  return { success: true, claim }
+}
+
+export async function clearDeviceClaim(ctx: MutationCtx, args: { deviceId: string }) {
+  const device = await requireDeviceByExternalId(ctx, args.deviceId)
+  await ctx.db.patch(device._id, {
+    pendingClaimDeviceId: undefined,
+    updatedAt: Date.now(),
+  })
+  return { success: true }
+}
+
+export async function stageDeviceOta(
+  ctx: MutationCtx,
+  args: { deviceId: string; minFirmware: string; firmwareUrl: string },
+) {
+  const device = await requireDeviceByExternalId(ctx, args.deviceId)
+  const minFirmware = args.minFirmware.trim()
+  const firmwareUrl = args.firmwareUrl.trim()
+  if (!minFirmware || !firmwareUrl) {
+    throw new ConvexError('minFirmware + firmwareUrl required')
+  }
+  if (!firmwareUrl.startsWith('https://')) {
+    throw new ConvexError('firmwareUrl must be https://')
+  }
+  if (minFirmware.length >= 32 || firmwareUrl.length >= 256) {
+    throw new ConvexError('Firmware offer overlong (version <32, url <256)')
+  }
+  await ctx.db.patch(device._id, {
+    otaMinFirmware: minFirmware,
+    otaFirmwareUrl: firmwareUrl,
+    updatedAt: Date.now(),
+  })
+  return { success: true }
+}
+
+export async function clearDeviceOta(ctx: MutationCtx, args: { deviceId: string }) {
+  const device = await requireDeviceByExternalId(ctx, args.deviceId)
+  await ctx.db.patch(device._id, {
+    otaMinFirmware: undefined,
+    otaFirmwareUrl: undefined,
+    updatedAt: Date.now(),
+  })
+  return { success: true }
+}
+
+export interface QueueDeviceCommandArgs {
+  deviceId: string
+  kind: 'pump' | 'light' | 'fertilizer' | 'pesticide' | 'video_start' | 'video_stop'
+  durationMs?: number
+  enabled?: boolean
+  width?: number
+  height?: number
+  fps?: number
+  quality?: number
+  maxSec?: number
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+export async function queueDeviceCommand(ctx: MutationCtx, args: QueueDeviceCommandArgs) {
+  const device = await requireDeviceByExternalId(ctx, args.deviceId)
+  const queued = getQueuedDeviceCommands(device)
+  const id = newCommandId()
+
+  switch (args.kind) {
+    case 'pump': {
+      const dur = args.durationMs
+      if (!isFiniteNumber(dur) || !(dur > 0) || dur > 30000) {
+        throw new ConvexError('0 < durationMs <= 30000')
+      }
+      queued.pump = { kind: 'pump', durationMs: Math.round(dur), id }
+      break
+    }
+    case 'fertilizer': {
+      const dur = args.durationMs
+      if (!isFiniteNumber(dur) || !(dur > 0) || dur > 30000) {
+        throw new ConvexError('0 < durationMs <= 30000')
+      }
+      queued.fertilizer = { kind: 'fertilizer', durationMs: Math.round(dur), id }
+      break
+    }
+    case 'pesticide': {
+      const dur = args.durationMs
+      if (!isFiniteNumber(dur) || !(dur > 0) || dur > 30000) {
+        throw new ConvexError('0 < durationMs <= 30000')
+      }
+      queued.pesticide = { kind: 'pesticide', durationMs: Math.round(dur), id }
+      break
+    }
+    case 'light': {
+      const en = args.enabled
+      if (typeof en !== 'boolean' && !(isFiniteNumber(en))) {
+        throw new ConvexError('enabled must be bool or number')
+      }
+      queued.light = { kind: 'light', enabled: Boolean(en), id }
+      break
+    }
+    case 'video_start': {
+      const { width = 640, height = 480, fps = 5, quality = 70, maxSec = 300 } = args
+      if (![320, 640, 1280].includes(width)) throw new ConvexError('width 320|640|1280')
+      if (![240, 480, 720].includes(height)) throw new ConvexError('height 240|480|720')
+      if (!Number.isInteger(fps) || fps < 1 || fps > 10) throw new ConvexError('fps 1-10')
+      if (!Number.isInteger(quality) || quality < 50 || quality > 85) throw new ConvexError('quality 50-85')
+      if (!Number.isInteger(maxSec) || maxSec < 5 || maxSec > 600) throw new ConvexError('maxSec 5-600')
+      queued.videoStart = { kind: 'video_start', width, height, fps, quality, maxSec, id }
+      queued.videoStop = null
+      break
+    }
+    case 'video_stop': {
+      queued.videoStart = null
+      queued.videoStop = { kind: 'video_stop', id }
+      break
+    }
+  }
+
+  await ctx.db.patch(device._id, { queuedCommands: queued, updatedAt: Date.now() })
+  switch (args.kind) {
+    case 'pump':
+      return { success: true, queued: queued.pump }
+    case 'light':
+      return { success: true, queued: queued.light }
+    case 'fertilizer':
+      return { success: true, queued: queued.fertilizer }
+    case 'pesticide':
+      return { success: true, queued: queued.pesticide }
+    case 'video_start':
+      return { success: true, queued: queued.videoStart }
+    case 'video_stop':
+      return { success: true, queued: queued.videoStop }
   }
 }

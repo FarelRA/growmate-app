@@ -43,7 +43,7 @@ beforeEach(() => {
 })
 
 describe('POST /api/v2/stream/register', () => {
-  it('rejects request without x-api-key', async () => {
+  it('rejects request without authorization', async () => {
     vi.resetModules()
     process.env.DEVICE_API_KEY = 'test-key'
     const handler = (await import(SRC)).default
@@ -57,7 +57,7 @@ describe('POST /api/v2/stream/register', () => {
     process.env.DEVICE_API_KEY = 'test-key'
     mockParseStreamUrl.mockReturnValue(null)
     const handler = (await import(SRC)).default
-    const event = { headers: new Headers({ 'x-api-key': 'test-key', 'content-type': 'application/json' }) }
+    const event = { headers: new Headers({ authorization: 'Bearer test-key', 'content-type': 'application/json' }) }
     vi.mocked(globalThis.readBody).mockResolvedValue({
       deviceId: 'test', streamUrl: 'invalid-url',
     })
@@ -70,7 +70,7 @@ describe('POST /api/v2/stream/register', () => {
     process.env.DEVICE_API_KEY = 'test-key'
     mockParseStreamUrl.mockReturnValue({ protocol: 'http', host: 'example.com', port: 80 })
     const handler = (await import(SRC)).default
-    const event = { headers: new Headers({ 'x-api-key': 'test-key', 'content-type': 'application/json' }) }
+    const event = { headers: new Headers({ authorization: 'Bearer test-key', 'content-type': 'application/json' }) }
     vi.mocked(globalThis.readBody).mockResolvedValue({
       deviceId: 'test', streamUrl: 'http://example.com:80',
     })
@@ -85,7 +85,7 @@ describe('POST /api/v2/stream/register', () => {
     mockMutation.mockResolvedValue({ success: true })
 
     const handler = (await import(SRC)).default
-    const event = { headers: new Headers({ 'x-api-key': 'test-key', 'content-type': 'application/json' }) }
+    const event = { headers: new Headers({ authorization: 'Bearer test-key', 'content-type': 'application/json' }) }
     vi.mocked(globalThis.readBody).mockResolvedValue({
       deviceId: 'test-device', streamUrl: 'tcp://100.64.0.1:8554',
     })

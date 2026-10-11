@@ -53,7 +53,7 @@ vi.mock('node:dns/promises', () => ({
 // must exercise the real parser + host-form checks end to end.
 
 function deviceEvent(apiKey = 'test-key') {
-  const event: any = { headers: new Headers({ 'x-api-key': apiKey }) }
+  const event: any = { headers: new Headers({ authorization: `Bearer ${apiKey}` }) }
   return event
 }
 

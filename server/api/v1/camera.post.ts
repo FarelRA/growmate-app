@@ -1,7 +1,12 @@
 import { api } from '~~/convex/_generated/api'
 import { useConvex } from '~~/server/utils/convex'
 import { requireDeviceKey } from '~~/server/utils/requireDeviceKey'
-import { runUploadPipeline, deleteUploadedKeys, MAX_IMAGE_BYTES, IMAGE_BUCKET } from '~~/server/utils/uploadPipeline'
+import { checkCameraRateLimit } from '~~/server/utils/deviceProtocol'
+import { runUploadPipeline, deleteUploadedKeys, IMAGE_BUCKET } from '~~/server/utils/uploadPipeline'
+
+// Firmware frame cap (tech 06-api §POST camera + 08 §7: reject bodies over
+// ~1MB with 400; pods frames are 20-100KB so the same cap serves both).
+export const MAX_DEVICE_FRAME_BYTES = 1024 * 1024
 
 export default defineEventHandler(async (event) => {
   try {
@@ -21,10 +26,10 @@ export default defineEventHandler(async (event) => {
     }
 
     const contentLength = getHeader(event, 'content-length')
-    if (contentLength && Number(contentLength) > MAX_IMAGE_BYTES) {
+    if (contentLength && Number(contentLength) > MAX_DEVICE_FRAME_BYTES) {
       throw createError({
-        statusCode: 413,
-        statusMessage: 'Image too large (max 20MB)',
+        statusCode: 400,
+        statusMessage: 'frame over 1MB',
       })
     }
 
@@ -34,6 +39,15 @@ export default defineEventHandler(async (event) => {
     }
 
     const input = Buffer.from(rawBody)
+    if (input.length > MAX_DEVICE_FRAME_BYTES) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'frame over 1MB',
+      })
+    }
+
+    checkCameraRateLimit(event, deviceId)
+
     const { path: pathPrefix, keys } = await runUploadPipeline(input)
 
     const convex = useConvex()

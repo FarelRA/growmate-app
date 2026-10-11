@@ -45,8 +45,8 @@ describe('constants', () => {
     expect(ADC_RAW_MIN).toBe(0)
   })
 
-  it('ADC_RAW_MAX is 65535', () => {
-    expect(ADC_RAW_MAX).toBe(65535)
+  it('ADC_RAW_MAX is 32767', () => {
+    expect(ADC_RAW_MAX).toBe(32767)
   })
 })
 
@@ -130,12 +130,12 @@ describe('lifecycleStages', () => {
 })
 
 describe('sensorKinds', () => {
-  it('contains all 5 sensor kinds', () => {
-    expect(sensorKinds).toHaveLength(5)
+  it('contains all 6 sensor kinds', () => {
+    expect(sensorKinds).toHaveLength(6)
   })
 
   it('includes all expected kinds', () => {
-    const all: SensorKind[] = ['soil', 'light', 'temperature', 'air', 'water']
+    const all: SensorKind[] = ['soil', 'light', 'temperature', 'air', 'water', 'current']
     expect(sensorKinds).toEqual(all)
   })
 })

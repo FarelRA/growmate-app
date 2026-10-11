@@ -186,7 +186,10 @@ describe('executeDueSchedules', () => {
     expect(result).toMatchObject({ checked: 1, fired: 1 })
 
     const device = (await ctx.db.get(deviceDocId)) as any
-    expect(device.queuedCommands?.light).toEqual({ kind: 'light', enabled: true })
+    expect(device.queuedCommands?.light).toEqual(
+      expect.objectContaining({ kind: 'light', enabled: true }),
+    )
+    expect(device.queuedCommands?.light?.id).toEqual(expect.any(String))
     expect(device.queuedCommands?.pump).toBeNull()
   })
 

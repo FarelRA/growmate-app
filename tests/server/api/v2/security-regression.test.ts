@@ -93,7 +93,6 @@ vi.mock('@aws-sdk/s3-request-presigner', () => ({
 // locks below must exercise the real parser + blocklist end to end.
 
 const V1_SENSORS_SRC = '../../../../server/api/v1/sensors.post'
-const V2_SENSORS_SRC = '../../../../server/api/v2/sensors.post'
 const CAMERA_SRC = '../../../../server/api/v1/camera.post'
 const REGISTER_SRC = '../../../../server/api/v2/stream/register.post'
 const RECORDING_SRC = '../../../../server/api/v2/stream/recording.post'
@@ -103,6 +102,12 @@ const RECORDINGS_SRC = '../../../../server/api/v2/recordings/[deviceId].get'
 const VALID_SENSORS = {
   deviceId: 'dev-1',
   sensors: [{ kind: 'soil', value: 50, unit: '%' }],
+}
+// Firmware-exact envelope for the v1 ingest deviceKey test (ingestHandler
+// validates via validateDeviceEnvelope: analog kinds are RAW-only).
+const VALID_ENVELOPE = {
+  deviceId: 'dev-1',
+  sensors: [{ kind: 'soil', raw: 2000, unit: 'raw' }],
 }
 const VALID_STREAM = { deviceId: 'dev-1', streamUrl: 'tcp://100.64.0.1:8554' }
 const VALID_SEGMENT = {
@@ -114,7 +119,7 @@ const VALID_SEGMENT = {
 
 function deviceEvent(apiKey?: string) {
   const event: any = { headers: new Headers() }
-  if (apiKey !== undefined) event.headers.set('x-api-key', apiKey)
+  if (apiKey !== undefined) event.headers.set('authorization', `Bearer ${apiKey}`)
   return event
 }
 
@@ -168,11 +173,10 @@ afterEach(() => {
 })
 
 describe('fail-closed device auth on every device-key route', () => {
-  it('rejects v1 sensors, v2 sensors, camera, register, recording with 500 when env is unset', async () => {
+  it('rejects v1 sensors, camera, register, recording with 500 when env is unset', async () => {
     vi.resetModules()
     delete process.env.DEVICE_API_KEY
     const { default: v1Sensors } = await import(V1_SENSORS_SRC)
-    const { default: v2Sensors } = await import(V2_SENSORS_SRC)
     const { default: camera } = await import(CAMERA_SRC)
     const { default: register } = await import(REGISTER_SRC)
     const { default: recording } = await import(RECORDING_SRC)
@@ -180,7 +184,6 @@ describe('fail-closed device auth on every device-key route', () => {
 
     vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_SENSORS })
     await expect(v1Sensors(deviceEvent('any-key'))).rejects.toMatchObject({ statusCode: 500 })
-    await expect(v2Sensors(deviceEvent('any-key'))).rejects.toMatchObject({ statusCode: 500 })
     await expect(camera(cameraEvent('any-key'))).rejects.toMatchObject({ statusCode: 500 })
 
     vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_STREAM })
@@ -198,7 +201,6 @@ describe('fail-closed device auth on every device-key route', () => {
     vi.resetModules()
     process.env.DEVICE_API_KEY = 'secret-key'
     const { default: v1Sensors } = await import(V1_SENSORS_SRC)
-    const { default: v2Sensors } = await import(V2_SENSORS_SRC)
     const { default: camera } = await import(CAMERA_SRC)
     const { default: register } = await import(REGISTER_SRC)
     const { default: recording } = await import(RECORDING_SRC)
@@ -206,7 +208,7 @@ describe('fail-closed device auth on every device-key route', () => {
 
     vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_SENSORS })
     await expect(v1Sensors(deviceEvent('wrong-key'))).rejects.toMatchObject({ statusCode: 401 })
-    await expect(v2Sensors(deviceEvent())).rejects.toMatchObject({ statusCode: 401 })
+    await expect(v1Sensors(deviceEvent())).rejects.toMatchObject({ statusCode: 401 })
     await expect(camera(cameraEvent('wrong-key'))).rejects.toMatchObject({ statusCode: 401 })
 
     vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_STREAM })
@@ -298,14 +300,14 @@ describe('recordings list requires Bearer', () => {
 })
 
 describe('deviceKey forwarded into mutation calls', () => {
-  it('v2 ingest passes deviceKey to ingestAndAckSensorData', async () => {
+  it('v1 ingest passes deviceKey to ingestAndAckSensorData', async () => {
     vi.resetModules()
     process.env.DEVICE_API_KEY = 'test-key'
-    const { default: v2Sensors } = await import(V2_SENSORS_SRC)
+    const { default: v1Sensors } = await import(V1_SENSORS_SRC)
     mockMutation.mockResolvedValue({ success: true, updated: 1, commands: [] })
-    vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_SENSORS })
+    vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_ENVELOPE })
 
-    await v2Sensors(deviceEvent('test-key'))
+    await v1Sensors(deviceEvent('test-key'))
     expect(mockMutation).toHaveBeenCalledWith(
       'ingestAndAckSensorData',
       expect.objectContaining({ deviceId: 'dev-1', deviceKey: 'test-key' }),

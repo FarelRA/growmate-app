@@ -57,8 +57,8 @@ describe('dashboard sensors bound', () => {
     expect(hunk).not.toContain('.collect()')
   })
 
-  it('take(10) covers the ≤5-rows invariant (one row per sensor kind)', () => {
-    expect(sensorKinds).toHaveLength(5)
+  it('take(10) covers the ≤6-rows invariant (one row per sensor kind)', () => {
+    expect(sensorKinds).toHaveLength(6)
     expect(sensorKinds.length).toBeLessThanOrEqual(10)
   })
 

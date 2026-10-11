@@ -170,7 +170,7 @@ At minimum you need to set:
 | `CONVEX_INSTANCE_SECRET` | `openssl rand -hex 32` |
 | `MINIO_ACCESS_KEY` | Any random string (20+ chars) |
 | `MINIO_SECRET_KEY` | Any random string (20+ chars) |
-| `DEVICE_API_KEY` | Any random string |
+| `DEVICE_API_KEY` | Any random string — MUST equal the firmware build token (`APP_API_TOKEN`) |
 | `OPENAI_API_KEY` | OpenAI API key |
 
 ### 2. Generate the Convex admin key
@@ -318,6 +318,7 @@ All public traffic enters through Traefik (TLS via Let's Encrypt) and fans out b
 
 ```
 internet ── :443 ──▶ traefik ─┬─ growmate.bond ────────▶ growmate:3000 (Nuxt + Nitro)
+                               ├─ api.growmate.bond ────▶ growmate:3000 (device fleet API)
                                ├─ convex.growmate.bond ─▶ convex:3210 (/api/*, /instance_name)
                                │                          └▶ convex:3211 (everything else)
                                └─ storage.growmate.bond ─▶ minio:9000 (S3)
@@ -325,7 +326,7 @@ internet ── :443 ──▶ traefik ─┬─ growmate.bond ─────�
 
 The browser opens 3 connections: same-origin pages/API via Nitro, Convex queries/subscriptions direct to the Convex host, and images direct to the storage host. The browser bypasses Nitro for Convex data — deliberate (realtime subscriptions); auth is enforced inside Convex functions, not at the edge.
 
-- Device ingest: `POST growmate.bond/api/v1|v2/...` with `x-api-key: <DEVICE_API_KEY>` → Nitro `requireDeviceKey` (500 when the key is unset — fail-closed) → Convex mutation re-checks `deviceKey` server-side (`convex/sensors.ts`, `convex/streams.ts`).
+- Device fleet API (firmware contract, no firmware edits needed): `POST api.growmate.bond/v1/sensors` + `/v1/camera` (compiled firmware paths) and the `/api/v1/*` aliases serve the same handlers. Auth is `Authorization: Bearer <DEVICE_API_KEY>` — the key MUST equal the firmware build token (pods `APP_API_TOKEN`, tech `APP_API_TOKEN` env), mirrored via `npx convex env set DEVICE_API_KEY`. Nitro `requireDeviceKey` fails closed (500 when unset) → Convex mutation re-checks `deviceKey` (`convex/sensors.ts`). Responses carry `{commands[] (always with id), config?, claim?, minFirmware?, firmwareUrl?}` under 3KB; telemetry dedups on `snapshotId`; commands redeliver until acked in `acceptedCommandIds`; pods pump/light are XOR-paced server-side. Tech live video: `POST /api/v1/video/live` (chunked MJPEG) → `GET /api/v1/video/live/:id` + `/api/v1/video/latest/:id.jpg` for viewers.
 - Nitro reaches Convex over `CONVEX_INTERNAL_URL` (`http://convex:3210`), never the public hairpin (`server/utils/convex.ts`).
 - Live video WS (`/api/v2/stream/:id/live`) requires `?token=` plus device ownership; recordings require `Bearer` plus ownership and are served as 1h presigned URLs from the private `recordings` bucket (signed against the public MinIO host, `server/utils/storage.ts`).
 - Stream registration runs an SSRF guard (`isBlockedStreamHost`): loopback / link-local / RFC-1918 / service names rejected, Tailscale `100.64/10` intentionally allowed.

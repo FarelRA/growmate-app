@@ -1,5 +1,5 @@
 import handleSensorIngest from '~~/server/utils/ingestHandler'
 
 export default defineEventHandler(async (event) => {
-  return await handleSensorIngest(event, 'v1')
+  return await handleSensorIngest(event)
 })

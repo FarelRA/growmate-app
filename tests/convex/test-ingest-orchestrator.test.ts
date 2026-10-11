@@ -86,10 +86,13 @@ describe('ingest orchestrator: rule application order', () => {
         { kind: 'air', value: 90, unit: '%' },
       ],
     })
-    expect(res.success).toBe(true)
+    expect(res.commands).toBeDefined()
     // All three rules fire; pump is shared (last writer sets its duration).
     const kinds = res.commands.map((c: any) => c.kind).sort()
     expect(kinds).toEqual(['fertilizer', 'pesticide', 'pump'])
+    for (const c of res.commands as any[]) {
+      expect(typeof c.id).toBe('string')
+    }
     const automation = ctx.db.all('automationLogs')
     expect(automation.map((l) => l.action)).toEqual([
       'pump_enabled',
@@ -103,7 +106,7 @@ describe('ingest orchestrator: rule application order', () => {
 
   it('v1 applies watering -> lighting in order', async () => {
     const ctx = createFakeCtx()
-    await seedDeviceWithPlant(ctx)
+    const { deviceId } = await seedDeviceWithPlant(ctx)
     const res = await callHandler(ingestAndAckSensorData, ctx, {
       deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-ORCH',
@@ -113,18 +116,27 @@ describe('ingest orchestrator: rule application order', () => {
         { kind: 'light', value: 10, unit: '%' },
       ],
     })
+    // Pods XOR pacing: pump + light queued → pump ONLY in this response…
     const kinds = res.commands.map((c: any) => c.kind).sort()
-    expect(kinds).toEqual(['light', 'pump'])
+    expect(kinds).toEqual(['pump'])
+    expect(res.commands[0]).toEqual(
+      expect.objectContaining({ kind: 'pump', durationMs: 8000, id: expect.any(String) }),
+    )
+    // …while the light stays queued in storage for the next response.
+    const stored = (await ctx.db.get(deviceId)) as any
+    expect(stored.queuedCommands.light).toEqual(
+      expect.objectContaining({ kind: 'light', enabled: true, id: expect.any(String) }),
+    )
     const automation = ctx.db.all('automationLogs')
     expect(automation.map((l) => l.action)).toEqual(['pump_enabled', 'pump_disabled', 'light_on'])
   })
 })
 
-describe('ingest orchestrator: ack-after-list', () => {
-  it('returned commands are ack-cleared from storage after listing', async () => {
+describe('ingest orchestrator: ack-via-acceptedCommandIds', () => {
+  it('queued commands redeliver until the device echoes their id', async () => {
     const ctx = createFakeCtx()
     const { deviceId } = await seedDeviceWithPlant(ctx)
-    const res = await callHandler(ingestAndAckSensorData, ctx, {
+    const first = await callHandler(ingestAndAckSensorData, ctx, {
       deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-ORCH',
       sensors: [
@@ -132,9 +144,26 @@ describe('ingest orchestrator: ack-after-list', () => {
         { kind: 'water', value: 60, unit: '%' },
       ],
     })
-    // Command list is built before the ack-clear, so the caller sees it…
-    expect(res.commands).toEqual([{ kind: 'pump', durationMs: 8000 }])
-    // …while storage no longer holds the returned key afterwards.
+    // Command list carries the queued pump with its id…
+    expect(first.commands).toEqual([
+      expect.objectContaining({ kind: 'pump', durationMs: 8000, id: expect.any(String) }),
+    ])
+    const pumpId = (first.commands[0] as any).id as string
+    // …and nothing is auto-cleared on send: storage still holds it.
+    expect(((await ctx.db.get(deviceId)) as any).queuedCommands.pump).toEqual(
+      expect.objectContaining({ kind: 'pump', durationMs: 8000, id: pumpId }),
+    )
+    // Echoing the id in acceptedCommandIds clears the queue.
+    const second = await callHandler(ingestAndAckSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
+      deviceId: 'GM-ORCH',
+      acceptedCommandIds: [pumpId],
+      sensors: [
+        { kind: 'soil', value: 20, unit: '%' },
+        { kind: 'water', value: 60, unit: '%' },
+      ],
+    })
+    expect(second.commands).toEqual([])
     const stored = (await ctx.db.get(deviceId)) as any
     expect(stored.queuedCommands.pump).toBeNull()
   })

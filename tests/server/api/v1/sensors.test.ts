@@ -24,6 +24,12 @@ function mockEvent() {
   return { headers: new Headers() }
 }
 
+function bearerEvent(key: string) {
+  const event = mockEvent()
+  event.headers.set('authorization', `Bearer ${key}`)
+  return event
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   mockMutation.mockReset()
@@ -34,28 +40,29 @@ beforeEach(() => {
 })
 
 describe('POST /api/v1/sensors', () => {
-  it('keeps the identical response shape via the shared handler', async () => {
+  it('returns the firmware response shape verbatim via the shared handler', async () => {
     vi.resetModules()
     process.env.DEVICE_API_KEY = 'test-key'
-    mockMutation.mockResolvedValue({ success: true, updated: 3, commands: [] })
+    const firmwareResponse = { commands: [{ id: 'cmd-1', kind: 'pump', durationMs: 8000 }] }
+    mockMutation.mockResolvedValue(firmwareResponse)
     const handler = (await import(SRC)).default
-    const event = mockEvent()
-    event.headers.set('x-api-key', 'test-key')
+    const event = bearerEvent('test-key')
     vi.mocked(globalThis.readBody).mockResolvedValue({
       deviceId: 'test-device',
+      firmwareVersion: '1.2.3',
       sensors: [
-        { kind: 'soil', value: 45, unit: '%', raw: 1234 },
-        { kind: 'light', value: 60, unit: '%', raw: 3000 },
-        { kind: 'water', value: 80, unit: '%', raw: 2500 },
+        { kind: 'soil', unit: '%', raw: 1234 },
+        { kind: 'light', unit: '%', raw: 3000 },
+        { kind: 'water', unit: '%', raw: 2500 },
       ],
     })
 
     const result = await handler(event)
-    expect(result).toEqual({ success: true, updated: 3, commands: [] })
+    expect(result).toEqual(firmwareResponse)
     expect(mockMutation).toHaveBeenCalledTimes(1)
     expect(mockMutation).toHaveBeenCalledWith(
       'ingestAndAckSensorData',
-      expect.objectContaining({ deviceId: 'test-device' }),
+      expect.objectContaining({ deviceId: 'test-device', deviceKey: 'test-key' }),
     )
   })
 
@@ -63,29 +70,47 @@ describe('POST /api/v1/sensors', () => {
     vi.resetModules()
     process.env.DEVICE_API_KEY = 'test-key'
     const handler = (await import(SRC)).default
-    const event = mockEvent()
-    event.headers.set('x-api-key', 'test-key')
+    const event = bearerEvent('test-key')
     vi.mocked(globalThis.readBody).mockResolvedValue({
       deviceId: 'test-device',
-      sensors: Array.from({ length: 9 }, () => ({ kind: 'soil', value: 50, unit: '%' })),
+      sensors: Array.from({ length: 9 }, () => ({ kind: 'soil', unit: '%', raw: 50 })),
     })
 
     await expect(handler(event)).rejects.toMatchObject({ statusCode: 400 })
     expect(mockMutation).not.toHaveBeenCalled()
   })
 
-  it('keeps the v1 raw ceiling at 4095', async () => {
+  it('rejects pods raw values above 4095', async () => {
     vi.resetModules()
     process.env.DEVICE_API_KEY = 'test-key'
     const handler = (await import(SRC)).default
-    const event = mockEvent()
-    event.headers.set('x-api-key', 'test-key')
+    const event = bearerEvent('test-key')
     vi.mocked(globalThis.readBody).mockResolvedValue({
       deviceId: 'test-device',
-      sensors: [{ kind: 'soil', value: 50, unit: '%', raw: 5000 }],
+      sensors: [{ kind: 'soil', unit: '%', raw: 5000 }],
     })
 
     await expect(handler(event)).rejects.toMatchObject({ statusCode: 400 })
     expect(mockMutation).not.toHaveBeenCalled()
+  })
+
+  it('accepts tech raw values up to 32767 with variant tech', async () => {
+    vi.resetModules()
+    process.env.DEVICE_API_KEY = 'test-key'
+    mockMutation.mockResolvedValue({ commands: [] })
+    const handler = (await import(SRC)).default
+    const event = bearerEvent('test-key')
+    vi.mocked(globalThis.readBody).mockResolvedValue({
+      deviceId: 'tech-device',
+      variant: 'tech',
+      sensors: [{ kind: 'soil', unit: '%', raw: 20070 }],
+    })
+
+    const result = await handler(event)
+    expect(result).toEqual({ commands: [] })
+    expect(mockMutation).toHaveBeenCalledWith(
+      'ingestAndAckSensorData',
+      expect.objectContaining({ deviceId: 'tech-device', variant: 'tech' }),
+    )
   })
 })

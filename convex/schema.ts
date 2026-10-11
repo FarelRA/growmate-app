@@ -173,6 +173,7 @@ export default defineSchema({
           v.object({
             kind: v.literal('pump'),
             durationMs: v.number(),
+            id: v.string(),
           }),
         ),
         light: v.union(
@@ -180,6 +181,7 @@ export default defineSchema({
           v.object({
             kind: v.literal('light'),
             enabled: v.boolean(),
+            id: v.string(),
           }),
         ),
         fertilizer: v.union(
@@ -187,6 +189,7 @@ export default defineSchema({
           v.object({
             kind: v.literal('fertilizer'),
             durationMs: v.number(),
+            id: v.string(),
           }),
         ),
         pesticide: v.union(
@@ -194,7 +197,31 @@ export default defineSchema({
           v.object({
             kind: v.literal('pesticide'),
             durationMs: v.number(),
+            id: v.string(),
           }),
+        ),
+        videoStart: v.optional(
+          v.union(
+            v.null(),
+            v.object({
+              kind: v.literal('video_start'),
+              width: v.number(),
+              height: v.number(),
+              fps: v.number(),
+              quality: v.number(),
+              maxSec: v.number(),
+              id: v.string(),
+            }),
+          ),
+        ),
+        videoStop: v.optional(
+          v.union(
+            v.null(),
+            v.object({
+              kind: v.literal('video_stop'),
+              id: v.string(),
+            }),
+          ),
         ),
       }),
     ),
@@ -226,6 +253,29 @@ export default defineSchema({
     hasSolarPanel: v.optional(v.boolean()),
     modemImei: v.optional(v.string()),
     solarPanelWatts: v.optional(v.number()),
+    // Firmware identity + server-driven config/claim/OTA (docs 06-api / 08 §3,§6,§10,§11).
+    // hardwareId is the immutable birth identity (MAC hex, always sent);
+    // variant selects the current leg on tech units (tech | tech-addon).
+    hardwareId: v.optional(v.string()),
+    variant: v.optional(v.string()),
+    appliedConfigRev: v.optional(v.number()),
+    pendingConfigRev: v.optional(v.number()),
+    pendingReportIntervalSec: v.optional(v.number()),
+    pendingClaimDeviceId: v.optional(v.string()),
+    otaMinFirmware: v.optional(v.string()),
+    otaFirmwareUrl: v.optional(v.string()),
+    lastSnapshotId: v.optional(v.string()),
+    lastAgeMs: v.optional(v.number()),
+    lastSampleAt: v.optional(v.number()),
+    lastRssi: v.optional(v.number()),
+    lastBootCount: v.optional(v.number()),
+    lastResetReason: v.optional(v.string()),
+    lastHeapFree: v.optional(v.number()),
+    lastUptimeS: v.optional(v.number()),
+    lastDhtFails: v.optional(v.number()),
+    lastAdcFails: v.optional(v.number()),
+    lastStreaming: v.optional(v.boolean()),
+    lastStreamFps: v.optional(v.number()),
     // Metadata
     lastSeen: v.number(),
     firmwareVersion: v.optional(v.string()),
@@ -234,6 +284,7 @@ export default defineSchema({
   })
     .index('by_user', ['userId'])
     .index('by_deviceId', ['deviceId'])
+    .index('by_hardwareId', ['hardwareId'])
     .index('by_plant', ['plantId'])
     .index('by_createdAt', ['createdAt']),
 
@@ -249,6 +300,7 @@ export default defineSchema({
       v.literal('temperature'),
       v.literal('air'),
       v.literal('water'),
+      v.literal('current'),
     ),
     value: v.number(),
     unit: v.string(),
@@ -274,6 +326,7 @@ export default defineSchema({
       v.literal('temperature'),
       v.literal('air'),
       v.literal('water'),
+      v.literal('current'),
     ),
     value: v.number(),
     unit: v.string(),
@@ -638,6 +691,17 @@ export default defineSchema({
   })
     .index('by_user', ['userId'])
     .index('by_createdAt', ['createdAt']),
+
+  // ============================================
+  // DEVICE SNAPSHOTS - snapshotId dedup (at-least-once telemetry)
+  // ============================================
+  deviceSnapshots: defineTable({
+    deviceId: v.id('devices'),
+    snapshotId: v.string(),
+    receivedAt: v.number(),
+  })
+    .index('by_device_and_snapshot', ['deviceId', 'snapshotId'])
+    .index('by_device', ['deviceId']),
 
   // ============================================
   // VIDEO RECORDINGS - V2 H.264 segment metadata

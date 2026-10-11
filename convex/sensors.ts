@@ -3,10 +3,10 @@ import { mutation, type MutationCtx } from './_generated/server'
 import type { DeviceDoc, PlantDoc, SensorDoc, SensorKind } from './types'
 import { MAX_SENSORS_PER_POST } from './types'
 import {
-  ensureDeviceExists, getQueuedDeviceCommands,
+  ensureDeviceExists, getQueuedDeviceCommands, ackQueuedCommands,
   getDeviceByExternalId,
 } from './helpers/devices'
-import { normalizeRawSensorValue } from './helpers/generic'
+import { normalizeRawSensorValue, convertCurrentRawToMilliamps } from './helpers/generic'
 import { recordGrowEvent, recordPlantImage } from './helpers/events'
 import {
   evaluateFertilizingRule, evaluatePesticideRule, estimateBatterySoC,
@@ -14,7 +14,7 @@ import {
 import { shouldSkipSensorRecordedEvent } from './helpers/events'
 import {
   applyWateringRule, applyFertilizingRule, applyPesticideRule, applyLightingRule,
-  finalizeIngest,
+  mergeQueuedCommands,
 } from './sensors/apply'
 import type { WateringDecision, LightingDecision } from './sensors/apply'
 
@@ -24,6 +24,8 @@ export { MAX_SENSORS_PER_POST }
 // The expected value comes from the `DEVICE_API_KEY` env var, which MUST be set
 // on the Convex deployment (self-hosted actions read container env). Nitro
 // passes the key server-side; browsers never see it. Fail closed when unset.
+// The device sends it as `Authorization: Bearer <token>`; Nitro also accepts
+// the `x-api-key` tooling header and forwards the matched key here.
 
 function assertDeviceKey(deviceKey: string) {
   const expected = process.env.DEVICE_API_KEY
@@ -43,11 +45,21 @@ interface IngestionResult {
   updated: number
 }
 
+function clampAgeMs(ageMs: number, effectiveIntervalSec: number): number {
+  if (!Number.isFinite(ageMs) || ageMs < 0) return 0
+  return Math.min(ageMs, Math.max(45_000, effectiveIntervalSec * 3 * 1000))
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
 async function ingestSensorReadings(
   ctx: MutationCtx,
   device: DeviceDoc,
   activePlant: PlantDoc | null,
-  sensors: { kind: SensorKind; value: number; unit: string; raw?: number }[],
+  sensors: { kind: SensorKind; value?: number; unit: string; raw?: number }[],
+  sampleAt: number,
   now: number,
   currentState?: {
     pumpEnabled: boolean
@@ -56,7 +68,9 @@ async function ingestSensorReadings(
     pesticideEnabled?: boolean
     tankSwitchOpen?: boolean
     drawerSwitchOpen?: boolean
-    batteryCurrent?: number
+    batteryCurrent?: number | null
+    streaming?: boolean
+    streamFps?: number
   },
   firmwareVersion?: string,
 ): Promise<IngestionResult> {
@@ -104,7 +118,9 @@ async function ingestSensorReadings(
     if (currentState.drawerSwitchOpen !== undefined) {
       deviceUpdates.reportedDrawerSwitchOpen = currentState.drawerSwitchOpen
     }
-    if (currentState.batteryCurrent !== undefined) {
+    // Firmware sends batteryCurrent: null always (RAW-only current rides
+    // sensors[] kind=current). Only legacy/app clients send a number.
+    if (isFiniteNumber(currentState.batteryCurrent)) {
       const timeDeltaMs = now - (device.lastBatteryReading ?? now)
       let prevAccumulated = device.batteryAccumulatedMah ?? 0
 
@@ -127,21 +143,49 @@ async function ingestSensorReadings(
       }
       deviceUpdates.batteryCurrent = currentState.batteryCurrent
     }
+    if (typeof currentState.streaming === 'boolean') {
+      deviceUpdates.lastStreaming = currentState.streaming
+    }
+    if (isFiniteNumber(currentState.streamFps)) {
+      deviceUpdates.lastStreamFps = currentState.streamFps
+    }
     deviceUpdates.lastBatteryReading = now
     deviceUpdates.lastStateSyncAt = now
   }
 
   for (const sensorUpdate of sensors) {
     const unit = sensorUpdate.unit.trim()
-    const value =
+    let value: number
+    let storeUnit = unit
+    if (sensorUpdate.kind === 'current') {
+      // Tech current leg: raw-only A0 code, server converts to milliamps.
+      const raw = sensorUpdate.raw ?? 0
+      value = convertCurrentRawToMilliamps(raw)
+      storeUnit = 'mA'
+      // Feed the battery accumulator from the converted leg current.
+      const timeDeltaMs = now - (device.lastBatteryReading ?? now)
+      const { accumulatedMah, soc } = estimateBatterySoC(
+        value,
+        device.batteryAccumulatedMah ?? 0,
+        device.batteryCapacityAh ?? 5,
+        timeDeltaMs,
+      )
+      deviceUpdates.batteryCurrent = value
+      deviceUpdates.batteryAccumulatedMah = accumulatedMah
+      deviceUpdates.batterySoC = soc
+      deviceUpdates.lastBatteryReading = now
+    } else if (
       typeof sensorUpdate.raw === 'number' &&
       (sensorUpdate.kind === 'soil' ||
         sensorUpdate.kind === 'light' ||
         sensorUpdate.kind === 'water')
-        ? normalizeRawSensorValue(sensorUpdate.kind as SensorKind, sensorUpdate.raw, device.version)
-        : sensorUpdate.value
+    ) {
+      value = normalizeRawSensorValue(sensorUpdate.kind as SensorKind, sensorUpdate.raw, device.version)
+    } else {
+      value = sensorUpdate.value ?? 0
+    }
 
-    sensorState.set(sensorUpdate.kind, { value, unit })
+    sensorState.set(sensorUpdate.kind, { value, unit: storeUnit })
 
     const existingSensor = existingSensorByKind.get(sensorUpdate.kind)
 
@@ -149,9 +193,9 @@ async function ingestSensorReadings(
       await ctx.db.patch(existingSensor._id, {
         plantId: activePlant?._id,
         value,
-        unit,
+        unit: storeUnit,
         raw: sensorUpdate.raw,
-        measuredAt: now,
+        measuredAt: sampleAt,
       })
     } else {
       await ctx.db.insert('sensors', {
@@ -159,9 +203,9 @@ async function ingestSensorReadings(
         plantId: activePlant?._id,
         kind: sensorUpdate.kind,
         value,
-        unit,
+        unit: storeUnit,
         raw: sensorUpdate.raw,
-        measuredAt: now,
+        measuredAt: sampleAt,
         createdAt: now,
       })
     }
@@ -171,9 +215,9 @@ async function ingestSensorReadings(
       plantId: activePlant?._id,
       kind: sensorUpdate.kind,
       value,
-      unit,
+      unit: storeUnit,
       raw: sensorUpdate.raw,
-      measuredAt: now,
+      measuredAt: sampleAt,
     })
 
     const previousValue = existingSensor?.value
@@ -191,7 +235,7 @@ async function ingestSensorReadings(
         entityType: 'sensor',
         eventType: 'sensor_recorded',
         title: 'Telemetri dicatat',
-        detail: `Sensor ${sensorUpdate.kind} diperbarui ke ${value}${unit}.`,
+        detail: `Sensor ${sensorUpdate.kind} diperbarui ke ${value}${storeUnit}.`,
         data: {
           kind: sensorUpdate.kind,
           value,
@@ -269,10 +313,30 @@ function evaluateLightingRule(
   return { shouldActivate, nextLightEnabled, effectiveThreshold, lightValue }
 }
 
+const deviceSensorEntry = v.object({
+  kind: v.union(
+    v.literal('soil'),
+    v.literal('light'),
+    v.literal('temperature'),
+    v.literal('air'),
+    v.literal('water'),
+    v.literal('current'),
+  ),
+  value: v.optional(v.number()),
+  unit: v.string(),
+  raw: v.optional(v.number()),
+})
+
 const ingestSensorDataArgs = {
   deviceKey: v.string(),
   deviceId: v.string(),
   firmwareVersion: v.optional(v.string()),
+  hardwareId: v.optional(v.string()),
+  variant: v.optional(v.string()),
+  snapshotId: v.optional(v.string()),
+  ageMs: v.optional(v.number()),
+  appliedConfigRev: v.optional(v.number()),
+  acceptedCommandIds: v.optional(v.array(v.string())),
   currentState: v.optional(
     v.object({
       pumpEnabled: v.boolean(),
@@ -281,30 +345,36 @@ const ingestSensorDataArgs = {
       pesticideEnabled: v.optional(v.boolean()),
       tankSwitchOpen: v.optional(v.boolean()),
       drawerSwitchOpen: v.optional(v.boolean()),
-      batteryCurrent: v.optional(v.number()),
+      batteryCurrent: v.optional(v.union(v.number(), v.null())),
       batteryAccumulatedMah: v.optional(v.number()),
+      streaming: v.optional(v.boolean()),
+      streamFps: v.optional(v.number()),
     }),
   ),
-  sensors: v.array(
+  health: v.optional(
     v.object({
-      kind: v.union(
-        v.literal('soil'),
-        v.literal('light'),
-        v.literal('temperature'),
-        v.literal('air'),
-        v.literal('water'),
-      ),
-      value: v.number(),
-      unit: v.string(),
-      raw: v.optional(v.number()),
+      heapFree: v.optional(v.number()),
+      rssi: v.optional(v.number()),
+      uptimeS: v.optional(v.number()),
+      bootCount: v.optional(v.number()),
+      resetReason: v.optional(v.string()),
+      dhtFails: v.optional(v.number()),
+      adcFails: v.optional(v.number()),
     }),
   ),
+  sensors: v.array(deviceSensorEntry),
 }
 
 type IngestSensorDataArgs = {
   deviceKey: string
   deviceId: string
   firmwareVersion?: string
+  hardwareId?: string
+  variant?: string
+  snapshotId?: string
+  ageMs?: number
+  appliedConfigRev?: number
+  acceptedCommandIds?: string[]
   currentState?: {
     pumpEnabled: boolean
     lightEnabled: boolean
@@ -312,10 +382,21 @@ type IngestSensorDataArgs = {
     pesticideEnabled?: boolean
     tankSwitchOpen?: boolean
     drawerSwitchOpen?: boolean
-    batteryCurrent?: number
+    batteryCurrent?: number | null
     batteryAccumulatedMah?: number
+    streaming?: boolean
+    streamFps?: number
   }
-  sensors: { kind: SensorKind; value: number; unit: string; raw?: number }[]
+  health?: {
+    heapFree?: number
+    rssi?: number
+    uptimeS?: number
+    bootCount?: number
+    resetReason?: string
+    dhtFails?: number
+    adcFails?: number
+  }
+  sensors: { kind: SensorKind; value?: number; unit: string; raw?: number }[]
 }
 
 function assertSensorCap(sensors: unknown[]) {
@@ -324,12 +405,35 @@ function assertSensorCap(sensors: unknown[]) {
   }
 }
 
+const DEVICE_ID_RE = /^[A-Za-z0-9_-]{1,31}$/
+
 async function performIngest(
   ctx: MutationCtx,
   args: IngestSensorDataArgs,
-  opts: { ack: boolean },
 ) {
-    const device = await ensureDeviceExists(ctx, args.deviceId, args.firmwareVersion)
+    // Claim rename: a claimed unit reports its NEW deviceId with the SAME
+    // hardwareId. Resolve via hardwareId so history follows the rename
+    // instead of forking a fresh device row.
+    let device = await getDeviceByExternalId(ctx, args.deviceId.trim())
+    if (!device && args.hardwareId) {
+      device = await ctx.db
+        .query('devices')
+        .withIndex('by_hardwareId', (q) => q.eq('hardwareId', args.hardwareId))
+        .first() ?? null
+      if (device) {
+        await ctx.db.patch(device._id, {
+          deviceId: args.deviceId.trim(),
+          updatedAt: Date.now(),
+        })
+        device = (await ctx.db.get(device._id))!
+      }
+    }
+    if (!device) {
+      device = await ensureDeviceExists(ctx, args.deviceId, args.firmwareVersion, args.variant)
+    }
+    if (!device) {
+      throw new ConvexError('Perangkat tidak ditemukan')
+    }
     if (device.version !== 'v1' && device.version !== 'v2') {
       throw new ConvexError(`Unknown device version: ${String(device.version)}`)
     }
@@ -337,33 +441,208 @@ async function performIngest(
     const activePlant = plant && !plant.archived ? plant : null
     const now = Date.now()
 
-    const { sensorState, deviceUpdates, updated } = await ingestSensorReadings(
-      ctx, device, activePlant, args.sensors, now, args.currentState, args.firmwareVersion,
-    )
+    const patchIdentity: Record<string, string | number> = { updatedAt: now }
+    if (args.hardwareId && !device.hardwareId) {
+      patchIdentity.hardwareId = args.hardwareId
+    }
+    if (args.variant && device.variant !== args.variant) {
+      patchIdentity.variant = args.variant
+    }
+    if (Object.keys(patchIdentity).length > 1) {
+      await ctx.db.patch(device._id, patchIdentity)
+      device = (await ctx.db.get(device._id))!
+    }
 
-    const watering: WateringDecision = evaluateWateringRule(device, activePlant, sensorState, now)
-    await applyWateringRule(ctx, device, activePlant, sensorState, deviceUpdates, now, watering)
+    // At-least-once ack (device rule): drop every queued command whose id
+    // the device echoed in acceptedCommandIds. Delivery is redriven below
+    // until acked or superseded — never cleared merely for being sent.
+    const acceptedIds = args.acceptedCommandIds ?? []
+    if (acceptedIds.length > 0) {
+      const { queued } = ackQueuedCommands(getQueuedDeviceCommands(device), acceptedIds)
+      await ctx.db.patch(device._id, { queuedCommands: queued, updatedAt: now })
+      device = (await ctx.db.get(device._id))!
+    }
+
+    if (typeof args.appliedConfigRev === 'number' && Number.isInteger(args.appliedConfigRev) && args.appliedConfigRev >= 0) {
+      await ctx.db.patch(device._id, { appliedConfigRev: args.appliedConfigRev, updatedAt: now })
+      device = (await ctx.db.get(device._id))!
+    }
+
+    // At-least-once dedup (device rule): the same snapshotId must never
+    // double-count. Duplicate POSTs still ack and still receive pending
+    // commands/config/claim below.
+    let duplicate = false
+    if (args.snapshotId) {
+      const seen = await ctx.db
+        .query('deviceSnapshots')
+        .withIndex('by_device_and_snapshot', (q) =>
+          q.eq('deviceId', device!._id).eq('snapshotId', args.snapshotId!),
+        )
+        .first()
+      if (seen) {
+        duplicate = true
+      } else {
+        await ctx.db.insert('deviceSnapshots', {
+          deviceId: device._id,
+          snapshotId: args.snapshotId,
+          receivedAt: now,
+        })
+      }
+    }
+
+    const effectiveIntervalSec =
+      device.pendingReportIntervalSec ?? (device.version === 'v2' ? 60 : 15)
+    const sampleAt = now - clampAgeMs(args.ageMs ?? 0, effectiveIntervalSec)
+
+    let sensorState = new Map<string, { value: number; unit: string }>()
+    let deviceUpdates: DeviceUpdates = { lastSeen: now, updatedAt: now }
+    if (!duplicate) {
+      const result = await ingestSensorReadings(
+        ctx, device, activePlant, args.sensors, sampleAt, now, args.currentState, args.firmwareVersion,
+      )
+      sensorState = result.sensorState
+      deviceUpdates = result.deviceUpdates
+    } else {
+      deviceUpdates = {
+        lastSeen: now,
+        updatedAt: now,
+        firmwareVersion: args.firmwareVersion?.trim() || device.firmwareVersion,
+      }
+      // Rebuild sensor state from the latest stored rows so automation
+      // evaluates on current values even for duplicate deliveries.
+      const currentSensors = await ctx.db
+        .query('sensors')
+        .withIndex('by_device', (q) => q.eq('deviceId', device!._id))
+        .collect()
+      for (const s of currentSensors) {
+        sensorState.set(s.kind, { value: s.value, unit: s.unit })
+      }
+    }
+
+    if (args.snapshotId) deviceUpdates.lastSnapshotId = args.snapshotId
+    if (typeof args.ageMs === 'number') deviceUpdates.lastAgeMs = args.ageMs
+    deviceUpdates.lastSampleAt = sampleAt
+    if (args.health) {
+      if (isFiniteNumber(args.health.rssi)) deviceUpdates.lastRssi = args.health.rssi
+      if (isFiniteNumber(args.health.bootCount)) deviceUpdates.lastBootCount = args.health.bootCount
+      if (typeof args.health.resetReason === 'string') deviceUpdates.lastResetReason = args.health.resetReason
+      if (isFiniteNumber(args.health.heapFree)) deviceUpdates.lastHeapFree = args.health.heapFree
+      if (isFiniteNumber(args.health.uptimeS)) deviceUpdates.lastUptimeS = args.health.uptimeS
+      if (isFiniteNumber(args.health.dhtFails)) deviceUpdates.lastDhtFails = args.health.dhtFails
+      if (isFiniteNumber(args.health.adcFails)) deviceUpdates.lastAdcFails = args.health.adcFails
+    }
+
+    const watering: WateringDecision = duplicate
+      ? { shouldWater: false, cooledDown: false, effectiveThreshold: 0, soilValue: undefined, waterLevel: undefined }
+      : evaluateWateringRule(device, activePlant, sensorState, now)
+    if (!duplicate) {
+      await applyWateringRule(ctx, device, activePlant, sensorState, deviceUpdates, now, watering)
+    }
 
     if (device.version === 'v2') {
       // V2-specific: fertilizing + pesticide rules
       // V2 has no grow light — skip lighting evaluation
-      const fertilizing = evaluateFertilizingRule(device, activePlant, sensorState, now)
-      await applyFertilizingRule(ctx, device, activePlant, sensorState, deviceUpdates, now, fertilizing)
+      if (!duplicate) {
+        const fertilizing = evaluateFertilizingRule(device, activePlant, sensorState, now)
+        await applyFertilizingRule(ctx, device, activePlant, sensorState, deviceUpdates, now, fertilizing)
 
-      const pesticide = evaluatePesticideRule(device, activePlant, sensorState, now)
-      await applyPesticideRule(ctx, device, activePlant, sensorState, deviceUpdates, now, pesticide)
+        const pesticide = evaluatePesticideRule(device, activePlant, sensorState, now)
+        await applyPesticideRule(ctx, device, activePlant, sensorState, deviceUpdates, now, pesticide)
+      }
     } else {
       // V1-specific: lighting
-      const currentLightDesired = typeof deviceUpdates.lightEnabled === 'boolean'
-        ? Boolean(deviceUpdates.lightEnabled)
-        : device.lightEnabled
-      const lighting: LightingDecision = evaluateLightingRule(device, activePlant, sensorState, currentLightDesired)
-      await applyLightingRule(ctx, device, activePlant, sensorState, deviceUpdates, now, lighting)
+      if (!duplicate) {
+        const currentLightDesired = typeof deviceUpdates.lightEnabled === 'boolean'
+          ? Boolean(deviceUpdates.lightEnabled)
+          : device.lightEnabled
+        const lighting: LightingDecision = evaluateLightingRule(device, activePlant, sensorState, currentLightDesired)
+        await applyLightingRule(ctx, device, activePlant, sensorState, deviceUpdates, now, lighting)
+      }
     }
 
-    const { commands } = await finalizeIngest(ctx, device, deviceUpdates, opts)
+    // Merge staged automation queues field-wise against a fresh read so a
+    // concurrent manual trigger is preserved. No ack-clear here: commands
+    // stay queued until the device echoes their id in acceptedCommandIds.
+    const merged = await mergeQueuedCommands(ctx, device, deviceUpdates)
+    await ctx.db.patch(device._id, { ...deviceUpdates, queuedCommands: merged, updatedAt: now })
+    device = (await ctx.db.get(device._id))!
 
-    return { success: true, updated, commands }
+    const commands = buildDeviceResponseCommands(device)
+
+    const response: {
+      commands: ReturnType<typeof buildDeviceResponseCommands>
+      config?: { rev: number; reportIntervalSec: number }
+      claim?: { deviceId: string }
+      minFirmware?: string
+      firmwareUrl?: string
+    } = { commands }
+
+    const appliedRev = device.appliedConfigRev ?? args.appliedConfigRev ?? 0
+    if (
+      device.pendingConfigRev !== undefined &&
+      device.pendingConfigRev >= 1 &&
+      device.pendingConfigRev > appliedRev &&
+      device.pendingReportIntervalSec !== undefined
+    ) {
+      response.config = {
+        rev: device.pendingConfigRev,
+        reportIntervalSec: device.pendingReportIntervalSec,
+      }
+    }
+
+    if (
+      device.pendingClaimDeviceId &&
+      DEVICE_ID_RE.test(device.pendingClaimDeviceId) &&
+      device.pendingClaimDeviceId !== device.deviceId
+    ) {
+      response.claim = { deviceId: device.pendingClaimDeviceId }
+    }
+
+    if (device.otaMinFirmware && device.otaFirmwareUrl) {
+      response.minFirmware = device.otaMinFirmware
+      response.firmwareUrl = device.otaFirmwareUrl
+    }
+
+    // Device response buffer is ~3KB: never exceed it.
+    if (Buffer.byteLength(JSON.stringify(response), 'utf8') > 3072 && response.commands.length > 1) {
+      response.commands = response.commands.slice(0, 1)
+    }
+
+    return response
+}
+
+function buildDeviceResponseCommands(device: DeviceDoc) {
+  const queued = getQueuedDeviceCommands(device)
+  const out: Record<string, unknown>[] = []
+  // Pump XOR light is SERVER-PACED on pods (v1): never send both in one
+  // response — combined stall browns out the 4A boost (06-api). Tech legs
+  // run independent per-channel timers and may combine pump+fert+pest.
+  const isPods = device.version === 'v1' && (device.variant === undefined || device.variant === null)
+  const pump = queued.pump && queued.pump.id
+    ? { kind: 'pump', durationMs: queued.pump.durationMs, id: queued.pump.id }
+    : null
+  const light = queued.light && queued.light.id
+    ? { kind: 'light', enabled: queued.light.enabled, id: queued.light.id }
+    : null
+  if (isPods && pump && light) {
+    out.push(pump)
+  } else {
+    if (pump) out.push(pump)
+    if (light) out.push(light)
+  }
+  if (queued.fertilizer && queued.fertilizer.id) {
+    out.push({ kind: 'fertilizer', durationMs: queued.fertilizer.durationMs, id: queued.fertilizer.id })
+  }
+  if (queued.pesticide && queued.pesticide.id) {
+    out.push({ kind: 'pesticide', durationMs: queued.pesticide.durationMs, id: queued.pesticide.id })
+  }
+  if (queued.videoStart) {
+    out.push({ ...queued.videoStart })
+  }
+  if (queued.videoStop) {
+    out.push({ ...queued.videoStop })
+  }
+  return out
 }
 
 export const ingestAndAckSensorData = mutation({
@@ -371,7 +650,7 @@ export const ingestAndAckSensorData = mutation({
   handler: async (ctx, args) => {
     assertDeviceKey(args.deviceKey)
     assertSensorCap(args.sensors)
-    return await performIngest(ctx, args, { ack: true })
+    return await performIngest(ctx, args)
   },
 })
 
@@ -384,6 +663,8 @@ export const clearDeviceCommands = mutation({
       v.literal('light'),
       v.literal('fertilizer'),
       v.literal('pesticide'),
+      v.literal('video_start'),
+      v.literal('video_stop'),
     )),
   },
   handler: async (ctx, args) => {
@@ -411,6 +692,14 @@ export const clearDeviceCommands = mutation({
       }
       if (command === 'pesticide' && queuedCommands.pesticide) {
         queuedCommands.pesticide = null
+        cleared = true
+      }
+      if (command === 'video_start' && queuedCommands.videoStart) {
+        queuedCommands.videoStart = null
+        cleared = true
+      }
+      if (command === 'video_stop' && queuedCommands.videoStop) {
+        queuedCommands.videoStop = null
         cleared = true
       }
     }

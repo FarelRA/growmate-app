@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { validateSensors, normalizeSensors } from '~~/server/utils/ingestHandler'
-import { MAX_SENSORS_PER_POST } from '~~/convex/types'
+import { validateDeviceEnvelope } from '~~/server/utils/deviceProtocol'
 
 const HANDLER_SRC = '~~/server/utils/ingestHandler'
 
@@ -25,8 +24,14 @@ function mockEvent() {
   return { headers: new Headers() }
 }
 
-function sensor(kind: string, value: number, extra: Record<string, unknown> = {}) {
-  return { kind, value, unit: kind === 'temperature' ? 'C' : '%', ...extra }
+function bearerEvent(key: string) {
+  const event = mockEvent()
+  event.headers.set('authorization', `Bearer ${key}`)
+  return event
+}
+
+function soilEntry(raw: number) {
+  return { kind: 'soil', unit: '%', raw }
 }
 
 beforeEach(() => {
@@ -38,139 +43,146 @@ beforeEach(() => {
   globalThis.readBody = vi.fn() as any
 })
 
-describe('validateSensors shared validator', () => {
+describe('validateDeviceEnvelope firmware contract', () => {
+  it('rejects unknown sensor kinds with 400', () => {
+    expect(() =>
+      validateDeviceEnvelope({
+        deviceId: 'dev-1',
+        sensors: [{ kind: 'humidity', unit: '%', raw: 10 }],
+      }),
+    ).toThrowError(expect.objectContaining({ statusCode: 400 }))
+  })
+
+  it('rejects analog entries missing raw with 400', () => {
+    expect(() =>
+      validateDeviceEnvelope({
+        deviceId: 'dev-1',
+        sensors: [{ kind: 'soil', unit: '%', value: 50 }],
+      }),
+    ).toThrowError(expect.objectContaining({ statusCode: 400 }))
+  })
+
+  it('rejects out-of-range raw values with 400', () => {
+    expect(() =>
+      validateDeviceEnvelope({ deviceId: 'dev-1', sensors: [soilEntry(5000)] }),
+    ).toThrowError(expect.objectContaining({ statusCode: 400 }))
+    expect(() =>
+      validateDeviceEnvelope({ deviceId: 'dev-1', sensors: [soilEntry(-1)] }),
+    ).toThrowError(expect.objectContaining({ statusCode: 400 }))
+  })
+
+  it('accepts empty sensors[]', () => {
+    const envelope = validateDeviceEnvelope({ deviceId: 'dev-1', sensors: [] })
+    expect(envelope.sensors).toEqual([])
+  })
+
   it('rejects more than 8 sensors with 400', () => {
-    expect(MAX_SENSORS_PER_POST).toBe(8)
-    const sensors = Array.from({ length: 9 }, (_, i) => sensor('soil', 50 + (i % 2)))
-    expect(() => validateSensors(sensors, 'v1')).toThrowError(
-      expect.objectContaining({ statusCode: 400 }),
-    )
-    expect(() => validateSensors(sensors, 'v2')).toThrowError(
-      expect.objectContaining({ statusCode: 400 }),
-    )
+    expect(() =>
+      validateDeviceEnvelope({
+        deviceId: 'dev-1',
+        sensors: Array.from({ length: 9 }, () => soilEntry(50)),
+      }),
+    ).toThrowError(expect.objectContaining({ statusCode: 400 }))
   })
 
-  it('accepts exactly 8 sensors', () => {
-    const sensors = Array.from({ length: 8 }, () => sensor('soil', 50))
-    expect(() => validateSensors(sensors, 'v1')).not.toThrow()
-    expect(() => validateSensors(sensors, 'v2')).not.toThrow()
-  })
-
-  it('v1 clamps temperature to 0-100 like other sensors', () => {
-    expect(() => validateSensors([sensor('temperature', 120)], 'v1')).toThrowError(
+  it('rejects envelopes missing deviceId with 400', () => {
+    expect(() => validateDeviceEnvelope({ sensors: [soilEntry(50)] })).toThrowError(
       expect.objectContaining({ statusCode: 400 }),
     )
-    expect(() => validateSensors([sensor('temperature', 25)], 'v1')).not.toThrow()
+    expect(() =>
+      validateDeviceEnvelope({ deviceId: '  ', sensors: [soilEntry(50)] }),
+    ).toThrowError(expect.objectContaining({ statusCode: 400 }))
   })
 
-  it('v2 allows temperature between -40 and 125', () => {
-    expect(() => validateSensors([sensor('temperature', 120)], 'v2')).not.toThrow()
-    expect(() => validateSensors([sensor('temperature', -40)], 'v2')).not.toThrow()
-    expect(() => validateSensors([sensor('temperature', 130)], 'v2')).toThrowError(
-      expect.objectContaining({ statusCode: 400 }),
-    )
-    expect(() => validateSensors([sensor('temperature', -50)], 'v2')).toThrowError(
-      expect.objectContaining({ statusCode: 400 }),
-    )
-  })
-
-  it('v1 caps raw values at 4095', () => {
-    expect(() => validateSensors([sensor('soil', 50, { raw: 4095 })], 'v1')).not.toThrow()
-    expect(() => validateSensors([sensor('soil', 50, { raw: 4096 })], 'v1')).toThrowError(
-      expect.objectContaining({ statusCode: 400 }),
-    )
-  })
-
-  it('v2 caps raw values at 65535', () => {
-    expect(() => validateSensors([sensor('soil', 50, { raw: 5000 })], 'v2')).not.toThrow()
-    expect(() => validateSensors([sensor('soil', 50, { raw: 65535 })], 'v2')).not.toThrow()
-    expect(() => validateSensors([sensor('soil', 50, { raw: 65536 })], 'v2')).toThrowError(
-      expect.objectContaining({ statusCode: 400 }),
-    )
-  })
-
-  it('requires kind, value, and unit', () => {
-    expect(() => validateSensors([{ kind: '', value: 1, unit: '%' }], 'v1')).toThrowError(
-      expect.objectContaining({ statusCode: 400 }),
-    )
-  })
-})
-
-describe('normalizeSensors', () => {
-  it('wraps a single reading when sensors array is absent', () => {
-    const out = normalizeSensors({ kind: 'soil', value: 10, unit: '%', raw: 5 } as any)
-    expect(out).toEqual([{ kind: 'soil', value: 10, unit: '%', raw: 5 }])
-  })
-
-  it('passes through the sensors array', () => {
-    const body = { sensors: [sensor('soil', 10)] }
-    expect(normalizeSensors(body as any)).toEqual(body.sensors)
+  it('accepts tech raw values up to 32767 with variant tech', () => {
+    const envelope = validateDeviceEnvelope({
+      deviceId: 'dev-1',
+      variant: 'tech',
+      sensors: [{ kind: 'soil', unit: '%', raw: 20070 }],
+    })
+    expect(envelope.sensors).toHaveLength(1)
   })
 })
 
 describe('handleSensorIngest', () => {
-  it('ingests and acks in a single mutation (no separate clear call)', async () => {
+  it('ingests and returns the firmware response verbatim (no success/updated fields)', async () => {
     const { default: handleSensorIngest } = await import(HANDLER_SRC)
     process.env.DEVICE_API_KEY = 'test-key'
-    mockMutation.mockResolvedValue({
-      success: true,
-      updated: 2,
-      commands: [{ kind: 'pump', durationMs: 8000 }],
-    })
-    const event = mockEvent()
-    event.headers.set('x-api-key', 'test-key')
-    vi.mocked(globalThis.readBody).mockResolvedValue({
+    const firmwareResponse = { commands: [{ id: 'cmd-1', kind: 'pump', durationMs: 8000 }] }
+    mockMutation.mockResolvedValue(firmwareResponse)
+    const event = bearerEvent('test-key')
+    const body = {
       deviceId: 'dev-1',
-      sensors: [sensor('soil', 20), sensor('water', 80)],
-    })
+      firmwareVersion: '1.2.3',
+      hardwareId: 'hw-1',
+      variant: 'tech',
+      snapshotId: 'snap-1',
+      ageMs: 1000,
+      appliedConfigRev: 2,
+      acceptedCommandIds: ['cmd-0'],
+      currentState: { pump: 'off' },
+      health: { battery: 'ok' },
+      sensors: [soilEntry(20), { kind: 'temperature', unit: 'C', value: 24.5 }],
+    }
+    vi.mocked(globalThis.readBody).mockResolvedValue(body)
 
-    const result = await handleSensorIngest(event, 'v2')
-    expect(result).toEqual({
-      success: true,
-      updated: 2,
-      commands: [{ kind: 'pump', durationMs: 8000 }],
-    })
+    const result = await handleSensorIngest(event)
+    expect(result).toEqual(firmwareResponse)
     expect(mockMutation).toHaveBeenCalledTimes(1)
     expect(mockMutation).toHaveBeenCalledWith(
       'ingestAndAckSensorData',
-      expect.objectContaining({ deviceId: 'dev-1' }),
+      expect.objectContaining({
+        deviceId: 'dev-1',
+        firmwareVersion: '1.2.3',
+        hardwareId: 'hw-1',
+        variant: 'tech',
+        snapshotId: 'snap-1',
+        ageMs: 1000,
+        appliedConfigRev: 2,
+        acceptedCommandIds: ['cmd-0'],
+        currentState: { pump: 'off' },
+        health: { battery: 'ok' },
+        deviceKey: 'test-key',
+      }),
     )
   })
 
   it('rejects over-cap payloads with 400 before touching Convex', async () => {
     const { default: handleSensorIngest } = await import(HANDLER_SRC)
     process.env.DEVICE_API_KEY = 'test-key'
-    const event = mockEvent()
-    event.headers.set('x-api-key', 'test-key')
+    const event = bearerEvent('test-key')
     vi.mocked(globalThis.readBody).mockResolvedValue({
-      deviceId: 'dev-1',
-      sensors: Array.from({ length: 9 }, () => sensor('soil', 50)),
+      deviceId: 'dev-over-cap',
+      sensors: Array.from({ length: 9 }, () => soilEntry(50)),
     })
 
-    await expect(handleSensorIngest(event, 'v1')).rejects.toMatchObject({ statusCode: 400 })
+    await expect(handleSensorIngest(event)).rejects.toMatchObject({ statusCode: 400 })
     expect(mockMutation).not.toHaveBeenCalled()
   })
 
-  it('keeps v1 and v2 raw validation branched', async () => {
+  it('rejects pods raw above 4095 but accepts tech raw 20070 with variant tech', async () => {
     const { default: handleSensorIngest } = await import(HANDLER_SRC)
     process.env.DEVICE_API_KEY = 'test-key'
-    mockMutation.mockResolvedValue({ success: true, updated: 1, commands: [] })
+    mockMutation.mockResolvedValue({ commands: [] })
 
-    const v1Event = mockEvent()
-    v1Event.headers.set('x-api-key', 'test-key')
+    const podsEvent = bearerEvent('test-key')
     vi.mocked(globalThis.readBody).mockResolvedValue({
-      deviceId: 'dev-1',
-      sensors: [sensor('soil', 50, { raw: 5000 })],
+      deviceId: 'dev-pods',
+      sensors: [soilEntry(5000)],
     })
-    await expect(handleSensorIngest(v1Event, 'v1')).rejects.toMatchObject({ statusCode: 400 })
+    await expect(handleSensorIngest(podsEvent)).rejects.toMatchObject({ statusCode: 400 })
 
-    const v2Event = mockEvent()
-    v2Event.headers.set('x-api-key', 'test-key')
+    const techEvent = bearerEvent('test-key')
     vi.mocked(globalThis.readBody).mockResolvedValue({
-      deviceId: 'dev-1',
-      sensors: [sensor('soil', 50, { raw: 5000 })],
+      deviceId: 'dev-tech',
+      variant: 'tech',
+      sensors: [{ kind: 'soil', unit: '%', raw: 20070 }],
     })
-    const result = await handleSensorIngest(v2Event, 'v2')
-    expect(result.success).toBe(true)
+    const result = await handleSensorIngest(techEvent)
+    expect(result).toEqual({ commands: [] })
+    expect(mockMutation).toHaveBeenCalledWith(
+      'ingestAndAckSensorData',
+      expect.objectContaining({ deviceId: 'dev-tech', variant: 'tech' }),
+    )
   })
 })

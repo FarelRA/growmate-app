@@ -30,12 +30,18 @@ const EXPECTED_QUERIES = [
 ].sort()
 
 const EXPECTED_MUTATIONS = [
+  'adminClearDeviceClaim',
+  'adminClearDeviceOta',
   'adminDeleteDevice',
   'adminDeleteOfficialProduct',
   'adminDeletePlantPreset',
+  'adminQueueDeviceCommand',
   'adminSaveDevice',
   'adminSaveOfficialProduct',
   'adminSavePlantPreset',
+  'adminStageDeviceClaim',
+  'adminStageDeviceConfig',
+  'adminStageDeviceOta',
   'adminUpdateOfficialProductStatus',
   'adminUpdateUserAccess',
 ].sort()
@@ -60,6 +66,12 @@ const ARGS_SNAPSHOT: Record<string, string> = {
   adminUpdateOfficialProductStatus: "{\"type\":\"object\",\"value\":{\"productId\":{\"fieldType\":{\"type\":\"id\",\"tableName\":\"products\"},\"optional\":false},\"status\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"literal\",\"value\":\"active\"},{\"type\":\"literal\",\"value\":\"reserved\"},{\"type\":\"literal\",\"value\":\"sold\"},{\"type\":\"literal\",\"value\":\"archived\"}]},\"optional\":false}}}",
   adminUpdateUserAccess: "{\"type\":\"object\",\"value\":{\"userId\":{\"fieldType\":{\"type\":\"id\",\"tableName\":\"users\"},\"optional\":false},\"tier\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"literal\",\"value\":\"basic\"},{\"type\":\"literal\",\"value\":\"advanced\"}]},\"optional\":true},\"role\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"literal\",\"value\":\"grower\"},{\"type\":\"literal\",\"value\":\"company\"},{\"type\":\"literal\",\"value\":\"admin\"}]},\"optional\":true}}}",
   adminUsersPaginated: PAGINATED_ARGS,
+  adminStageDeviceConfig: "{\"type\":\"object\",\"value\":{\"deviceId\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"reportIntervalSec\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false}}}",
+  adminStageDeviceClaim: "{\"type\":\"object\",\"value\":{\"deviceId\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"claimDeviceId\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false}}}",
+  adminClearDeviceClaim: "{\"type\":\"object\",\"value\":{\"deviceId\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false}}}",
+  adminStageDeviceOta: "{\"type\":\"object\",\"value\":{\"deviceId\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"minFirmware\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"firmwareUrl\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false}}}",
+  adminClearDeviceOta: "{\"type\":\"object\",\"value\":{\"deviceId\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false}}}",
+  adminQueueDeviceCommand: "{\"type\":\"object\",\"value\":{\"deviceId\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"kind\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"literal\",\"value\":\"pump\"},{\"type\":\"literal\",\"value\":\"light\"},{\"type\":\"literal\",\"value\":\"fertilizer\"},{\"type\":\"literal\",\"value\":\"pesticide\"},{\"type\":\"literal\",\"value\":\"video_start\"},{\"type\":\"literal\",\"value\":\"video_stop\"}]},\"optional\":false},\"durationMs\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"enabled\":{\"fieldType\":{\"type\":\"boolean\"},\"optional\":true},\"width\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"height\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"fps\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"quality\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"maxSec\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true}}}",
   adminSavePlantPreset: "{\"type\":\"object\",\"value\":{\"presetId\":{\"fieldType\":{\"type\":\"id\",\"tableName\":\"plantCatalog\"},\"optional\":true},\"key\":{\"fieldType\":{\"type\":\"string\"},\"optional\":true},\"name\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"species\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"growthStage\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"literal\",\"value\":\"seed_dormancy\"},{\"type\":\"literal\",\"value\":\"germination\"},{\"type\":\"literal\",\"value\":\"seedling_development\"},{\"type\":\"literal\",\"value\":\"vegetative_growth\"},{\"type\":\"literal\",\"value\":\"flowering_reproduction\"},{\"type\":\"literal\",\"value\":\"maturity_senescence\"}]},\"optional\":false},\"description\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"location\":{\"fieldType\":{\"type\":\"string\"},\"optional\":false},\"category\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"literal\",\"value\":\"herb\"},{\"type\":\"literal\",\"value\":\"leafy\"},{\"type\":\"literal\",\"value\":\"fruiting\"},{\"type\":\"literal\",\"value\":\"houseplant\"},{\"type\":\"literal\",\"value\":\"flower\"},{\"type\":\"literal\",\"value\":\"microgreen\"}]},\"optional\":false},\"difficulty\":{\"fieldType\":{\"type\":\"union\",\"value\":[{\"type\":\"literal\",\"value\":\"easy\"},{\"type\":\"literal\",\"value\":\"medium\"},{\"type\":\"literal\",\"value\":\"advanced\"}]},\"optional\":false},\"wateringThreshold\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"lightingThreshold\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"fertilizingThreshold\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"fertilizerCadenceDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"pesticideCadenceDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":true},\"nutrientNotes\":{\"fieldType\":{\"type\":\"string\"},\"optional\":true},\"sensorProfile\":{\"fieldType\":{\"type\":\"object\",\"value\":{\"soil\":{\"fieldType\":{\"type\":\"object\",\"value\":{\"min\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"max\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false}}},\"optional\":false},\"light\":{\"fieldType\":{\"type\":\"object\",\"value\":{\"min\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"max\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false}}},\"optional\":false},\"temperature\":{\"fieldType\":{\"type\":\"object\",\"value\":{\"min\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"max\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false}}},\"optional\":false},\"air\":{\"fieldType\":{\"type\":\"object\",\"value\":{\"min\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"max\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false}}},\"optional\":false},\"water\":{\"fieldType\":{\"type\":\"object\",\"value\":{\"min\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"max\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false}}},\"optional\":false}}},\"optional\":false},\"lifecycleProfile\":{\"fieldType\":{\"type\":\"object\",\"value\":{\"seedDormancyDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"germinationDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"seedlingDevelopmentDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"vegetativeGrowthDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"floweringReproductionDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false},\"maturitySenescenceDays\":{\"fieldType\":{\"type\":\"number\"},\"optional\":false}}},\"optional\":false},\"imageUrl\":{\"fieldType\":{\"type\":\"string\"},\"optional\":true}}}",
 }
 
@@ -68,7 +80,7 @@ function fnOf(name: string): any {
 }
 
 describe('admin api surface snapshot (api.admin.*)', () => {
-  it('exports exactly the 16 public functions — no renames, no additions, no removals', () => {
+  it('exports exactly the 22 public functions — no renames, no additions, no removals', () => {
     expect(Object.keys(adminModule).sort()).toEqual([...EXPECTED_QUERIES, ...EXPECTED_MUTATIONS].sort())
   })
 

@@ -194,12 +194,18 @@ describe('admin consolidation: legacy array queries are gone', () => {
   ].sort()
 
   const EXPECTED_MUTATIONS = [
+    'adminClearDeviceClaim',
+    'adminClearDeviceOta',
     'adminDeleteDevice',
     'adminDeleteOfficialProduct',
     'adminDeletePlantPreset',
+    'adminQueueDeviceCommand',
     'adminSaveDevice',
     'adminSaveOfficialProduct',
     'adminSavePlantPreset',
+    'adminStageDeviceClaim',
+    'adminStageDeviceConfig',
+    'adminStageDeviceOta',
     'adminUpdateOfficialProductStatus',
     'adminUpdateUserAccess',
   ].sort()

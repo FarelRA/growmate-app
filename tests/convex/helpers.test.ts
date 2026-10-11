@@ -598,7 +598,7 @@ describe('normalizeRawSensorValue', () => {
 
   it('clamps raw value to ADC range', () => {
     expect(normalizeRawSensorValue('soil', -100, 'v2')).toBe(100)
-    expect(normalizeRawSensorValue('soil', 5000, 'v2')).toBe(92)
+    expect(normalizeRawSensorValue('soil', 5000, 'v2')).toBe(85)
   })
 })
 
@@ -888,7 +888,14 @@ describe('getQueuedDeviceCommands', () => {
   it('returns default null commands when queuedCommands is undefined', () => {
     const device = {} as any
     const result = getQueuedDeviceCommands(device)
-    expect(result).toEqual({ pump: null, light: null, fertilizer: null, pesticide: null })
+    expect(result).toEqual({
+      pump: null,
+      light: null,
+      fertilizer: null,
+      pesticide: null,
+      videoStart: null,
+      videoStop: null,
+    })
   })
 
   it('returns existing queued commands', () => {
@@ -942,7 +949,10 @@ describe('buildQueuedPumpAction', () => {
   it('builds pump action on device with no existing commands', () => {
     const device = {} as any
     const result = buildQueuedPumpAction(device, 10)
-    expect(result.queuedCommands.pump).toEqual({ kind: 'pump', durationMs: 10000 })
+    expect(result.queuedCommands.pump).toEqual(
+      expect.objectContaining({ kind: 'pump', durationMs: 10000 }),
+    )
+    expect((result.queuedCommands.pump as any).id).toEqual(expect.any(String))
     expect(result.queuedCommands.light).toBeNull()
   })
 
@@ -954,7 +964,10 @@ describe('buildQueuedPumpAction', () => {
       },
     } as any
     const result = buildQueuedPumpAction(device, 5)
-    expect(result.queuedCommands.pump).toEqual({ kind: 'pump', durationMs: 5000 })
+    expect(result.queuedCommands.pump).toEqual(
+      expect.objectContaining({ kind: 'pump', durationMs: 5000 }),
+    )
+    expect((result.queuedCommands.pump as any).id).toEqual(expect.any(String))
     expect(result.queuedCommands.light).toEqual({ kind: 'light', enabled: true })
   })
 
@@ -966,7 +979,10 @@ describe('buildQueuedPumpAction', () => {
       },
     } as any
     const result = buildQueuedPumpAction(device, 30)
-    expect(result.queuedCommands.pump).toEqual({ kind: 'pump', durationMs: 30000 })
+    expect(result.queuedCommands.pump).toEqual(
+      expect.objectContaining({ kind: 'pump', durationMs: 30000 }),
+    )
+    expect((result.queuedCommands.pump as any).id).toEqual(expect.any(String))
   })
 })
 
@@ -974,14 +990,20 @@ describe('buildQueuedLightAction', () => {
   it('builds light enabled action', () => {
     const device = {} as any
     const result = buildQueuedLightAction(device, true)
-    expect(result.queuedCommands.light).toEqual({ kind: 'light', enabled: true })
+    expect(result.queuedCommands.light).toEqual(
+      expect.objectContaining({ kind: 'light', enabled: true }),
+    )
+    expect((result.queuedCommands.light as any).id).toEqual(expect.any(String))
     expect(result.queuedCommands.pump).toBeNull()
   })
 
   it('builds light disabled action', () => {
     const device = {} as any
     const result = buildQueuedLightAction(device, false)
-    expect(result.queuedCommands.light).toEqual({ kind: 'light', enabled: false })
+    expect(result.queuedCommands.light).toEqual(
+      expect.objectContaining({ kind: 'light', enabled: false }),
+    )
+    expect((result.queuedCommands.light as any).id).toEqual(expect.any(String))
   })
 
   it('preserves existing pump command', () => {
@@ -993,7 +1015,10 @@ describe('buildQueuedLightAction', () => {
     } as any
     const result = buildQueuedLightAction(device, true)
     expect(result.queuedCommands.pump).toEqual({ kind: 'pump', durationMs: 5000 })
-    expect(result.queuedCommands.light).toEqual({ kind: 'light', enabled: true })
+    expect(result.queuedCommands.light).toEqual(
+      expect.objectContaining({ kind: 'light', enabled: true }),
+    )
+    expect((result.queuedCommands.light as any).id).toEqual(expect.any(String))
   })
 })
 

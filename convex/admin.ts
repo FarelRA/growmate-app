@@ -6,6 +6,8 @@ import { plantSensorProfile, lifecycleProfileValidator } from './schema'
 import { fetchAdminStats, fetchAdminRecentEvents } from './admin/stats'
 import {
   fetchAdminDevicesPaginated, saveAdminDevice, deleteAdminDevice,
+  stageDeviceConfig, stageDeviceClaim, clearDeviceClaim,
+  stageDeviceOta, clearDeviceOta, queueDeviceCommand,
 } from './admin/devices'
 import { fetchAdminSupportPaginated } from './admin/support'
 import {
@@ -137,6 +139,75 @@ export const adminDeleteDevice = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
     return deleteAdminDevice(ctx, args)
+  },
+})
+
+// Device fleet operator staging (firmware contract 06-api retry/ack + §6/§10):
+// config pushes (rev discipline), server-driven claim renames, OTA offers,
+// and manual dose/video commands. Each is delivered inside the next sensor
+// POST response and redelivered until the device acks or it is superseded.
+export const adminStageDeviceConfig = mutation({
+  args: { deviceId: v.string(), reportIntervalSec: v.number() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    return stageDeviceConfig(ctx, args)
+  },
+})
+
+export const adminStageDeviceClaim = mutation({
+  args: { deviceId: v.string(), claimDeviceId: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    return stageDeviceClaim(ctx, args)
+  },
+})
+
+export const adminClearDeviceClaim = mutation({
+  args: { deviceId: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    return clearDeviceClaim(ctx, args)
+  },
+})
+
+export const adminStageDeviceOta = mutation({
+  args: { deviceId: v.string(), minFirmware: v.string(), firmwareUrl: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    return stageDeviceOta(ctx, args)
+  },
+})
+
+export const adminClearDeviceOta = mutation({
+  args: { deviceId: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    return clearDeviceOta(ctx, args)
+  },
+})
+
+export const adminQueueDeviceCommand = mutation({
+  args: {
+    deviceId: v.string(),
+    kind: v.union(
+      v.literal('pump'),
+      v.literal('light'),
+      v.literal('fertilizer'),
+      v.literal('pesticide'),
+      v.literal('video_start'),
+      v.literal('video_stop'),
+    ),
+    durationMs: v.optional(v.number()),
+    enabled: v.optional(v.boolean()),
+    width: v.optional(v.number()),
+    height: v.optional(v.number()),
+    fps: v.optional(v.number()),
+    quality: v.optional(v.number()),
+    maxSec: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    return queueDeviceCommand(ctx, args)
   },
 })
 

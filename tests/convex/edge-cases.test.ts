@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest'
 import { estimateBatterySoC, evaluateFertilizingRule, evaluatePesticideRule } from '../../convex/helpers/v2sensors'
 import { parseStreamUrl } from '../../shared/utils/streamUrl'
@@ -101,7 +102,10 @@ describe('buildQueuedFertilizerAction', () => {
   it('builds fertilizer action with duration in ms', () => {
     const device = { queuedCommands: { pump: null, light: null, fertilizer: null, pesticide: null } } as unknown as DeviceDoc
     const result = buildQueuedFertilizerAction(device, 10)
-    expect(result.queuedCommands.fertilizer).toEqual({ kind: 'fertilizer', durationMs: 10000 })
+    expect(result.queuedCommands.fertilizer).toEqual(
+      expect.objectContaining({ kind: 'fertilizer', durationMs: 10000 }),
+    )
+    expect((result.queuedCommands.fertilizer as any).id).toEqual(expect.any(String))
   })
 
   it('preserves existing pump command', () => {
@@ -115,7 +119,10 @@ describe('buildQueuedFertilizerAction', () => {
     } as unknown as DeviceDoc
     const result = buildQueuedFertilizerAction(device, 10)
     expect(result.queuedCommands.pump).toEqual({ kind: 'pump', durationMs: 5000 })
-    expect(result.queuedCommands.fertilizer).toEqual({ kind: 'fertilizer', durationMs: 10000 })
+    expect(result.queuedCommands.fertilizer).toEqual(
+      expect.objectContaining({ kind: 'fertilizer', durationMs: 10000 }),
+    )
+    expect((result.queuedCommands.fertilizer as any).id).toEqual(expect.any(String))
   })
 })
 
@@ -123,7 +130,10 @@ describe('buildQueuedPesticideAction', () => {
   it('builds pesticide action with duration in ms', () => {
     const device = { queuedCommands: { pump: null, light: null, fertilizer: null, pesticide: null } } as unknown as DeviceDoc
     const result = buildQueuedPesticideAction(device, 10)
-    expect(result.queuedCommands.pesticide).toEqual({ kind: 'pesticide', durationMs: 10000 })
+    expect(result.queuedCommands.pesticide).toEqual(
+      expect.objectContaining({ kind: 'pesticide', durationMs: 10000 }),
+    )
+    expect((result.queuedCommands.pesticide as any).id).toEqual(expect.any(String))
   })
 })
 

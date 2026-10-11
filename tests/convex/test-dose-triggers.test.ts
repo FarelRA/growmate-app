@@ -92,28 +92,40 @@ describe('manual dose wrappers parity (single executeManualDose core)', () => {
     const fertDevice = (await ctx.db.get(fert.deviceDocId)) as any
     const pestDevice = (await ctx.db.get(pest.deviceDocId)) as any
 
-    expect(fertDevice.queuedCommands.fertilizer).toEqual({
-      kind: 'fertilizer',
-      durationMs: 12_000,
-    })
-    expect(fertDevice.queuedCommands.pump).toEqual({ kind: 'pump', durationMs: 12_000 })
+    expect(fertDevice.queuedCommands.fertilizer).toEqual(
+      expect.objectContaining({
+        kind: 'fertilizer',
+        durationMs: 12_000,
+      }),
+    )
+    expect(fertDevice.queuedCommands.fertilizer.id).toEqual(expect.any(String))
+    expect(fertDevice.queuedCommands.pump).toEqual(
+      expect.objectContaining({ kind: 'pump', durationMs: 12_000 }),
+    )
+    expect(fertDevice.queuedCommands.pump.id).toEqual(expect.any(String))
     expect(fertDevice.queuedCommands.pesticide ?? null).toBeNull()
 
-    expect(pestDevice.queuedCommands.pesticide).toEqual({
-      kind: 'pesticide',
-      durationMs: 12_000,
-    })
-    expect(pestDevice.queuedCommands.pump).toEqual({ kind: 'pump', durationMs: 12_000 })
+    expect(pestDevice.queuedCommands.pesticide).toEqual(
+      expect.objectContaining({
+        kind: 'pesticide',
+        durationMs: 12_000,
+      }),
+    )
+    expect(pestDevice.queuedCommands.pesticide.id).toEqual(expect.any(String))
+    expect(pestDevice.queuedCommands.pump).toEqual(
+      expect.objectContaining({ kind: 'pump', durationMs: 12_000 }),
+    )
+    expect(pestDevice.queuedCommands.pump.id).toEqual(expect.any(String))
     expect(pestDevice.queuedCommands.fertilizer ?? null).toBeNull()
 
     // Identical shape modulo the dose key name.
     expect({ dose: fertDevice.queuedCommands.fertilizer, pump: fertDevice.queuedCommands.pump }).toEqual({
-      dose: { kind: 'fertilizer', durationMs: 12_000 },
-      pump: { kind: 'pump', durationMs: 12_000 },
+      dose: expect.objectContaining({ kind: 'fertilizer', durationMs: 12_000 }),
+      pump: expect.objectContaining({ kind: 'pump', durationMs: 12_000 }),
     })
     expect({ dose: pestDevice.queuedCommands.pesticide, pump: pestDevice.queuedCommands.pump }).toEqual({
-      dose: { kind: 'pesticide', durationMs: 12_000 },
-      pump: { kind: 'pump', durationMs: 12_000 },
+      dose: expect.objectContaining({ kind: 'pesticide', durationMs: 12_000 }),
+      pump: expect.objectContaining({ kind: 'pump', durationMs: 12_000 }),
     })
   })
 

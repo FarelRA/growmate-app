@@ -1,6 +1,6 @@
 import type { MutationCtx, SensorKind } from '../types'
 import type { Id } from '../_generated/dataModel'
-import { ADC_RAW_MAX, ADC_RAW_MIN } from '../types'
+import { ADC_RAW_MIN } from '../types'
 
 export function formatTimestamp(timestamp: number): string {
   return new Date(timestamp).toLocaleTimeString('id-ID', {
@@ -35,11 +35,12 @@ export function clampPercent(value: number) {
 }
 
 export const V1_ADC_RAW_MAX = 4095
+export const V2_ADC_RAW_MAX = 32767
 
 export type SensorApiVersion = 'v1' | 'v2'
 
 export function rawMaxForVersion(version: SensorApiVersion): number {
-  return version === 'v1' ? V1_ADC_RAW_MAX : ADC_RAW_MAX
+  return version === 'v1' ? V1_ADC_RAW_MAX : V2_ADC_RAW_MAX
 }
 
 export function normalizeRawSensorValue(kind: SensorKind, raw: number, version: SensorApiVersion) {
@@ -57,6 +58,19 @@ export function normalizeRawSensorValue(kind: SensorKind, raw: number, version: 
     default:
       return clampedRaw
   }
+}
+
+/**
+ * Tech current-leg conversion (docs 08-server-changes §5/§9, tech 06-api):
+ * A0 direct, no divider. volt = raw/32767*4.096, amps = (2.5-volt)/0.066.
+ * Sign: `-` = using/drawing, `+` = charging (Add-on only).
+ * Returns milliamps.
+ */
+export function convertCurrentRawToMilliamps(raw: number): number {
+  const clamped = Math.max(0, Math.min(32767, raw))
+  const volt = (clamped / 32767) * 4.096
+  const amps = (2.5 - volt) / 0.066
+  return Math.round(amps * 1000)
 }
 
 export function formatEventValue(value: string | number | boolean | null | undefined) {

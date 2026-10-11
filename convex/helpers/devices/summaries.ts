@@ -23,16 +23,27 @@ export function getDefaultDeviceName(deviceId: string) {
   return `GrowMate ${suffix.toUpperCase()}`
 }
 
-export async function ensureDeviceExists(ctx: MutationCtx, deviceId: string, firmwareVersion?: string) {
+export async function ensureDeviceExists(
+  ctx: MutationCtx,
+  deviceId: string,
+  firmwareVersion?: string,
+  variant?: string,
+) {
   const normalizedDeviceId = deviceId.trim()
   const existing = await getDeviceByExternalId(ctx, normalizedDeviceId)
   if (existing) return existing
 
   const now = Date.now()
+  // Both firmware families POST to /v1/sensors. The tech envelope carries
+  // `variant` (tech | tech-addon); pods send none. Version selects the
+  // automation branch (v1: watering+lighting, v2: fertilizing+pesticide).
+  const version = variant !== undefined ? ('v2' as const) : ('v1' as const)
   const deviceDocId = await ctx.db.insert('devices', {
     deviceId: normalizedDeviceId,
     name: getDefaultDeviceName(normalizedDeviceId),
-    version: 'v1',
+    version,
+    variant,
+    appliedConfigRev: 0,
     autoWatering: true,
     autoLighting: true,
     wateringThreshold: DEFAULT_WATERING_THRESHOLD,

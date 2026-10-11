@@ -21,7 +21,7 @@ vi.mock('~~/server/utils/convex', () => ({
 
 function deviceEvent(apiKey: string | null = 'test-key') {
   const headers = new Headers()
-  if (apiKey) headers.set('x-api-key', apiKey)
+  if (apiKey) headers.set('authorization', `Bearer ${apiKey}`)
   return { headers } as any
 }
 
@@ -50,7 +50,7 @@ afterEach(() => {
 })
 
 describe('POST /api/v2/stream/recording auth', () => {
-  it('rejects requests without x-api-key with 401', async () => {
+  it('rejects requests without authorization with 401', async () => {
     vi.resetModules()
     const handler = (await import(SRC)).default
     vi.mocked(globalThis.readBody).mockResolvedValue(validBody())

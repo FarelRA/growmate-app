@@ -52,7 +52,7 @@ const RECORDING_SRC = '../../../server/api/v2/stream/recording.post'
 
 const VALID_BODY = {
   deviceId: 'dev-1',
-  sensors: [{ kind: 'soil', value: 50, unit: '%' }],
+  sensors: [{ kind: 'soil', unit: '%', raw: 100 }],
 }
 const VALID_STREAM = { deviceId: 'dev-1', streamUrl: 'tcp://100.64.0.1:8554' }
 const VALID_SEGMENT = {
@@ -62,9 +62,9 @@ const VALID_SEGMENT = {
   size: 10,
 }
 
-function mockEvent(apiKey?: string) {
+function mockEvent(bearerKey?: string) {
   const event: any = { headers: new Headers() }
-  if (apiKey !== undefined) event.headers.set('x-api-key', apiKey)
+  if (bearerKey !== undefined) event.headers.set('authorization', `Bearer ${bearerKey}`)
   return event
 }
 
@@ -76,8 +76,8 @@ function mockCameraSuccess() {
   vi.mocked(globalThis.readRawBody).mockResolvedValue('fake-body')
 }
 
-function cameraEvent(apiKey?: string) {
-  const event = mockEvent(apiKey)
+function cameraEvent(bearerKey?: string) {
+  const event = mockEvent(bearerKey)
   event.headers.set('x-device-id', 'device-1')
   return event
 }
@@ -107,7 +107,7 @@ describe('requireDeviceKey fail-closed', () => {
     const { default: handleSensorIngest } = await import(INGEST_SRC)
     vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_BODY })
 
-    await expect(handleSensorIngest(mockEvent('any-key'), 'v1')).rejects.toMatchObject({
+    await expect(handleSensorIngest(mockEvent('any-key'))).rejects.toMatchObject({
       statusCode: 500,
       statusMessage: 'server misconfigured',
     })
@@ -158,7 +158,7 @@ describe('requireDeviceKey fail-closed', () => {
 })
 
 describe('requireDeviceKey wrong/missing client key', () => {
-  it('returns 401 for wrong key on all device routes (no passthrough)', async () => {
+  it('returns 401 for wrong Bearer token on all device routes (no passthrough)', async () => {
     vi.resetModules()
     process.env.DEVICE_API_KEY = 'secret-key'
     const { default: handleSensorIngest } = await import(INGEST_SRC)
@@ -168,7 +168,7 @@ describe('requireDeviceKey wrong/missing client key', () => {
     mockCameraSuccess()
     vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_BODY })
 
-    await expect(handleSensorIngest(mockEvent('wrong-key'), 'v2')).rejects.toMatchObject({
+    await expect(handleSensorIngest(mockEvent('wrong-key'))).rejects.toMatchObject({
       statusCode: 401,
     })
     await expect(cameraHandler(cameraEvent('wrong-key'))).rejects.toMatchObject({
@@ -186,29 +186,41 @@ describe('requireDeviceKey wrong/missing client key', () => {
     expect(mockConnect).not.toHaveBeenCalled()
   })
 
-  it('returns 401 when the client key header is missing', async () => {
+  it('returns 401 when the Authorization Bearer header is missing', async () => {
     vi.resetModules()
     process.env.DEVICE_API_KEY = 'secret-key'
     const { default: handleSensorIngest } = await import(INGEST_SRC)
     vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_BODY })
 
-    await expect(handleSensorIngest(mockEvent(), 'v1')).rejects.toMatchObject({
+    await expect(handleSensorIngest(mockEvent())).rejects.toMatchObject({
       statusCode: 401,
     })
     expect(mockMutation).not.toHaveBeenCalled()
   })
+
+  it('returns 401 when the Authorization header is not a Bearer token', async () => {
+    vi.resetModules()
+    process.env.DEVICE_API_KEY = 'secret-key'
+    const { requireDeviceKey } = await import(REQUIRE_SRC)
+    const event: any = { headers: new Headers() }
+    event.headers.set('authorization', 'secret-key')
+
+    expect(() => requireDeviceKey(event)).toThrowError(
+      expect.objectContaining({ statusCode: 401 }),
+    )
+  })
 })
 
-describe('valid key passes deviceKey through to Convex', () => {
+describe('valid Bearer key passes deviceKey through to Convex', () => {
   it('ingest passes deviceKey to ingestAndAckSensorData', async () => {
     vi.resetModules()
     process.env.DEVICE_API_KEY = 'test-key'
     const { default: handleSensorIngest } = await import(INGEST_SRC)
-    mockMutation.mockResolvedValue({ success: true, updated: 1, commands: [] })
+    mockMutation.mockResolvedValue({ commands: [] })
     vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_BODY })
 
-    const result = await handleSensorIngest(mockEvent('test-key'), 'v2')
-    expect(result.success).toBe(true)
+    const result = await handleSensorIngest(mockEvent('test-key'))
+    expect(result).toEqual({ commands: [] })
     expect(mockMutation).toHaveBeenCalledWith(
       'ingestAndAckSensorData',
       expect.objectContaining({ deviceId: 'dev-1', deviceKey: 'test-key' }),

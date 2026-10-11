@@ -1,4 +1,4 @@
-import type { Ctx, SensorKind, SensorStatus, SensorRange, PlantSensorProfile, PlantHealth, MetricPoint } from '../types'
+import type { Ctx, SensorKind, PlantCareKind, SensorStatus, SensorRange, PlantSensorProfile, PlantHealth, MetricPoint } from '../types'
 import { sensorKinds } from '../types'
 import type { Id } from '../_generated/dataModel'
 import { formatTimestamp, isDeviceOnline } from './generic'
@@ -16,10 +16,15 @@ export const defaultPlantSensorProfile: PlantSensorProfile = {
   water: { min: 20, max: 90 },
 }
 
+// Device-telemetry band for the tech current leg (milliamps, server-converted
+// from the raw A0 code). Status colors only: no alert rules and no plant-health
+// weight — the leg reports draw/charge, not a plant-care signal.
+export const CURRENT_TELEMETRY_RANGE: SensorRange = { min: -12000, max: 12000 }
+
 export function normalizePlantSensorProfile(
-  profile?: Partial<Record<SensorKind, Partial<SensorRange>>> | null,
+  profile?: Partial<PlantSensorProfile> | null,
 ): PlantSensorProfile {
-  function normalizeRange(kind: SensorKind): SensorRange {
+  function normalizeRange(kind: PlantCareKind): SensorRange {
     const base = defaultPlantSensorProfile[kind]
     const rawMin = profile?.[kind]?.min ?? base.min
     const rawMax = profile?.[kind]?.max ?? base.max
@@ -40,15 +45,16 @@ export function normalizePlantSensorProfile(
 
 export function getSensorRange(
   kind: SensorKind,
-  profile?: Partial<Record<SensorKind, Partial<SensorRange>>> | null,
+  profile?: Partial<PlantSensorProfile> | null,
 ): SensorRange {
+  if (kind === 'current') return CURRENT_TELEMETRY_RANGE
   return normalizePlantSensorProfile(profile)[kind]
 }
 
 export function getSensorStatus(
   kind: SensorKind,
   value: number,
-  profile?: Partial<Record<SensorKind, Partial<SensorRange>>> | null,
+  profile?: Partial<PlantSensorProfile> | null,
 ): SensorStatus {
   const range = getSensorRange(kind, profile)
   if (value < range.min) return 'low'
@@ -60,7 +66,7 @@ export function getSensorTarget(
   kind: SensorKind,
   value: number,
   status: SensorStatus,
-  profile?: Partial<Record<SensorKind, Partial<SensorRange>>> | null,
+  profile?: Partial<PlantSensorProfile> | null,
 ): string {
   const range = getSensorRange(kind, profile)
   if (status === 'optimal') {
@@ -75,6 +81,8 @@ export function getSensorTarget(
         return `✓ Ideal ${range.min}-${range.max}%`
       case 'water':
         return `✓ Ideal ${range.min}-${range.max}%`
+      case 'current':
+        return `✓ Arus ${range.min}-${range.max}mA`
     }
   }
 
@@ -90,6 +98,8 @@ export function getSensorTarget(
         return `↑ Target min ${range.min}%`
       case 'water':
         return `↑ Isi ulang ke atas ${range.min}%`
+      case 'current':
+        return `↑ Arus di bawah ${range.min}mA`
     }
   }
 
@@ -104,6 +114,8 @@ export function getSensorTarget(
       return `↓ Target max ${range.max}%`
     case 'water':
       return `↓ Target max ${range.max}%`
+    case 'current':
+      return `↓ Arus di atas ${range.max}mA`
   }
 }
 
@@ -119,6 +131,8 @@ export function getSensorLabel(kind: SensorKind, deviceVersion?: 'v1' | 'v2'): s
       return 'Kelembapan Udara'
     case 'water':
       return deviceVersion === 'v2' ? 'Level Tangki Pupuk' : 'Level Air'
+    case 'current':
+      return 'Arus Listrik'
   }
 }
 
@@ -134,6 +148,8 @@ export function getSensorAccent(kind: SensorKind): string {
       return 'air'
     case 'water':
       return 'water'
+    case 'current':
+      return 'current'
   }
 }
 
@@ -149,14 +165,14 @@ export function getSensorSort(kind: SensorKind): number {
       return 4
     case 'water':
       return 5
-    default:
-      return 99
+    case 'current':
+      return 6
   }
 }
 
 export function computePlantHealth(
   sensors: SensorData[],
-  profile?: Partial<Record<SensorKind, Partial<SensorRange>>> | null,
+  profile?: Partial<PlantSensorProfile> | null,
 ): PlantHealth {
   const score = computePlantHealthScore(sensors, profile)
   if (score >= 80) return 'excellent'
@@ -167,11 +183,14 @@ export function computePlantHealth(
 
 export function computePlantHealthScore(
   sensors: SensorData[],
-  profile?: Partial<Record<SensorKind, Partial<SensorRange>>> | null,
+  profile?: Partial<PlantSensorProfile> | null,
 ): number {
-  if (sensors.length === 0) return 0
+  // Device telemetry (current leg) reports draw/charge, not a plant-care
+  // signal: it must never move plant health.
+  const care = sensors.filter((s) => s.kind !== 'current')
+  if (care.length === 0) return 0
 
-  const sensorScores = sensors.map((s) => {
+  const sensorScores = care.map((s) => {
     const status = getSensorStatus(s.kind, s.value, profile)
     return status === 'optimal' ? 100 : 50
   })
@@ -218,7 +237,7 @@ function getAlertRules(deviceVersion?: 'v1' | 'v2'): Array<{
 export function generateAlerts(
   sensors: SensorData[],
   device: { lastSeen: number; autoWatering: boolean; version?: 'v1' | 'v2' } | null,
-  profile?: Partial<Record<SensorKind, Partial<SensorRange>>> | null,
+  profile?: Partial<PlantSensorProfile> | null,
 ): Alert[] {
   const alerts: Alert[] = []
 

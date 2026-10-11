@@ -52,7 +52,7 @@ function seedDeviceWithVersion(ctx: FakeCtx, version: 'v1' | 'v2') {
   })
 }
 
-describe('normalizeRawSensorValue per-version scaling (P1: v1 12-bit vs v2 16-bit)', () => {
+describe('normalizeRawSensorValue per-version scaling (P1: v1 12-bit vs v2 15-bit)', () => {
   it('v1 full-scale dry reading 4095 maps to 0% (not 94%)', () => {
     expect(V1_ADC_RAW_MAX).toBe(4095)
     expect(normalizeRawSensorValue('soil', 4095, 'v1')).toBe(0)
@@ -74,20 +74,20 @@ describe('normalizeRawSensorValue per-version scaling (P1: v1 12-bit vs v2 16-bi
     expect(normalizeRawSensorValue('water', 2048, 'v1')).toBe(50)
   })
 
-  it('v2 keeps the 16-bit mapping (65535 full-scale)', () => {
-    expect(ADC_RAW_MAX).toBe(65535)
-    expect(normalizeRawSensorValue('soil', 65535, 'v2')).toBe(0)
+  it('v2 keeps the 15-bit mapping (32767 full-scale)', () => {
+    expect(ADC_RAW_MAX).toBe(32767)
+    expect(normalizeRawSensorValue('soil', 32767, 'v2')).toBe(0)
     expect(normalizeRawSensorValue('soil', 0, 'v2')).toBe(100)
-    expect(normalizeRawSensorValue('water', 65535, 'v2')).toBe(100)
+    expect(normalizeRawSensorValue('water', 32767, 'v2')).toBe(100)
     expect(normalizeRawSensorValue('water', 0, 'v2')).toBe(0)
     expect(normalizeRawSensorValue('soil', Math.round(ADC_RAW_MAX / 2), 'v2')).toBe(50)
   })
 
-  it('regression: the old always-16-bit bug read v1 dry as 94%', () => {
+  it('regression: the old always-16-bit bug read v1 dry as 88% on the 15-bit scale', () => {
     // A v1 dry reading scaled against the v2 range is the reported bug.
-    expect(normalizeRawSensorValue('soil', 4095, 'v2')).toBe(94)
+    expect(normalizeRawSensorValue('soil', 4095, 'v2')).toBe(88)
     // Correct per-version scaling must not reproduce it.
-    expect(normalizeRawSensorValue('soil', 4095, 'v1')).not.toBe(94)
+    expect(normalizeRawSensorValue('soil', 4095, 'v1')).not.toBe(88)
     expect(normalizeRawSensorValue('soil', 4095, 'v1')).toBe(0)
   })
 
@@ -103,11 +103,11 @@ describe('normalizeRawSensorValue per-version scaling (P1: v1 12-bit vs v2 16-bi
     expect(normalizeRawSensorValue('soil', 5000, 'v1')).toBe(0)
     expect(normalizeRawSensorValue('light', 99999, 'v1')).toBe(0)
     expect(normalizeRawSensorValue('water', 5000, 'v1')).toBe(100)
-    // v2 ceiling is 65535.
+    // v2 ceiling is 32767.
     expect(normalizeRawSensorValue('soil', 70000, 'v2')).toBe(0)
     expect(normalizeRawSensorValue('water', 70000, 'v2')).toBe(100)
     // Same raw, different version, different result (scale matters).
-    expect(normalizeRawSensorValue('soil', 5000, 'v2')).toBe(92)
+    expect(normalizeRawSensorValue('soil', 5000, 'v2')).toBe(85)
   })
 
   it('passes temperature/air raw values through untouched on both versions', () => {
@@ -131,21 +131,21 @@ describe('ingest threads device.version into normalization (no fallback)', () =>
       deviceId: 'GM-V1',
       sensors: [{ kind: 'soil', value: 50, unit: '%', raw: 4095 }],
     })
-    expect(res.success).toBe(true)
+    expect(res.commands).toEqual(expect.any(Array))
     const stored = ctx.db.all('sensors').find((s) => s.kind === 'soil')
     expect(stored!.value).toBe(0)
   })
 
-  it('v2 device: raw soil 4095 stores 94% (16-bit scale)', async () => {
+  it('v2 device: raw soil 4095 stores 88% (15-bit scale)', async () => {
     await seedDeviceWithVersion(ctx, 'v2')
     const res = await callHandler(ingestAndAckSensorData, ctx, {
       deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-V2',
       sensors: [{ kind: 'soil', value: 50, unit: '%', raw: 4095 }],
     })
-    expect(res.success).toBe(true)
+    expect(res.commands).toEqual(expect.any(Array))
     const stored = ctx.db.all('sensors').find((s) => s.kind === 'soil')
-    expect(stored!.value).toBe(94)
+    expect(stored!.value).toBe(88)
   })
 
   it('validate at boundary: unknown device version is rejected', async () => {

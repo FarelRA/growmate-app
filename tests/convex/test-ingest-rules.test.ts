@@ -250,9 +250,8 @@ describe('ingestAndAckSensorData watering rule (v1)', () => {
       deviceId: 'GM-TEST',
       sensors: [...soilDry, { kind: 'water', value: 60, unit: '%' }],
     })
-    expect(res.success).toBe(true)
-    expect(res.updated).toBe(2)
-    expect(res.commands).toEqual([{ kind: 'pump', durationMs: 8000 }])
+    expect(res.commands).toEqual([{ kind: 'pump', durationMs: 8000, id: expect.any(String) }])
+    expect(ctx.db.all('sensors')).toHaveLength(2)
     const automation = ctx.db.all('automationLogs')
     expect(automation.map((l) => l.action)).toEqual(['pump_enabled', 'pump_disabled'])
   })
@@ -278,24 +277,41 @@ describe('ingestAndAckSensorData watering rule (v1)', () => {
     expect(ctx.db.all('automationLogs')).toEqual([])
   })
 
-  it('cooldown: second dry ingest does not re-queue until cooldown elapses', async () => {
+  it('cooldown: second dry ingest redelivers the still-queued pump (no auto-clear)', async () => {
     const { deviceId } = await seedDeviceWithPlant(ctx)
     const first = await callHandler(ingestAndAckSensorData, ctx, {
       deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-TEST',
       sensors: [...soilDry, { kind: 'water', value: 60, unit: '%' }],
     })
-    expect(first.commands).toHaveLength(1)
+    expect(first.commands).toEqual([
+      { kind: 'pump', durationMs: 8000, id: expect.any(String) },
+    ])
+    const firstId = (first.commands[0] as any).id as string
+    expect(typeof firstId).toBe('string')
     const lastWatered = (await ctx.db.get(deviceId))!.lastWatered
-    await callHandler(clearDeviceCommands, ctx, { deviceKey: TEST_DEVICE_KEY, deviceId: 'GM-TEST', commands: ['pump'] })
+    const logsAfterFirst = ctx.db.all('automationLogs').length
 
+    // WITHOUT clearDeviceCommands the second ingest RE-RETURNS the still-queued
+    // pump (no auto-clear on send); cooldown blocks re-queueing so no new logs.
     const second = await callHandler(ingestAndAckSensorData, ctx, {
       deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-TEST',
       sensors: [...soilDry, { kind: 'water', value: 60, unit: '%' }],
     })
-    expect(second.commands).toEqual([])
+    expect(second.commands).toEqual([{ kind: 'pump', durationMs: 8000, id: firstId }])
     expect((await ctx.db.get(deviceId))!.lastWatered).toBe(lastWatered)
+    expect(ctx.db.all('automationLogs')).toHaveLength(logsAfterFirst)
+
+    // Ack via acceptedCommandIds on a third call empties the queue.
+    const third = await callHandler(ingestAndAckSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
+      deviceId: 'GM-TEST',
+      acceptedCommandIds: [firstId],
+      sensors: [...soilDry, { kind: 'water', value: 60, unit: '%' }],
+    })
+    expect(third.commands).toEqual([])
+    expect((await ctx.db.get(deviceId))!.queuedCommands.pump).toBeNull()
   })
 
   it('does not water when autoWatering is off', async () => {
@@ -322,7 +338,7 @@ describe('ingestAndAckSensorData lighting rule (v1)', () => {
       deviceId: 'GM-TEST',
       sensors: [{ kind: 'light', value: 10, unit: '%' }],
     })
-    expect(res.commands).toEqual([{ kind: 'light', enabled: true }])
+    expect(res.commands).toEqual([{ kind: 'light', enabled: true, id: expect.any(String) }])
     const automation = ctx.db.all('automationLogs')
     expect(automation.map((l) => l.action)).toEqual(['light_on'])
   })
@@ -334,7 +350,7 @@ describe('ingestAndAckSensorData lighting rule (v1)', () => {
       deviceId: 'GM-TEST',
       sensors: [{ kind: 'light', value: 60, unit: '%' }],
     })
-    expect(off.commands).toEqual([{ kind: 'light', enabled: false }])
+    expect(off.commands).toEqual([{ kind: 'light', enabled: false, id: expect.any(String) }])
   })
 
   it('holds state inside the hysteresis band', async () => {
@@ -367,21 +383,18 @@ describe('ingestAndAckSensorData v2 rules (fertilizing + pesticide)', () => {
         { kind: 'water', value: 80, unit: '%' },
       ],
     })
-    expect(res.success).toBe(true)
     const automation = ctx.db.all('automationLogs')
     expect(automation.map((l) => l.action)).toContain('fertilizer_opened')
     // Both valve + pump commands reach the device (staged accumulator —
     // previously the pump staging wiped the fertilizer entry).
     const kinds = res.commands.map((c: any) => c.kind).sort()
     expect(kinds).toEqual(['fertilizer', 'pump'])
-    expect(res.commands.find((c: any) => c.kind === 'pump')).toEqual({
-      kind: 'pump',
-      durationMs: 10000,
-    })
-    expect(res.commands.find((c: any) => c.kind === 'fertilizer')).toEqual({
-      kind: 'fertilizer',
-      durationMs: 10000,
-    })
+    expect(res.commands.find((c: any) => c.kind === 'pump')).toEqual(
+      expect.objectContaining({ kind: 'pump', durationMs: 10000, id: expect.any(String) }),
+    )
+    expect(res.commands.find((c: any) => c.kind === 'fertilizer')).toEqual(
+      expect.objectContaining({ kind: 'fertilizer', durationMs: 10000, id: expect.any(String) }),
+    )
   })
 
   it('v2 dry-tank interlock blocks fertilizing too', async () => {

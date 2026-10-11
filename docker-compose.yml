@@ -77,6 +77,15 @@ services:
       - traefik.http.routers.growmate.entrypoints=websecure
       - traefik.http.routers.growmate.tls.certresolver=letsencrypt
       - traefik.http.services.growmate.loadbalancer.server.port=3000
+      # Device fleet API: firmware posts to https://api.growmate.bond/v1/*
+      # (APP_SENSOR_API_URL / APP_CAMERA_API_URL, no /api prefix) while docs
+      # use the /api/v1/* canonical paths — Nuxt serves both (server/api +
+      # server/routes aliases). No redirects: devices do not follow them.
+      - traefik.http.routers.growmate-api.rule=Host(`api.growmate.bond`)
+      - traefik.http.routers.growmate-api.entrypoints=websecure
+      - traefik.http.routers.growmate-api.tls.certresolver=letsencrypt
+      - traefik.http.routers.growmate-api.service=growmate
+      - traefik.http.routers.growmate-api.middlewares=api-ratelimit
       # www -> apex redirect (middleware defined on traefik service)
       - traefik.http.routers.growmate-www.rule=Host(`www.growmate.bond`)
       - traefik.http.routers.growmate-www.entrypoints=websecure

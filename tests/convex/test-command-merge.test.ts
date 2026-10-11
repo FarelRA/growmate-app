@@ -2,7 +2,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 
 import { ingestAndAckSensorData } from '../../convex/sensors'
-import { validateSensors } from '../../server/utils/ingestHandler'
 import type { DeviceDoc } from '../../convex/types'
 import { createFakeCtx, callHandler, type FakeCtx } from './test-ingest-rules-fake'
 
@@ -84,10 +83,14 @@ const drySoilWithWater = [
  * initial snapshot and one of its fresh re-reads.
  *
  * `targetExplicitGet`: 1 = merge re-read (before the final patch),
- * 2 = ack re-read (after commands are built, before the ack-clear patch).
+ * 2 = post-patch refresh re-read (before the response commands are built).
  *
  * NOTE: FakeDb.patch performs an internal db.get, so the counter only
  * tracks explicit reads (a reentrancy flag skips patch-internal gets).
+ *
+ * NOTE: injected commands carry an `id`, like every real manual trigger
+ * (buildQueuedLightAction assigns one via newCommandId()). The device
+ * response only delivers queued entries that have an id.
  */
 function injectConcurrentCommand(
   ctx: FakeCtx,
@@ -131,7 +134,7 @@ describe('queuedCommands field-wise merge (performIngest)', () => {
     // BEFORE its final patch (injected at the merge re-read).
     injectConcurrentCommand(ctx, deviceId, 1, {
       key: 'light',
-      value: { kind: 'light', enabled: true },
+      value: { kind: 'light', enabled: true, id: 'cmd-manual-light-1' },
     })
 
     const res = await callHandler(ingestAndAckSensorData, ctx, {
@@ -140,48 +143,108 @@ describe('queuedCommands field-wise merge (performIngest)', () => {
       sensors: drySoilWithWater,
     })
 
-    // Staged pump (dry soil) + concurrent stored light must both be returned.
-    // Wholesale overwrite would have wiped the light entry → only pump.
+    // Staged pump (dry soil) + concurrent stored light must both survive the
+    // merge. Wholesale overwrite would have wiped the light entry from storage.
+    // (Pods XOR pacing: pump + light queued → this response carries pump
+    // ONLY; the light stays queued for the next response.)
     const kinds = res.commands.map((c: any) => c.kind).sort()
-    expect(kinds).toEqual(['light', 'pump'])
+    expect(kinds).toEqual(['pump'])
+    expect(res.commands[0]).toEqual(
+      expect.objectContaining({ kind: 'pump', durationMs: 8000, id: expect.any(String) }),
+    )
+    const pumpId = (res.commands[0] as any).id as string
+    const devices = ctx.db.all('devices')
+    const stored = devices.find((d) => String(d._id) === String(deviceId)) as any
+    expect(stored.queuedCommands.pump).toEqual(
+      expect.objectContaining({ kind: 'pump', durationMs: 8000, id: pumpId }),
+    )
+    expect(stored.queuedCommands.light).toEqual({
+      kind: 'light',
+      enabled: true,
+      id: 'cmd-manual-light-1',
+    })
+
+    // The preserved light is deliverable: ack the pump and it comes back next.
+    const next = await callHandler(ingestAndAckSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
+      deviceId: 'GM-MERGE',
+      acceptedCommandIds: [pumpId],
+      sensors: drySoilWithWater,
+    })
+    expect(next.commands).toEqual([
+      expect.objectContaining({ kind: 'light', enabled: true, id: 'cmd-manual-light-1' }),
+    ])
   })
 
-  it('ack clears only returned keys (delayed ack after new queue preserves light)', async () => {
+  it('no auto-clear on send: both pump and light remain queued after ingest', async () => {
     const ctx = createFakeCtx()
     const { deviceId } = await seedDeviceWithPlant(ctx)
 
-    // Manual light trigger lands AFTER commands are built but BEFORE the
-    // ack-clear patch (injected at the ack re-read). Ingest itself only
-    // queues pump.
-    injectConcurrentCommand(ctx, deviceId, 2, {
-      key: 'light',
-      value: { kind: 'light', enabled: true },
-    })
-
-    const res = await callHandler(ingestAndAckSensorData, ctx, {
+    // First ingest queues a pump for the dry soil (returned, but NOT cleared).
+    const first = await callHandler(ingestAndAckSensorData, ctx, {
       deviceKey: TEST_DEVICE_KEY,
       deviceId: 'GM-MERGE',
       sensors: drySoilWithWater,
     })
+    const pumpId = (first.commands.find((c: any) => c.kind === 'pump') as any).id as string
+    expect(typeof pumpId).toBe('string')
 
-    // Only pump was returned (light arrived after commands were built).
-    expect(res.commands).toEqual([{ kind: 'pump', durationMs: 8000 }])
+    // A concurrent manual light trigger lands between the two ingests.
+    const stored = (await ctx.db.get(deviceId)) as any
+    await ctx.db.patch(deviceId, {
+      queuedCommands: {
+        ...stored.queuedCommands,
+        light: { kind: 'light', enabled: true, id: 'cmd-manual-light-2' },
+      },
+    })
 
-    // Ack must clear pump but preserve the concurrently queued light.
-    // Wholesale ack-clear would wipe both → light null.
-    const devices = ctx.db.all('devices')
-    const finalDevice = devices.find((d) => String(d._id) === String(deviceId)) as any
-    expect(finalDevice.queuedCommands.pump).toBeNull()
-    expect(finalDevice.queuedCommands.light).toEqual({ kind: 'light', enabled: true })
+    // Second ingest redelivers the still-queued pump (cooldown blocks a
+    // re-queue, so the id is unchanged) and both entries remain in storage.
+    const second = await callHandler(ingestAndAckSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
+      deviceId: 'GM-MERGE',
+      sensors: drySoilWithWater,
+    })
+    expect(second.commands).toContainEqual(
+      expect.objectContaining({ kind: 'pump', durationMs: 8000, id: pumpId }),
+    )
+    const afterSecond = (await ctx.db.get(deviceId)) as any
+    expect(afterSecond.queuedCommands.pump).toEqual(
+      expect.objectContaining({ kind: 'pump', durationMs: 8000, id: pumpId }),
+    )
+    expect(afterSecond.queuedCommands.light).toEqual({
+      kind: 'light',
+      enabled: true,
+      id: 'cmd-manual-light-2',
+    })
+
+    // Acking the pump via acceptedCommandIds clears only the pump; the
+    // light stays queued for the next response.
+    const third = await callHandler(ingestAndAckSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
+      deviceId: 'GM-MERGE',
+      acceptedCommandIds: [pumpId],
+      sensors: drySoilWithWater,
+    })
+    expect(third.commands).toEqual([
+      expect.objectContaining({ kind: 'light', enabled: true, id: 'cmd-manual-light-2' }),
+    ])
+    const afterThird = (await ctx.db.get(deviceId)) as any
+    expect(afterThird.queuedCommands.pump).toBeNull()
+    expect(afterThird.queuedCommands.light).toEqual({
+      kind: 'light',
+      enabled: true,
+      id: 'cmd-manual-light-2',
+    })
   })
 
-  it('ingest + ack merges staged + stored, returns both, and acks only returned keys', async () => {
+  it('ingest merges staged + stored; pods pacing returns pump first, both remain queued', async () => {
     const ctx = createFakeCtx()
     const { deviceId } = await seedDeviceWithPlant(ctx)
 
     injectConcurrentCommand(ctx, deviceId, 1, {
       key: 'light',
-      value: { kind: 'light', enabled: true },
+      value: { kind: 'light', enabled: true, id: 'cmd-manual-light-3' },
     })
 
     const res = await callHandler(ingestAndAckSensorData, ctx, {
@@ -190,23 +253,35 @@ describe('queuedCommands field-wise merge (performIngest)', () => {
       sensors: drySoilWithWater,
     })
 
+    // Pods XOR pacing: pump + light queued → pump only in this response.
     const kinds = res.commands.map((c: any) => c.kind).sort()
-    expect(kinds).toEqual(['light', 'pump'])
+    expect(kinds).toEqual(['pump'])
+    // Nothing is auto-cleared on send: both entries remain queued in storage
+    // until the device echoes their ids in acceptedCommandIds.
     const devices = ctx.db.all('devices')
     const stored = devices.find((d) => String(d._id) === String(deviceId)) as any
-    // Both were returned, so ack clears both.
-    expect(stored.queuedCommands.pump).toBeNull()
-    expect(stored.queuedCommands.light).toBeNull()
+    expect(stored.queuedCommands.pump).toEqual(
+      expect.objectContaining({ kind: 'pump', durationMs: 8000, id: expect.any(String) }),
+    )
+    expect(stored.queuedCommands.light).toEqual({
+      kind: 'light',
+      enabled: true,
+      id: 'cmd-manual-light-3',
+    })
   })
 })
 
-describe('empty ingest rejected', () => {
-  it('validateSensors rejects an empty array with 400 (v1 + v2)', () => {
-    expect(() => validateSensors([], 'v1')).toThrowError(
-      expect.objectContaining({ statusCode: 400 }),
-    )
-    expect(() => validateSensors([], 'v2')).toThrowError(
-      expect.objectContaining({ statusCode: 400 }),
-    )
+describe('empty sensor array ingest', () => {
+  it('ingest with sensors:[] succeeds and returns whatever automation queued', async () => {
+    const ctx = createFakeCtx()
+    await seedDeviceWithPlant(ctx)
+    const res = await callHandler(ingestAndAckSensorData, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
+      deviceId: 'GM-MERGE',
+      sensors: [],
+    })
+    // No readings → no rule fires → no commands, but the call resolves.
+    expect(res.commands).toEqual([])
+    expect(ctx.db.all('sensors')).toHaveLength(0)
   })
 })

@@ -15,7 +15,7 @@ vi.mock('~~/server/utils/convex', () => ({
   }),
 }))
 
-function mockEvent(body: unknown) {
+function mockEvent() {
   return { headers: new Headers() } as any
 }
 

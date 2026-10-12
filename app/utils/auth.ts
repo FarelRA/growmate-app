@@ -76,6 +76,11 @@ function storeTokens(tokens: { token: string; refreshToken?: string } | null) {
   }
 }
 
+/** Persist tokens obtained outside the password form (demo-link login). */
+export function storeAuthTokens(tokens: { token: string; refreshToken?: string }) {
+  storeTokens(tokens)
+}
+
 /**
  * Single shared Convex HTTP client construction point for all imperative
  * (non-reactive) Convex calls.

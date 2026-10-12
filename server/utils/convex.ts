@@ -92,7 +92,9 @@ function withCallTimeout(client: ConvexHttpClient): ConvexHttpClient {
       if (typeof value !== 'function') return value
       if (typeof prop === 'string' && TIMED_METHODS.has(prop)) {
         const fn = value as (...args: unknown[]) => Promise<unknown>
-        return (...args: unknown[]) => withConvexTimeout(fn(...args))
+        // Preserve `this`: the client methods read instance state
+        // (auth headers, fetch impl). A detached call fails closed here.
+        return (...args: unknown[]) => withConvexTimeout(fn.apply(target, args))
       }
       return (value as (...args: unknown[]) => unknown).bind(target)
     },

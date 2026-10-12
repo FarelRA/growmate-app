@@ -100,4 +100,43 @@ describe('withConvexTimeout', () => {
     const query = client.query as unknown as (...args: unknown[]) => Promise<unknown>
     await expect(query('fake-query', {})).rejects.toBeInstanceOf(ConvexTimeoutError)
   })
+
+  it('preserves `this` on timed query/mutation/action calls', async () => {
+    process.env.NUXT_PUBLIC_CONVEX_URL = 'https://convex.example.com'
+    // Prototype methods like the real ConvexHttpClient (unbound): a proxy
+    // that drops `this` makes every one of these throw.
+    class FakeClient {
+      prefix = 'ok:'
+
+      query(arg: unknown) {
+        return Promise.resolve(`${this.prefix}${String(arg)}`)
+      }
+
+      mutation(arg: unknown) {
+        return Promise.resolve(`${this.prefix}${String(arg)}`)
+      }
+
+      action(arg: unknown) {
+        return Promise.resolve(`${this.prefix}${String(arg)}`)
+      }
+    }
+    ConvexHttpClientMock.mockImplementationOnce(function () {
+      return new FakeClient()
+    })
+
+    const { useConvex } = await import('../../../../server/utils/convex')
+    const client = useConvex()
+
+    // The pre-fix proxy detached the methods and every server Convex call
+    // failed closed with `Cannot read properties of undefined`.
+    await expect(
+      (client.query as unknown as (...args: unknown[]) => Promise<unknown>)('q', {}),
+    ).resolves.toBe('ok:q')
+    await expect(
+      (client.mutation as unknown as (...args: unknown[]) => Promise<unknown>)('m', {}),
+    ).resolves.toBe('ok:m')
+    await expect(
+      (client.action as unknown as (...args: unknown[]) => Promise<unknown>)('a', {}),
+    ).resolves.toBe('ok:a')
+  })
 })

@@ -135,7 +135,7 @@ const seedData: SeedCommunityListing[] = [
     priceUnit: "IDR",
     locationLabel: "Bantul",
     contactPreference: "pickup",
-    image: { hash: "12d027f348f1e695" },
+    image: { hash: "d14c73f0eebf6f5d" },
   },
   {
     sellerIndex: 29,

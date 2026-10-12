@@ -33,11 +33,27 @@ export const community = internalAction({
     const bucket = env.RUSTFS_BUCKET_IMAGE ?? "growmate-images";
 
     let listings = 0;
+    let updated = 0;
     for (const listing of communityListingsData) {
       const sellerId = userIds[listing.sellerIndex % userIds.length];
       if (!sellerId) continue;
 
       const imageUrl = await uploadSeedImageSet(bucket, listing.image.hash);
+
+      const existing = await ctx.runQuery(
+        internal.seedInternal.lookupCommunityProductByTitle,
+        { title: listing.title },
+      );
+      if (existing) {
+        if (existing.imageUrl !== imageUrl) {
+          await ctx.runMutation(internal.seedInternal.updateCommunityListingMedia, {
+            productId: existing._id,
+            imageUrl,
+          });
+          updated += 1;
+        }
+        continue;
+      }
 
       await ctx.runMutation(internal.seedInternal.insertCommunityListing, {
         title: listing.title,
@@ -53,6 +69,7 @@ export const community = internalAction({
       });
       listings += 1;
     }
+    console.log(`[seed] listings: ${listings} created, ${updated} updated`);
 
     // Community posts + comments + likes (all explicit in dataset)
     let posts = 0;

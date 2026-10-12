@@ -3223,19 +3223,6 @@
    1800
   ]
  },
- "12d027f348f1e695": {
-  "for": "topic/listing/jagung-petik",
-  "title": "Corn cultivation.jpg",
-  "page": "https://commons.wikimedia.org/wiki/File:Corn_cultivation.jpg",
-  "author": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Bhanupratap59&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Bhanupratap59 (page does not exist)\">Bhanupratap59</a>",
-  "license": "CC BY-SA 3.0",
-  "source_url": "https://upload.wikimedia.org/wikipedia/commons/e/ec/Corn_cultivation.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
-  "bytes_1200w": 204110,
-  "orig_size": [
-   1024,
-   768
-  ]
- },
  "a3970c83909ca53b": {
   "for": "topic/listing/benih-kangkung",
   "title": "Farm, Vegetable and Garden Seeds 1900 cover.jpg",
@@ -3377,6 +3364,19 @@
   "orig_size": [
    4096,
    4096
+  ]
+ },
+ "d14c73f0eebf6f5d": {
+  "for": "topic/listing/jagung-petik",
+  "title": "Starr-150814-2148-Zea mays-Illini Xtra Sweet ears harvested-Hawea Pl Olinda-Maui (25000436000).jpg",
+  "page": "https://commons.wikimedia.org/wiki/File:Starr-150814-2148-Zea_mays-Illini_Xtra_Sweet_ears_harvested-Hawea_Pl_Olinda-Maui_(25000436000).jpg",
+  "author": "Forest and Kim Starr",
+  "license": "CC BY 3.0 us",
+  "source_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/89/Starr-150814-2148-Zea_mays-Illini_Xtra_Sweet_ears_harvested-Hawea_Pl_Olinda-Maui_%2825000436000%29.jpg/1920px-Starr-150814-2148-Zea_mays-Illini_Xtra_Sweet_ears_harvested-Hawea_Pl_Olinda-Maui_%2825000436000%29.jpg",
+  "bytes_1200w": 215914,
+  "orig_size": [
+   1920,
+   1440
   ]
  }
 }

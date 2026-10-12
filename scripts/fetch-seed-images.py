@@ -54,6 +54,7 @@ MANUAL_TITLES = {
     "topic/blog/mitos-pembersih-udara": "3 pots w seedlings.jpg",
     "topic/product/pods": "Leafy Greens Hydroponics.jpg",
     "topic/listing/poc": "DAP (Diammonium Phosphate) Granules (1).jpg",
+    "topic/listing/jagung-petik": "Starr-150814-2148-Zea mays-Illini Xtra Sweet ears harvested-Hawea Pl Olinda-Maui (25000436000).jpg",
 }
 
 DIRECT_URLS = {

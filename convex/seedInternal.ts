@@ -488,6 +488,20 @@ export const insertCommunityListing = internalMutation({
   },
 });
 
+// Reseed sync: refresh the photo when the dataset moved on.
+export const updateCommunityListingMedia = internalMutation({
+  args: {
+    productId: v.id("products"),
+    imageUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.productId, {
+      imageUrl: args.imageUrl,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 // ─── Community Posts ─────────────────────────────────────
 
 export const insertCommunityPost = internalMutation({

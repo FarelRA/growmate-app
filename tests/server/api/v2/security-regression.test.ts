@@ -72,8 +72,8 @@ vi.mock('@aws-sdk/s3-request-presigner', () => ({
   getSignedUrl: (...args: unknown[]) => (mockGetSignedUrl as (...a: unknown[]) => unknown)(...args),
 }))
 
-const V1_SENSORS_SRC = '../../../../server/api/v1/sensors.post'
-const CAMERA_SRC = '../../../../server/api/v1/camera.post'
+const V1_SENSORS_SRC = '../../../../server/routes/v1/sensors.post'
+const CAMERA_SRC = '../../../../server/routes/v1/camera.post'
 const RECORDINGS_SRC = '../../../../server/api/v2/recordings/[deviceId].get'
 
 const VALID_SENSORS = {
@@ -138,7 +138,7 @@ afterEach(() => {
 })
 
 describe('fail-closed device auth on every device-key route', () => {
-  it('rejects v1 sensors and camera with 500 when env is unset', async () => {
+  it('answers v1 sensors and camera with JSON 500 when env is unset', async () => {
     vi.resetModules()
     delete process.env.DEVICE_API_KEY
     const { default: v1Sensors } = await import(V1_SENSORS_SRC)
@@ -146,14 +146,14 @@ describe('fail-closed device auth on every device-key route', () => {
     mockCameraSuccess()
 
     vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_SENSORS })
-    await expect(v1Sensors(deviceEvent('any-key'))).rejects.toMatchObject({ statusCode: 500 })
-    await expect(camera(cameraEvent('any-key'))).rejects.toMatchObject({ statusCode: 500 })
+    await expect(v1Sensors(deviceEvent('any-key'))).resolves.toMatchObject({ statusCode: 500 })
+    await expect(camera(cameraEvent('any-key'))).resolves.toMatchObject({ statusCode: 500 })
 
     // No passthrough to Convex.
     expect(mockMutation).not.toHaveBeenCalled()
   })
 
-  it('rejects every device-key route with 401 on wrong key and missing key', async () => {
+  it('answers every device-key route with JSON 401 on wrong key and missing key', async () => {
     vi.resetModules()
     process.env.DEVICE_API_KEY = 'secret-key'
     const { default: v1Sensors } = await import(V1_SENSORS_SRC)
@@ -161,9 +161,9 @@ describe('fail-closed device auth on every device-key route', () => {
     mockCameraSuccess()
 
     vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_SENSORS })
-    await expect(v1Sensors(deviceEvent('wrong-key'))).rejects.toMatchObject({ statusCode: 401 })
-    await expect(v1Sensors(deviceEvent())).rejects.toMatchObject({ statusCode: 401 })
-    await expect(camera(cameraEvent('wrong-key'))).rejects.toMatchObject({ statusCode: 401 })
+    await expect(v1Sensors(deviceEvent('wrong-key'))).resolves.toMatchObject({ statusCode: 401 })
+    await expect(v1Sensors(deviceEvent())).resolves.toMatchObject({ statusCode: 401 })
+    await expect(camera(cameraEvent('wrong-key'))).resolves.toMatchObject({ statusCode: 401 })
 
     expect(mockMutation).not.toHaveBeenCalled()
   })

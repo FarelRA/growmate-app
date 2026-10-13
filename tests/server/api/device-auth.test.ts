@@ -35,7 +35,7 @@ vi.mock('~~/server/utils/storage', () => ({
 
 const REQUIRE_SRC = '../../../server/utils/requireDeviceKey'
 const INGEST_SRC = '../../../server/utils/ingestHandler'
-const CAMERA_SRC = '../../../server/api/v1/camera.post'
+const CAMERA_SRC = '../../../server/routes/v1/camera.post'
 
 const VALID_BODY = {
   deviceId: 'dev-1',
@@ -99,7 +99,7 @@ describe('requireDeviceKey fail-closed', () => {
     const { default: cameraHandler } = await import(CAMERA_SRC)
     mockCameraSuccess()
 
-    await expect(cameraHandler(cameraEvent('any-key'))).rejects.toMatchObject({
+    await expect(cameraHandler(cameraEvent('any-key'))).resolves.toMatchObject({
       statusCode: 500,
     })
     expect(mockMutation).not.toHaveBeenCalled()
@@ -137,7 +137,7 @@ describe('requireDeviceKey wrong/missing client key', () => {
     await expect(handleSensorIngest(mockEvent('wrong-key'))).rejects.toMatchObject({
       statusCode: 401,
     })
-    await expect(cameraHandler(cameraEvent('wrong-key'))).rejects.toMatchObject({
+    await expect(cameraHandler(cameraEvent('wrong-key'))).resolves.toMatchObject({
       statusCode: 401,
     })
     expect(mockMutation).not.toHaveBeenCalled()

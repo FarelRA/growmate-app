@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const SRC = '../../../../server/api/v1/sensors.post'
+const SRC = '../../../../server/routes/v1/sensors.post'
 
 const mockMutation = vi.hoisted(() => vi.fn())
 
@@ -76,7 +76,7 @@ describe('POST /api/v1/sensors', () => {
       sensors: Array.from({ length: 9 }, () => ({ kind: 'soil', unit: '%', raw: 50 })),
     })
 
-    await expect(handler(event)).rejects.toMatchObject({ statusCode: 400 })
+    await expect(handler(event)).resolves.toMatchObject({ statusCode: 400 })
     expect(mockMutation).not.toHaveBeenCalled()
   })
 
@@ -90,7 +90,7 @@ describe('POST /api/v1/sensors', () => {
       sensors: [{ kind: 'soil', unit: '%', raw: 5000 }],
     })
 
-    await expect(handler(event)).rejects.toMatchObject({ statusCode: 400 })
+    await expect(handler(event)).resolves.toMatchObject({ statusCode: 400 })
     expect(mockMutation).not.toHaveBeenCalled()
   })
 

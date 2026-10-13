@@ -26,7 +26,7 @@ vi.mock('~~/server/utils/storage', () => ({
   uploadFile: mockUploadFile,
 }))
 
-const SRC = '../../../../server/api/v1/camera.post'
+const SRC = '../../../../server/routes/v1/camera.post'
 
 function mockEvent() {
   return { headers: new Headers() }
@@ -61,7 +61,7 @@ describe('POST /api/v1/camera', () => {
       const event = mockEvent()
       event.headers.set('authorization', 'Bearer wrong-key')
 
-      await expect(cameraHandler(event)).rejects.toMatchObject({
+      await expect(cameraHandler(event)).resolves.toMatchObject({
         statusCode: 401,
         statusMessage: 'Unauthorized',
       })
@@ -75,7 +75,7 @@ describe('POST /api/v1/camera', () => {
       const event = mockEvent()
       event.headers.set('x-device-id', 'device-1')
 
-      await expect(cameraHandler(event)).rejects.toMatchObject({
+      await expect(cameraHandler(event)).resolves.toMatchObject({
         statusCode: 401,
         statusMessage: 'Unauthorized',
       })
@@ -89,7 +89,7 @@ describe('POST /api/v1/camera', () => {
       const event = bearerEvent('any-key')
       event.headers.set('x-device-id', 'device-1')
 
-      await expect(cameraHandler(event)).rejects.toMatchObject({
+      await expect(cameraHandler(event)).resolves.toMatchObject({
         statusCode: 500,
       })
     })
@@ -108,7 +108,7 @@ describe('POST /api/v1/camera', () => {
     it('returns 400 without x-device-id header', async () => {
       const event = bearerEvent('valid-key')
 
-      await expect(cameraHandler(event)).rejects.toMatchObject({
+      await expect(cameraHandler(event)).resolves.toMatchObject({
         statusCode: 400,
         statusMessage: 'deviceId is required',
       })
@@ -118,7 +118,7 @@ describe('POST /api/v1/camera', () => {
       const event = bearerEvent('valid-key')
       event.headers.set('x-device-id', '  ')
 
-      await expect(cameraHandler(event)).rejects.toMatchObject({
+      await expect(cameraHandler(event)).resolves.toMatchObject({
         statusCode: 400,
         statusMessage: 'deviceId is required',
       })
@@ -129,7 +129,7 @@ describe('POST /api/v1/camera', () => {
       event.headers.set('x-device-id', 'device-1')
       event.headers.set('content-type', 'text/plain')
 
-      await expect(cameraHandler(event)).rejects.toMatchObject({
+      await expect(cameraHandler(event)).resolves.toMatchObject({
         statusCode: 400,
         statusMessage: 'content-type must be an image type',
       })
@@ -141,7 +141,7 @@ describe('POST /api/v1/camera', () => {
       event.headers.set('content-type', 'image/jpeg')
       event.headers.set('content-length', String(2 * 1024 * 1024))
 
-      await expect(cameraHandler(event)).rejects.toMatchObject({
+      await expect(cameraHandler(event)).resolves.toMatchObject({
         statusCode: 400,
         statusMessage: 'frame over 1MB',
       })
@@ -154,7 +154,7 @@ describe('POST /api/v1/camera', () => {
       event.headers.set('x-device-id', 'device-1')
       event.headers.set('content-type', 'image/jpeg')
 
-      await expect(cameraHandler(event)).rejects.toMatchObject({
+      await expect(cameraHandler(event)).resolves.toMatchObject({
         statusCode: 400,
         statusMessage: 'Image body is required',
       })
@@ -167,7 +167,7 @@ describe('POST /api/v1/camera', () => {
       event.headers.set('x-device-id', 'device-1')
       event.headers.set('content-type', 'image/jpeg')
 
-      await expect(cameraHandler(event)).rejects.toMatchObject({
+      await expect(cameraHandler(event)).resolves.toMatchObject({
         statusCode: 400,
         statusMessage: 'Image body is required',
       })
@@ -182,7 +182,7 @@ describe('POST /api/v1/camera', () => {
       event.headers.set('x-device-id', 'device-1')
       event.headers.set('content-type', 'image/jpeg')
 
-      await expect(cameraHandler(event)).rejects.toMatchObject({
+      await expect(cameraHandler(event)).resolves.toMatchObject({
         statusCode: 400,
         statusMessage: 'frame over 1MB',
       })

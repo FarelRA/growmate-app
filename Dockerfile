@@ -4,7 +4,11 @@ WORKDIR /app
 
 COPY package.json bun.lock bunfig.toml ./
 # Pinned to bun major 1 to match bun.lock lockfileVersion 1 (local bun 1.4.2).
-RUN npm install -g bun@1 && bun install --frozen-lockfile
+# Cross-compile: the builder is amd64 but the image runs on arm64 musl, so
+# resolve optional deps for every Linux arch. The builder keeps its native
+# bins (esbuild/vite still run), and the target finds its own (sharp musl
+# load failure = every image upload 500s). Only .output-traced files ship.
+RUN npm install -g bun@1 && bun install --frozen-lockfile --os=linux --cpu='*'
 
 COPY . .
 RUN bun run build

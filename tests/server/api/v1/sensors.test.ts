@@ -24,9 +24,10 @@ function mockEvent() {
   return { headers: new Headers() }
 }
 
-function bearerEvent(key: string) {
+function bearerEvent(key: string, deviceId = 'test-device') {
   const event = mockEvent()
   event.headers.set('authorization', `Bearer ${key}`)
+  event.headers.set('x-device-id', deviceId)
   return event
 }
 
@@ -99,7 +100,7 @@ describe('POST /v1/sensors', () => {
     process.env.DEVICE_API_KEY = 'test-key'
     mockMutation.mockResolvedValue({ commands: [] })
     const handler = (await import(SRC)).default
-    const event = bearerEvent('test-key')
+    const event = bearerEvent('test-key', 'tech-device')
     vi.mocked(globalThis.readBody).mockResolvedValue({
       deviceId: 'tech-device',
       variant: 'tech',
@@ -112,5 +113,36 @@ describe('POST /v1/sensors', () => {
       'ingestAndAckSensorData',
       expect.objectContaining({ deviceId: 'tech-device', variant: 'tech' }),
     )
+  })
+
+  it('requires X-Device-Id and rejects body/header mismatches', async () => {
+    vi.resetModules()
+    process.env.DEVICE_API_KEY = 'test-key'
+    const handler = (await import(SRC)).default
+
+    const noHeader = bearerEvent('test-key', 'dev-1')
+    noHeader.headers.delete('x-device-id')
+    vi.mocked(globalThis.readBody).mockResolvedValue({ deviceId: 'dev-1', sensors: [] })
+    await expect(handler(noHeader)).resolves.toMatchObject({ statusCode: 400 })
+    expect(mockMutation).not.toHaveBeenCalled()
+
+    const mismatch = bearerEvent('test-key', 'dev-other')
+    vi.mocked(globalThis.readBody).mockResolvedValue({ deviceId: 'dev-1', sensors: [] })
+    await expect(handler(mismatch)).resolves.toMatchObject({ statusCode: 400 })
+    expect(mockMutation).not.toHaveBeenCalled()
+  })
+
+  it('maps coded Convex failures to their real status', async () => {
+    vi.resetModules()
+    process.env.DEVICE_API_KEY = 'test-key'
+    const handler = (await import(SRC)).default
+    const event = bearerEvent('test-key', 'dev-1')
+    vi.mocked(globalThis.readBody).mockResolvedValue({ deviceId: 'dev-1', sensors: [] })
+    const { ConvexError } = await import('convex/values')
+    mockMutation.mockRejectedValue(new ConvexError({ statusCode: 409, message: 'ID perangkat tersebut sudah digunakan' }))
+
+    const result = await handler(event)
+    expect(result).toMatchObject({ statusCode: 409, message: 'ID perangkat tersebut sudah digunakan' })
+    expect(result).not.toHaveProperty('url')
   })
 })

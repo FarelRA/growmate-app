@@ -176,7 +176,9 @@ describe('valid Bearer key passes deviceKey through to Convex', () => {
     mockMutation.mockResolvedValue({ commands: [] })
     vi.mocked(globalThis.readBody).mockResolvedValue({ ...VALID_BODY })
 
-    const result = await handleSensorIngest(mockEvent('test-key'))
+    const event = mockEvent('test-key')
+    event.headers.set('x-device-id', 'dev-1')
+    const result = await handleSensorIngest(event)
     expect(result).toEqual({ commands: [] })
     expect(mockMutation).toHaveBeenCalledWith(
       'ingestAndAckSensorData',

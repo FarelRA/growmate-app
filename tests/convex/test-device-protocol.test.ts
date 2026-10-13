@@ -9,10 +9,12 @@ vi.mock('@convex-dev/auth/server', async (importOriginal) => {
   }
 })
 
-import { ingestAndAckSensorData } from '../../convex/sensors'
+import { ingestAndAckSensorData, ingestCameraImage, compareFirmwareVersions } from '../../convex/sensors'
 import {
   stageDeviceConfig, stageDeviceClaim, stageDeviceOta, queueDeviceCommand,
+  saveAdminDevice,
 } from '../../convex/admin/devices'
+import { clampDoseSeconds } from '../../convex/helpers/devices/queued'
 import type { DeviceDoc } from '../../convex/types'
 import { createFakeCtx, callHandler, type FakeCtx } from './test-ingest-rules-fake'
 
@@ -241,6 +243,117 @@ describe('firmware envelope ingest (pods)', () => {
     expect(res.minFirmware).toBe('2.1.0')
     expect(res.firmwareUrl).toBe('https://x/y.bin')
   })
+
+  it('withholds the OTA offer once firmware reaches the minimum', async () => {
+    const ctx = createFakeCtx()
+    await seedPods(ctx)
+    await stageDeviceOta(ctx, {
+      deviceId: 'IAET01', minFirmware: '2.1.0', firmwareUrl: 'https://x/y.bin',
+    })
+    const current: any = await callHandler(
+      ingestAndAckSensorData, ctx, podsEnvelope({ snapshotId: 'B1-2', firmwareVersion: '2.1.0' }),
+    )
+    expect(current.minFirmware).toBeUndefined()
+    expect(current.firmwareUrl).toBeUndefined()
+    const newer: any = await callHandler(
+      ingestAndAckSensorData, ctx, podsEnvelope({ snapshotId: 'B1-3', firmwareVersion: '9.9.9' }),
+    )
+    expect(newer.minFirmware).toBeUndefined()
+  })
+
+  it('camera follows a hardware rename instead of forking a row', async () => {
+    const ctx = createFakeCtx()
+    const docId = await seedPods(ctx)
+    await ctx.db.patch(docId, { hardwareId: 'AA1122334455' })
+    const res: any = await callHandler(ingestCameraImage, ctx, {
+      deviceKey: TEST_DEVICE_KEY,
+      deviceId: 'IAET99',
+      hardwareId: 'AA1122334455',
+      imageUrl: 'hash123',
+      capturedAt: now,
+    })
+    expect(res.success).toBe(true)
+    expect(ctx.db.all('devices')).toHaveLength(1)
+    expect(await ctx.db.get(docId)).toMatchObject({ deviceId: 'IAET99' })
+  })
+
+  it('stores hardware ids uppercase so case never forks identity', async () => {
+    const ctx = createFakeCtx()
+    await callHandler(ingestAndAckSensorData, ctx, podsEnvelope({ hardwareId: 'aa1122334455' }))
+    const devices = ctx.db.all('devices')
+    expect(devices).toHaveLength(1)
+    expect(devices[0]).toMatchObject({ hardwareId: 'AA1122334455' })
+  })
+
+  it('never emits tech-only legs to v1 rows', async () => {
+    const ctx = createFakeCtx()
+    await seedPods(ctx)
+    await queueDeviceCommand(ctx, { deviceId: 'IAET01', kind: 'fertilizer', durationMs: 5000 })
+    await queueDeviceCommand(ctx, { deviceId: 'IAET01', kind: 'pesticide', durationMs: 5000 })
+    await queueDeviceCommand(ctx, {
+      deviceId: 'IAET01', kind: 'video_stop',
+    })
+    const res: any = await callHandler(ingestAndAckSensorData, ctx, podsEnvelope())
+    const kinds = res.commands.map((c: any) => c.kind)
+    expect(kinds).not.toContain('fertilizer')
+    expect(kinds).not.toContain('pesticide')
+    expect(kinds).not.toContain('video_stop')
+    // ...but the same slots emit on v2 rows.
+    await seedPods(ctx, { deviceId: 'IAFU01', version: 'v2', variant: 'tech' })
+    await queueDeviceCommand(ctx, { deviceId: 'IAFU01', kind: 'fertilizer', durationMs: 5000 })
+    await queueDeviceCommand(ctx, { deviceId: 'IAFU01', kind: 'video_stop' })
+    const tech: any = await callHandler(
+      ingestAndAckSensorData, ctx, techEnvelope({ deviceId: 'IAFU01', snapshotId: 'B2-9', hardwareId: 'BB1122334455' }),
+    )
+    expect(tech.commands.map((c: any) => c.kind)).toContain('fertilizer')
+    expect(tech.commands.map((c: any) => c.kind)).toContain('video_stop')
+  })
+
+  it('omits id-less video slots instead of emitting unackable commands', async () => {
+    const ctx = createFakeCtx()
+    const docId = await seedPods(ctx, { deviceId: 'IAFU01', version: 'v2', variant: 'tech' })
+    await ctx.db.patch(docId, {
+      queuedCommands: {
+        pump: null, light: null, fertilizer: null, pesticide: null,
+        videoStart: { kind: 'video_start', width: 640, height: 480, fps: 5, quality: 70, maxSec: 300 },
+        videoStop: null,
+      },
+    })
+    const res: any = await callHandler(
+      ingestAndAckSensorData, ctx, techEnvelope({ deviceId: 'IAFU01', hardwareId: 'CC1122334455' }),
+    )
+    expect(res.commands.map((c: any) => c.kind)).not.toContain('video_start')
+  })
+})
+
+describe('firmware version compare + dose ceiling', () => {
+  it('orders dotted versions numerically', () => {
+    expect(compareFirmwareVersions('2.0.0', '2.1.0')).toBe(-1)
+    expect(compareFirmwareVersions('2.1.0', '2.1.0')).toBe(0)
+    expect(compareFirmwareVersions('2.10.0', '2.9.9')).toBe(1)
+    expect(compareFirmwareVersions('2.1', '2.1.0')).toBe(0)
+    expect(Number.isNaN(compareFirmwareVersions('2.0.0-rc1', '2.1.0'))).toBe(true)
+  })
+
+  it('clamps automation doses to the 30s firmware ceiling', () => {
+    expect(clampDoseSeconds(8)).toBe(8)
+    expect(clampDoseSeconds(3600)).toBe(30)
+    expect(clampDoseSeconds(30)).toBe(30)
+  })
+
+  it('rejects admin dose durations outside (0, 30] seconds', async () => {
+    const ctx = createFakeCtx()
+    const base = {
+      deviceId: 'IAET99', autoWatering: true, autoLighting: true,
+      wateringThreshold: 50, wateringDuration: 8, wateringCooldown: 120,
+      lightingThreshold: 60, lightingHysteresis: 10,
+    }
+    await expect(saveAdminDevice(ctx, { ...base, wateringDuration: 3600 })).rejects.toThrow()
+    await expect(saveAdminDevice(ctx, { ...base, fertilizingDuration: 45 })).rejects.toThrow()
+    await expect(saveAdminDevice(ctx, { ...base, pesticideDuration: 0 })).rejects.toThrow()
+    const ok: any = await saveAdminDevice(ctx, base)
+    expect(ok.success).toBe(true)
+  })
 })
 
 describe('firmware envelope ingest (tech)', () => {
@@ -295,13 +408,25 @@ describe('operator staging validation', () => {
   it('queues video_start with validated params', async () => {
     const ctx = createFakeCtx()
     await seedPods(ctx)
+    await seedPods(ctx, { deviceId: 'IAFU01', version: 'v2', variant: 'tech' })
     const res: any = await queueDeviceCommand(ctx, {
-      deviceId: 'IAET01', kind: 'video_start',
+      deviceId: 'IAFU01', kind: 'video_start',
       width: 640, height: 480, fps: 5, quality: 70, maxSec: 300,
     })
     expect(res.queued).toMatchObject({ kind: 'video_start', width: 640, id: expect.any(String) })
+    await queueDeviceCommand(ctx, {
+      deviceId: 'IAET01', kind: 'video_start',
+      width: 640, height: 480, fps: 5, quality: 70, maxSec: 300,
+    })
 
-    const ingest: any = await callHandler(ingestAndAckSensorData, ctx, podsEnvelope())
+    // Video legs are tech-only: a v1 row with a staged video slot must not
+    // emit it (pods firmware would ignore the kind and burn buffer).
+    const podsIngest: any = await callHandler(ingestAndAckSensorData, ctx, podsEnvelope())
+    expect(podsIngest.commands.map((c: any) => c.kind)).not.toContain('video_start')
+
+    const ingest: any = await callHandler(
+      ingestAndAckSensorData, ctx, techEnvelope({ deviceId: 'IAFU01', snapshotId: 'B2-9', hardwareId: 'AA1122334455' }),
+    )
     expect(ingest.commands.map((c: any) => c.kind)).toContain('video_start')
   })
 })

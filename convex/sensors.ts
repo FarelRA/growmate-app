@@ -6,7 +6,7 @@ import {
   ensureDeviceExists, getQueuedDeviceCommands, ackQueuedCommands,
   getDeviceByExternalId,
 } from './helpers/devices'
-import { normalizeRawSensorValue, convertCurrentRawToMilliamps } from './helpers/generic'
+import { normalizeRawSensorValue, convertCurrentRawToMilliamps, normalizedHardwareId } from './helpers/generic'
 import { recordGrowEvent, recordPlantImage } from './helpers/events'
 import {
   evaluateFertilizingRule, evaluatePesticideRule, estimateBatterySoC,
@@ -30,10 +30,10 @@ export { MAX_SENSORS_PER_POST }
 function assertDeviceKey(deviceKey: string) {
   const expected = process.env.DEVICE_API_KEY
   if (!expected) {
-    throw new ConvexError('server misconfigured')
+    throw codedError(500, 'server misconfigured')
   }
   if (deviceKey !== expected) {
-    throw new ConvexError('Unauthorized')
+    throw codedError(401, 'Unauthorized')
   }
 }
 
@@ -404,9 +404,17 @@ type IngestSensorDataArgs = {
   sensors: { kind: SensorKind; value?: number; unit: string; raw?: number }[]
 }
 
+// Device-facing validation failures must reach firmware as their real
+// status (devices retry 500s that can never succeed). Structured object
+// data survives Convex serialization (client reads .data), and the Nitro
+// mappers in server/utils/convexErrors.ts turn it back into H3 errors.
+export function codedError(statusCode: number, message: string): ConvexError<{ statusCode: number; message: string }> {
+  return new ConvexError({ statusCode, message })
+}
+
 function assertSensorCap(sensors: unknown[]) {
   if (sensors.length > MAX_SENSORS_PER_POST) {
-    throw new ConvexError(`Maksimal ${MAX_SENSORS_PER_POST} sensor per permintaan`)
+    throw codedError(400, `Maksimal ${MAX_SENSORS_PER_POST} sensor per permintaan`)
   }
 }
 
@@ -433,30 +441,30 @@ function assertIngestSensorShapes(
   // before any row is created or forked.
   for (const entry of sensors) {
     if (!INGEST_SENSOR_KINDS.has(entry.kind)) {
-      throw new ConvexError(`Unknown sensor kind: ${String(entry.kind)}`)
+      throw codedError(400, `Unknown sensor kind: ${String(entry.kind)}`)
     }
     if (entry.kind === 'temperature' || entry.kind === 'air') {
       if (entry.raw !== undefined) {
-        throw new ConvexError(`${entry.kind}: DHT must not carry raw`)
+        throw codedError(400, `${entry.kind}: DHT must not carry raw`)
       }
       if (typeof entry.value !== 'number' || !Number.isFinite(entry.value)) {
-        throw new ConvexError(`${entry.kind}: MISSING value (DHT is native floats)`)
+        throw codedError(400, `${entry.kind}: MISSING value (DHT is native floats)`)
       }
     } else if (entry.kind === 'current') {
       // Tech current leg only: pods never sends it, and the raw scale is
       // selected by the envelope variant, so a variant-less current leg is
       // uninterpretable.
       if (variant === undefined) {
-        throw new ConvexError('current leg requires a tech variant')
+        throw codedError(400, 'current leg requires a tech variant')
       }
       if (entry.value !== undefined) {
-        throw new ConvexError('current: must be RAW-only (no value)')
+        throw codedError(400, 'current: must be RAW-only (no value)')
       }
       if (typeof entry.raw !== 'number' || !Number.isInteger(entry.raw)) {
-        throw new ConvexError('current: MISSING raw (must be RAW-only)')
+        throw codedError(400, 'current: MISSING raw (must be RAW-only)')
       }
     } else if (entry.raw === undefined && entry.value === undefined) {
-      throw new ConvexError(`${entry.kind}: MISSING raw or value`)
+      throw codedError(400, `${entry.kind}: MISSING raw or value`)
     }
   }
 }
@@ -473,24 +481,25 @@ async function performIngest(
     // wrong row when the new id collides with an existing one.
     const externalId = args.deviceId.trim()
     if (!DEVICE_ID_RE.test(externalId)) {
-      throw new ConvexError('deviceId tidak valid')
+      throw codedError(400, 'deviceId tidak valid')
     }
     // Closed variant union at the core (Convex arg validators only run on
     // the real runtime; direct core calls must fail closed too).
     if (args.variant !== undefined && args.variant !== 'tech' && args.variant !== 'tech-addon') {
-      throw new ConvexError('variant must be tech or tech-addon')
+      throw codedError(400, 'variant must be tech or tech-addon')
     }
     assertIngestSensorShapes(args.sensors, args.variant)
     let device: DeviceDoc | null = null
     if (args.hardwareId) {
+      const hwid = normalizedHardwareId(args.hardwareId)
       device = await ctx.db
         .query('devices')
-        .withIndex('by_hardwareId', (q) => q.eq('hardwareId', args.hardwareId))
+        .withIndex('by_hardwareId', (q) => q.eq('hardwareId', hwid))
         .first() ?? null
       if (device && device.deviceId !== externalId) {
         const taken = await getDeviceByExternalId(ctx, externalId)
         if (taken && String(taken._id) !== String(device._id)) {
-          throw new ConvexError('ID perangkat tersebut sudah digunakan')
+          throw codedError(409, 'ID perangkat tersebut sudah digunakan')
         }
         await ctx.db.patch(device._id, {
           deviceId: externalId,
@@ -506,10 +515,10 @@ async function performIngest(
       device = await ensureDeviceExists(ctx, externalId, args.firmwareVersion, args.variant)
     }
     if (!device) {
-      throw new ConvexError('Perangkat tidak ditemukan')
+      throw codedError(500, 'Perangkat tidak ditemukan')
     }
     if (device.version !== 'v1' && device.version !== 'v2') {
-      throw new ConvexError(`Unknown device version: ${String(device.version)}`)
+      throw codedError(500, `Unknown device version: ${String(device.version)}`)
     }
     const plant: PlantDoc | null = device.plantId ? await ctx.db.get(device.plantId) : null
     const activePlant = plant && !plant.archived ? plant : null
@@ -521,7 +530,7 @@ async function performIngest(
     // branch. Pods (no variant) never touch either field: no downgrades.
     const patchIdentity: Record<string, string | number> = { updatedAt: now }
     if (args.hardwareId && !device.hardwareId) {
-      patchIdentity.hardwareId = args.hardwareId
+      patchIdentity.hardwareId = normalizedHardwareId(args.hardwareId)
     }
     if (args.variant && device.variant !== args.variant) {
       patchIdentity.variant = args.variant
@@ -681,8 +690,14 @@ async function performIngest(
     }
 
     if (device.otaMinFirmware && device.otaFirmwareUrl) {
-      response.minFirmware = device.otaMinFirmware
-      response.firmwareUrl = device.otaFirmwareUrl
+      // Offer only below the staged minimum: a current unit re-offered
+      // every POST would reflash-loop (or, on tech, spam the OTA log).
+      // Unparseable/absent device versions keep the legacy offer.
+      const current = args.firmwareVersion?.trim() ?? ''
+      if (!current || compareFirmwareVersions(current, device.otaMinFirmware) < 0) {
+        response.minFirmware = device.otaMinFirmware
+        response.firmwareUrl = device.otaFirmwareUrl
+      }
     }
 
     // Device response buffer is ~3KB: never exceed it. Convex isolates have
@@ -696,6 +711,29 @@ async function performIngest(
 
 function responseByteLength(value: unknown): number {
   return new TextEncoder().encode(JSON.stringify(value)).length
+}
+
+/**
+ * Numeric dotted-version compare ("2.0.0" < "2.1.0"). Segments compare
+ * numerically, missing segments count as 0, and a non-numeric segment
+ * aborts as NaN (caller treats NaN as "offer", the legacy behavior).
+ */
+export function compareFirmwareVersions(current: string, minimum: string): number {
+  const parse = (v: string) => v.split('.').map((part) => {
+    if (!/^\d+$/.test(part)) return Number.NaN
+    return Number.parseInt(part, 10)
+  })
+  const a = parse(current)
+  const b = parse(minimum)
+  // Any non-numeric segment poisons the whole compare (offer, legacy).
+  if ([...a, ...b].some((segment) => Number.isNaN(segment))) return Number.NaN
+  const len = Math.max(a.length, b.length)
+  for (let i = 0; i < len; i++) {
+    const x = a[i] ?? 0
+    const y = b[i] ?? 0
+    if (x !== y) return x < y ? -1 : 1
+  }
+  return 0
 }
 
 function buildDeviceResponseCommands(device: DeviceDoc) {
@@ -720,17 +758,24 @@ function buildDeviceResponseCommands(device: DeviceDoc) {
     if (pump) out.push(pump)
     if (light) out.push(light)
   }
-  if (queued.fertilizer && queued.fertilizer.id) {
-    out.push({ kind: 'fertilizer', durationMs: queued.fertilizer.durationMs, id: queued.fertilizer.id })
-  }
-  if (queued.pesticide && queued.pesticide.id) {
-    out.push({ kind: 'pesticide', durationMs: queued.pesticide.durationMs, id: queued.pesticide.id })
-  }
-  if (queued.videoStart) {
-    out.push({ ...queued.videoStart })
-  }
-  if (queued.videoStop) {
-    out.push({ ...queued.videoStop })
+  // Tech-only legs: pods firmware ignores fertilizer/pesticide/video kinds,
+  // so emitting them to v1 rows only burns the 3KB response budget (and a
+  // v1 row showing up here with such slots queued is a data bug worth
+  // hiding, not transmitting). Video slots require ids like every command:
+  // an id-less command applies but never acks, disagreeing forever.
+  if (!isPods) {
+    if (queued.fertilizer && queued.fertilizer.id) {
+      out.push({ kind: 'fertilizer', durationMs: queued.fertilizer.durationMs, id: queued.fertilizer.id })
+    }
+    if (queued.pesticide && queued.pesticide.id) {
+      out.push({ kind: 'pesticide', durationMs: queued.pesticide.durationMs, id: queued.pesticide.id })
+    }
+    if (queued.videoStart && queued.videoStart.id) {
+      out.push({ ...queued.videoStart })
+    }
+    if (queued.videoStop && queued.videoStop.id) {
+      out.push({ ...queued.videoStop })
+    }
   }
   return out
 }
@@ -809,12 +854,41 @@ export const ingestCameraImage = mutation({
   args: {
     deviceKey: v.string(),
     deviceId: v.string(),
+    hardwareId: v.optional(v.string()),
     imageUrl: v.string(),
     capturedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     assertDeviceKey(args.deviceKey)
-    const device = await ensureDeviceExists(ctx, args.deviceId)
+    // Hardware-first like performIngest: a claimed unit reporting its new
+    // id must follow the rename, not fork a fresh row. Current firmware
+    // sends no hardware header on frames, so unknown ids fall back to open
+    // intake (self-healed by the next sensors POST).
+    const externalId = args.deviceId.trim()
+    if (!DEVICE_ID_RE.test(externalId)) {
+      throw codedError(400, 'deviceId tidak valid')
+    }
+    let device: DeviceDoc | null = null
+    if (args.hardwareId) {
+      const hwid = normalizedHardwareId(args.hardwareId)
+      device = await ctx.db
+        .query('devices')
+        .withIndex('by_hardwareId', (q) => q.eq('hardwareId', hwid))
+        .first() ?? null
+      if (device && device.deviceId !== externalId) {
+        await ctx.db.patch(device._id, {
+          deviceId: externalId,
+          updatedAt: Date.now(),
+        })
+        device = (await ctx.db.get(device._id))!
+      }
+    }
+    if (!device) {
+      device = await getDeviceByExternalId(ctx, externalId)
+    }
+    if (!device) {
+      device = await ensureDeviceExists(ctx, externalId)
+    }
     const plant: PlantDoc | null = device.plantId ? await ctx.db.get(device.plantId) : null
     const activePlant = plant && !plant.archived ? plant : null
     const capturedAt = args.capturedAt ?? Date.now()

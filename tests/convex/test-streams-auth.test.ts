@@ -171,4 +171,38 @@ describe('streams recordLiveSession', () => {
     })
     expect(res.recordingId).toBe(rows[0]!._id)
   })
+
+  it('auto-registers an unknown unit as v2 (open intake)', async () => {
+    const ctx = createFakeCtx(null)
+    const res: any = await callHandler(recordLiveSession, ctx, {
+      deviceKey: DEVICE_KEY,
+      deviceId: 'IAFT99',
+      fileName: 'vid.mjpeg',
+      path: 'IAFT99/live/vid.mjpeg',
+      size: 100,
+      capturedAt: now,
+    })
+    expect(res.success).toBe(true)
+    const devices = ctx.db.all('devices')
+    expect(devices).toHaveLength(1)
+    expect(devices[0]).toMatchObject({ deviceId: 'IAFT99', version: 'v2', variant: 'tech' })
+  })
+
+  it('follows a hardware rename instead of forking a row', async () => {
+    const ctx = createFakeCtx(null)
+    const docId = await seedDevice(ctx, 'IAFT98', undefined)
+    await ctx.db.patch(docId, { hardwareId: 'AA9988776655' })
+    const res: any = await callHandler(recordLiveSession, ctx, {
+      deviceKey: DEVICE_KEY,
+      deviceId: 'IAFT99',
+      hardwareId: 'AA9988776655',
+      fileName: 'vid.mjpeg',
+      path: 'IAFT99/live/vid.mjpeg',
+      size: 100,
+      capturedAt: now,
+    })
+    expect(res.success).toBe(true)
+    expect(ctx.db.all('devices')).toHaveLength(1)
+    expect(await ctx.db.get(docId)).toMatchObject({ deviceId: 'IAFT99' })
+  })
 })

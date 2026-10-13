@@ -1,7 +1,10 @@
-import { v, ConvexError } from 'convex/values'
+import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { getCurrentUser } from './helpers/auth'
-import { getDeviceByExternalId } from './helpers/devices'
+import { ensureDeviceExists, getDeviceByExternalId } from './helpers/devices'
+import { codedError } from './sensors'
+import { normalizedHardwareId } from './helpers/generic'
+import type { DeviceDoc } from './types'
 
 export const DEFAULT_RECORDINGS_CAP = 50
 export const MAX_RECORDINGS_CAP = 100
@@ -34,17 +37,20 @@ export const getOwnedDevice = query({
 function assertDeviceKey(deviceKey: string) {
   const expected = process.env.DEVICE_API_KEY
   if (!expected) {
-    throw new ConvexError('server misconfigured')
+    throw codedError(500, 'server misconfigured')
   }
   if (deviceKey !== expected) {
-    throw new ConvexError('Unauthorized')
+    throw codedError(401, 'Unauthorized')
   }
 }
+
+const LIVE_DEVICE_ID_RE = /^[A-Za-z0-9_-]{1,31}$/
 
 export const recordLiveSession = mutation({
   args: {
     deviceKey: v.string(),
     deviceId: v.string(),
+    hardwareId: v.optional(v.string()),
     fileName: v.string(),
     path: v.string(),
     size: v.number(),
@@ -58,21 +64,46 @@ export const recordLiveSession = mutation({
     // measured byte length), but fail closed on junk instead of storing it:
     // these rows drive S3 deletes and signed-URL issuance downstream.
     if (!args.fileName.trim() || !args.path.trim()) {
-      throw new ConvexError('fileName + path required')
+      throw codedError(400, 'fileName + path required')
     }
     if (!Number.isFinite(args.size) || args.size < 0) {
-      throw new ConvexError('size must be >= 0')
+      throw codedError(400, 'size must be >= 0')
     }
     if (!Number.isFinite(args.capturedAt)) {
-      throw new ConvexError('capturedAt harus berupa timestamp yang valid')
+      throw codedError(400, 'capturedAt harus berupa timestamp yang valid')
     }
     if (args.durationMs !== undefined && (!Number.isFinite(args.durationMs) || args.durationMs < 0)) {
-      throw new ConvexError('durationMs must be >= 0')
+      throw codedError(400, 'durationMs must be >= 0')
     }
 
-    const device = await getDeviceByExternalId(ctx, args.deviceId)
+    // Open intake like the sensors path: live ingest is tech-only, so an
+    // unknown unit self-registers as v2 (refined to tech-addon by its next
+    // sensors POST). Hardware-first when a hardware id rides along, so a
+    // claimed unit follows its rename instead of forking.
+    const externalId = args.deviceId.trim()
+    if (!LIVE_DEVICE_ID_RE.test(externalId)) {
+      throw codedError(400, 'deviceId tidak valid')
+    }
+    let device: DeviceDoc | null = null
+    if (args.hardwareId) {
+      const hwid = normalizedHardwareId(args.hardwareId)
+      device = await ctx.db
+        .query('devices')
+        .withIndex('by_hardwareId', (q) => q.eq('hardwareId', hwid))
+        .first() ?? null
+      if (device && device.deviceId !== externalId) {
+        await ctx.db.patch(device._id, {
+          deviceId: externalId,
+          updatedAt: Date.now(),
+        })
+        device = (await ctx.db.get(device._id))!
+      }
+    }
     if (!device) {
-      throw new ConvexError('Perangkat tidak ditemukan')
+      device = await getDeviceByExternalId(ctx, externalId)
+    }
+    if (!device) {
+      device = await ensureDeviceExists(ctx, externalId, undefined, 'tech')
     }
 
     const recordingId = await ctx.db.insert('videoRecordings', {

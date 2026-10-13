@@ -27,3 +27,7 @@ globalThis.setResponseHeader = ((event: any, name: string, value: string) => {
 globalThis.setResponseStatus = ((event: any, code: number) => {
   event.__status = code
 }) as any
+globalThis.setHeader = ((event: any, name: string, value: string) => {
+  event.__headers ??= {}
+  event.__headers[name] = value
+}) as any

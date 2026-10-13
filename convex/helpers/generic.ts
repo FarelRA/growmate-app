@@ -43,8 +43,16 @@ export function rawMaxForVersion(version: SensorApiVersion): number {
   return version === 'v1' ? V1_ADC_RAW_MAX : V2_ADC_RAW_MAX
 }
 
-export function normalizeRawSensorValue(kind: SensorKind, raw: number, version: SensorApiVersion) {
-  const adcMax = rawMaxForVersion(version)
+/**
+ * Birth identity is MAC hex, canonically uppercase. Firmware always sends
+ * uppercase, but a lowercase forwarder must resolve to the same row —
+ * normalize at every Convex entry point (Nitro normalizes too).
+ */
+export function normalizedHardwareId(hardwareId: string): string {
+  return hardwareId.toUpperCase()
+}
+
+export function normalizeRawSensorValue(kind: SensorKind, raw: number, version: SensorApiVersion) {  const adcMax = rawMaxForVersion(version)
   const clampedRaw = Math.max(ADC_RAW_MIN, Math.min(adcMax, raw))
   const range = adcMax - ADC_RAW_MIN
   if (range === 0) return 0

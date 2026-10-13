@@ -7,6 +7,7 @@ import {
   checkSensorRateLimit,
   fitResponseBytes,
 } from '~~/server/utils/deviceProtocol'
+import { convexErrorToH3Status, isH3Error } from '~~/server/utils/convexErrors'
 
 export const MAX_INGEST_BODY_BYTES = 1024 * 100
 
@@ -50,6 +51,18 @@ export default async function handleSensorIngest(event: H3Event<EventHandlerRequ
     }
     const envelope = validateDeviceEnvelope(body)
 
+    // Firmware sends X-Device-Id on every POST (pods api_client.c,
+    // tech api_client.py `_headers`): require it and reject mismatches
+    // against the envelope so a mislabeled body can never ingest into the
+    // wrong device row.
+    const headerDeviceId = getHeader(event, 'x-device-id')?.trim()
+    if (!headerDeviceId) {
+      throw createError({ statusCode: 400, statusMessage: 'X-Device-Id is required' })
+    }
+    if (headerDeviceId !== envelope.deviceId) {
+      throw createError({ statusCode: 400, statusMessage: 'X-Device-Id does not match deviceId' })
+    }
+
     checkSensorRateLimit(event, envelope.deviceId)
 
     const convex = useConvex()
@@ -70,10 +83,11 @@ export default async function handleSensorIngest(event: H3Event<EventHandlerRequ
 
     return fitResponseBytes(result as { commands: unknown[] })
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'statusCode' in error) {
-      throw error
-    }
-    console.error('Sensor data ingestion failed:', error)
-    throw createError({ statusCode: 500, statusMessage: 'Internal server error' })
+    if (isH3Error(error)) throw error
+    // Coded Convex validation failures map back to their real status;
+    // devices retry 500s that can never succeed, so only log those.
+    const { statusCode, statusMessage } = convexErrorToH3Status(error)
+    if (statusCode >= 500) console.error('Sensor data ingestion failed:', error)
+    throw createError({ statusCode, statusMessage })
   }
 }

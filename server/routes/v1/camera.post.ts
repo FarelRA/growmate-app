@@ -4,6 +4,7 @@ import { requireDeviceKey } from '~~/server/utils/requireDeviceKey'
 import { checkCameraRateLimit } from '~~/server/utils/deviceProtocol'
 import { runUploadPipeline, deleteUploadedKeys, IMAGE_BUCKET } from '~~/server/utils/uploadPipeline'
 import { defineFirmwareHandler } from '~~/server/utils/firmwareRoute'
+import { convexErrorToH3Status, isH3Error } from '~~/server/utils/convexErrors'
 
 // Firmware frame cap (tech 06-api §POST camera + 08 §7: reject bodies over
 // ~1MB with 400; pods frames are 20-100KB so the same cap serves both).
@@ -29,6 +30,16 @@ export default defineFirmwareHandler(async (event) => {
         statusMessage: 'content-type must be an image type',
       })
     }
+
+    // Rate-check before buffering: throttled devices must not make us hold
+    // a megabyte while we decide to 429 them.
+    checkCameraRateLimit(event, deviceId)
+
+    // Optional forward-compat identity: current firmware sends only
+    // X-Device-Id on frames, so resolution falls back to open intake;
+    // a future firmware sending X-Hardware-Id gets hardware-first
+    // rename handling in ingestCameraImage instead of a row fork.
+    const hardwareId = getHeader(event, 'x-hardware-id')?.trim() || undefined
 
     const contentLength = getHeader(event, 'content-length')
     if (contentLength !== undefined) {
@@ -60,14 +71,13 @@ export default defineFirmwareHandler(async (event) => {
       })
     }
 
-    checkCameraRateLimit(event, deviceId)
-
     const { path: pathPrefix, keys } = await runUploadPipeline(input)
 
     const convex = useConvex()
     try {
       await convex.mutation(api.sensors.ingestCameraImage, {
         deviceId,
+        hardwareId,
         imageUrl: pathPrefix,
         capturedAt: Date.now(),
         deviceKey,
@@ -79,12 +89,14 @@ export default defineFirmwareHandler(async (event) => {
 
     return { success: true, path: pathPrefix }
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'statusCode' in error) {
-      throw error
+    if (isH3Error(error)) throw error
+    // Coded Convex failures map back (a claimed unit reporting its new id
+    // must not 500); only true server faults are logged here — the
+    // firmware boundary logs with the request id either way.
+    const { statusCode, statusMessage } = convexErrorToH3Status(error)
+    if (statusCode >= 500) {
+      console.error(`[camera ${String(event.context.requestId ?? 'noid')}] ingest failed:`, error)
     }
-    // Log the original (request id correlates with the boundary log line);
-    // the client still gets a generic JSON 500 with no internals.
-    console.error(`[camera ${String(event.context.requestId ?? 'noid')}] ingest failed:`, error)
-    throw createError({ statusCode: 500, statusMessage: 'Internal server error' })
+    throw createError({ statusCode, statusMessage })
   }
 })

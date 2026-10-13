@@ -34,4 +34,16 @@ describe('defineFirmwareHandler', () => {
     expect(result).toMatchObject({ statusCode: 500, statusMessage: 'Server Error' })
     expect(typeof result.requestId).toBe('string')
   })
+
+  it('echoes the same request id in the header and the error body', async () => {
+    const { createError } = await import('h3')
+    const handler = defineFirmwareHandler(async () => {
+      throw createError({ statusCode: 400, statusMessage: 'deviceId is required' })
+    })
+    const event = { context: {}, method: 'POST', path: '/v1/sensors' } as never
+    const result = (await handler(event)) as Record<string, unknown>
+    const headers = (event as unknown as { __headers: Record<string, string> }).__headers
+    expect(headers['X-Request-Id']).toBe(result.requestId)
+    expect(typeof result.requestId).toBe('string')
+  })
 })

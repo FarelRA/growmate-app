@@ -1,6 +1,21 @@
 import type { DeviceDoc, DeviceQueuedCommands, QueuedDeviceAction } from '../../types'
 import { newCommandId } from '../../types'
 
+/**
+ * Firmware dose ceiling, seconds: pods api_client rejects durationMs above
+ * APP_MAX_PUMP_DURATION_MS and tech api_client caps at bp.MAX_DOSE_MS, both
+ * 30000ms. Every dose builder clamps here so no row — however it was
+ * staged — can hold a dose the device would refuse (or run past safe).
+ */
+export const MAX_DOSE_SECONDS = 30
+
+export function clampDoseSeconds(durationSeconds: number): number {
+  // Ceiling only: admin-write validation owns the floor. Impossible states
+  // (NaN/negative) pass through untouched rather than degrading silently.
+  if (!Number.isFinite(durationSeconds) || durationSeconds < 0) return durationSeconds
+  return Math.min(durationSeconds, MAX_DOSE_SECONDS)
+}
+
 export function getQueuedDeviceCommands(device: DeviceDoc): DeviceQueuedCommands {
   return {
     ...(device.queuedCommands ?? {
@@ -48,7 +63,7 @@ export function buildQueuedPumpAction(
   return {
     queuedCommands: {
       ...base,
-      pump: { kind: 'pump' as const, durationMs: durationSeconds * 1000, id },
+      pump: { kind: 'pump' as const, durationMs: clampDoseSeconds(durationSeconds) * 1000, id },
     },
   }
 }
@@ -87,7 +102,7 @@ export function buildQueuedFertilizerAction(
   return {
     queuedCommands: {
       ...base,
-      fertilizer: { kind: 'fertilizer' as const, durationMs: durationSeconds * 1000, id },
+      fertilizer: { kind: 'fertilizer' as const, durationMs: clampDoseSeconds(durationSeconds) * 1000, id },
     },
   }
 }
@@ -101,7 +116,7 @@ export function buildQueuedPesticideAction(
   return {
     queuedCommands: {
       ...base,
-      pesticide: { kind: 'pesticide' as const, durationMs: durationSeconds * 1000, id },
+      pesticide: { kind: 'pesticide' as const, durationMs: clampDoseSeconds(durationSeconds) * 1000, id },
     },
   }
 }
@@ -120,6 +135,8 @@ export function buildQueuedVideoStartAction(
   base: DeviceQueuedCommands = getQueuedDeviceCommands(device),
   id: string = newCommandId(),
 ) {
+  // Same-actuator supersede (not a bug): a pending stop is meaningless
+  // once a fresh start is staged, and vice versa below.
   return {
     queuedCommands: {
       ...base,

@@ -90,6 +90,7 @@ const VALID_ENVELOPE = {
 function deviceEvent(apiKey?: string) {
   const event: any = { headers: new Headers() }
   if (apiKey !== undefined) event.headers.set('authorization', `Bearer ${apiKey}`)
+  event.headers.set('x-device-id', 'dev-1')
   return event
 }
 

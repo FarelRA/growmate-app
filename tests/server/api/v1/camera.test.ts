@@ -187,6 +187,34 @@ describe('POST /v1/camera', () => {
         statusMessage: 'frame over 1MB',
       })
     })
+    it('rate-limits before buffering: throttled over-cap frames 429 without a body read', async () => {
+      vi.resetModules()
+      process.env.DEVICE_API_KEY = 'valid-key'
+      const { default: cameraHandler } = await import(SRC)
+      mockMutation.mockResolvedValue(undefined)
+
+      const first = bearerEvent('valid-key')
+      first.headers.set('x-device-id', 'throttled-dev')
+      first.headers.set('content-type', 'image/jpeg')
+      globalThis.readRawBody = vi.fn().mockResolvedValue(Buffer.from('frame'))
+      mockGenerateHash.mockReturnValue('hash123')
+      mockProcessImage.mockResolvedValue([{ size: 50, buffer: Buffer.from('s50') }])
+      mockUploadFile.mockResolvedValue(undefined)
+      mockMutation.mockResolvedValue(undefined)
+      await cameraHandler(first)
+
+      // Second frame inside the 5-minute gap, over the 1MB cap: the 429
+      // must win without buffering the body.
+      const readRawBodyMock = vi.fn()
+      globalThis.readRawBody = readRawBodyMock
+      const second = bearerEvent('valid-key')
+      second.headers.set('x-device-id', 'throttled-dev')
+      second.headers.set('content-type', 'image/jpeg')
+      second.headers.set('content-length', String(2 * 1024 * 1024))
+
+      await expect(cameraHandler(second)).resolves.toMatchObject({ statusCode: 429 })
+      expect(readRawBodyMock).not.toHaveBeenCalled()
+    })
   })
 
   describe('success path', () => {

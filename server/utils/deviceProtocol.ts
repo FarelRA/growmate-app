@@ -211,6 +211,12 @@ export function validateDeviceEnvelope(body: unknown): DeviceEnvelope {
   if (env.snapshotId !== undefined && typeof env.snapshotId !== 'string') {
     bad('snapshotId must be string')
   }
+  // Both firmwares format snapshot ids as B<boot>-<seq> (pods main.c,
+  // tech api_client.py `f"B{boot}-{seq}"`): same-forked rows from a
+  // mislabeled client must fail fast, not silently dedup-collide.
+  if (env.snapshotId !== undefined && !/^B\d+-\d+$/.test(env.snapshotId as string)) {
+    bad('snapshotId must match B<boot>-<seq>')
+  }
   if (env.hardwareId !== undefined && typeof env.hardwareId !== 'string') {
     bad('hardwareId must be string')
   }
@@ -220,13 +226,39 @@ export function validateDeviceEnvelope(body: unknown): DeviceEnvelope {
   if (env.currentState !== undefined && (typeof env.currentState !== 'object' || env.currentState === null || Array.isArray(env.currentState))) {
     bad('currentState must be object')
   }
+  // Boolean legs are validated here so a misshapen flag 400s at the edge
+  // instead of 500ing inside the mutation (Convex arg validators reject
+  // with unmapped errors). Unknown fields stay allowed for future firmware.
+  if (env.currentState !== undefined) {
+    const state = env.currentState as Record<string, unknown>
+    for (const field of ['pumpEnabled', 'lightEnabled']) {
+      if (typeof state[field] !== 'boolean') {
+        bad(`currentState.${field} must be boolean`)
+      }
+    }
+    for (const field of ['fertilizerEnabled', 'pesticideEnabled', 'tankSwitchOpen', 'drawerSwitchOpen', 'streaming']) {
+      if (state[field] !== undefined && typeof state[field] !== 'boolean') {
+        bad(`currentState.${field} must be boolean`)
+      }
+    }
+    if (state.batteryCurrent !== undefined && state.batteryCurrent !== null && typeof state.batteryCurrent !== 'number') {
+      bad('currentState.batteryCurrent must be number or null')
+    }
+    for (const field of ['streamFps', 'batteryAccumulatedMah']) {
+      if (state[field] !== undefined && typeof state[field] !== 'number') {
+        bad(`currentState.${field} must be number`)
+      }
+    }
+  }
   if (env.health !== undefined && (typeof env.health !== 'object' || env.health === null || Array.isArray(env.health))) {
     bad('health must be object')
   }
 
   return {
     deviceId: trimmedDeviceId,
-    hardwareId: typeof env.hardwareId === 'string' ? env.hardwareId : undefined,
+    // Birth identity is MAC hex; firmware always sends uppercase, but a
+    // lowercase forwarder must not fork a second row for the same unit.
+    hardwareId: typeof env.hardwareId === 'string' ? env.hardwareId.toUpperCase() : undefined,
     firmwareVersion: typeof env.firmwareVersion === 'string' ? env.firmwareVersion : undefined,
     variant: variant === 'tech' || variant === 'tech-addon' ? variant : undefined,
     snapshotId: typeof env.snapshotId === 'string' ? env.snapshotId : undefined,

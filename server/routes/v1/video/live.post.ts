@@ -15,6 +15,7 @@ import {
 } from '~~/server/utils/videoLive'
 
 import { defineFirmwareHandler } from '~~/server/utils/firmwareRoute'
+import { convexErrorToH3Status, isH3Error } from '~~/server/utils/convexErrors'
 
 /**
  * POST /v1/video/live — tech MJPEG chunked ingest.
@@ -42,6 +43,9 @@ export default defineFirmwareHandler(async (event) => {
     if (!contentType.includes('multipart') || !contentType.includes('mixed-replace')) {
       throw createError({ statusCode: 400, statusMessage: 'want multipart/x-mixed-replace' })
     }
+    // Optional forward-compat identity (see camera.post.ts): current
+    // firmware sends only X-Device-Id on live ingest.
+    const hardwareId = getHeader(event, 'x-hardware-id')?.trim() || undefined
 
     const nodeReq = (event.node as unknown as { req: import('node:http').IncomingMessage }).req
     const startedAt = Date.now()
@@ -85,6 +89,7 @@ export default defineFirmwareHandler(async (event) => {
         await convex.mutation(api.streams.recordLiveSession, {
           deviceKey,
           deviceId,
+          hardwareId,
           fileName,
           path: key,
           size: body.length,
@@ -103,12 +108,11 @@ export default defineFirmwareHandler(async (event) => {
 
     return { ok: true, frames, bytes, recording }
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'statusCode' in error) {
-      throw error
+    if (isH3Error(error)) throw error
+    const { statusCode, statusMessage } = convexErrorToH3Status(error)
+    if (statusCode >= 500) {
+      console.error(`[live ${String(event.context.requestId ?? 'noid')}] ingest failed:`, error)
     }
-    // Log the original (request id correlates with the boundary log line);
-    // the client still gets a generic JSON 500 with no internals.
-    console.error(`[live ${String(event.context.requestId ?? 'noid')}] ingest failed:`, error)
-    throw createError({ statusCode: 500, statusMessage: 'Internal server error' })
+    throw createError({ statusCode, statusMessage })
   }
 })

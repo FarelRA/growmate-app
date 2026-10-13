@@ -183,6 +183,23 @@ describe('manual watering queues pump ONLY (no bundled fertilizer)', () => {
     expect(device.queuedCommands.fertilizer ?? null).toBeNull()
     expect(device.queuedCommands.pesticide ?? null).toBeNull()
   })
+
+  it('clamps a corrupt 3600s duration to the 30s firmware ceiling', async () => {
+    const ctx = createFakeCtx()
+    const owner = await seedUser(ctx, 'Owner')
+    const { deviceDocId } = await seedDeviceWithPlant(ctx, owner, 'GM-WATER-HUGE', {
+      wateringDuration: 3600,
+    })
+
+    await executeManualWatering(
+      ctx as any,
+      { _id: owner } as any,
+      (await ctx.db.get(deviceDocId)) as any,
+    )
+
+    const device = (await ctx.db.get(deviceDocId)) as any
+    expect(device.queuedCommands.pump).toMatchObject({ kind: 'pump', durationMs: 30_000 })
+  })
 })
 
 describe('schedule preamble helper authz (requirePlantDevice)', () => {

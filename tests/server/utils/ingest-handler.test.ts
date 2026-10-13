@@ -24,9 +24,10 @@ function mockEvent() {
   return { headers: new Headers() }
 }
 
-function bearerEvent(key: string) {
+function bearerEvent(key: string, deviceId = 'dev-1') {
   const event = mockEvent()
   event.headers.set('authorization', `Bearer ${key}`)
+  event.headers.set('x-device-id', deviceId)
   return event
 }
 
@@ -166,14 +167,14 @@ describe('handleSensorIngest', () => {
     const body = {
       deviceId: 'dev-1',
       firmwareVersion: '1.2.3',
-      hardwareId: 'hw-1',
+      hardwareId: 'AA1122334455',
       variant: 'tech',
-      snapshotId: 'snap-1',
+      snapshotId: 'B1-1',
       ageMs: 1000,
       appliedConfigRev: 2,
       acceptedCommandIds: ['cmd-0'],
-      currentState: { pump: 'off' },
-      health: { battery: 'ok' },
+      currentState: { pumpEnabled: false, lightEnabled: false },
+      health: { rssi: -61 },
       sensors: [soilEntry(20), { kind: 'temperature', unit: 'C', value: 24.5 }],
     }
     vi.mocked(globalThis.readBody).mockResolvedValue(body)
@@ -186,14 +187,14 @@ describe('handleSensorIngest', () => {
       expect.objectContaining({
         deviceId: 'dev-1',
         firmwareVersion: '1.2.3',
-        hardwareId: 'hw-1',
+        hardwareId: 'AA1122334455',
         variant: 'tech',
-        snapshotId: 'snap-1',
+        snapshotId: 'B1-1',
         ageMs: 1000,
         appliedConfigRev: 2,
         acceptedCommandIds: ['cmd-0'],
-        currentState: { pump: 'off' },
-        health: { battery: 'ok' },
+        currentState: { pumpEnabled: false, lightEnabled: false },
+        health: { rssi: -61 },
         deviceKey: 'test-key',
       }),
     )
@@ -202,7 +203,7 @@ describe('handleSensorIngest', () => {
   it('rejects over-cap payloads with 400 before touching Convex', async () => {
     const { default: handleSensorIngest } = await import(HANDLER_SRC)
     process.env.DEVICE_API_KEY = 'test-key'
-    const event = bearerEvent('test-key')
+    const event = bearerEvent('test-key', 'dev-over-cap')
     vi.mocked(globalThis.readBody).mockResolvedValue({
       deviceId: 'dev-over-cap',
       sensors: Array.from({ length: 9 }, () => soilEntry(50)),
@@ -217,14 +218,14 @@ describe('handleSensorIngest', () => {
     process.env.DEVICE_API_KEY = 'test-key'
     mockMutation.mockResolvedValue({ commands: [] })
 
-    const podsEvent = bearerEvent('test-key')
+    const podsEvent = bearerEvent('test-key', 'dev-pods')
     vi.mocked(globalThis.readBody).mockResolvedValue({
       deviceId: 'dev-pods',
       sensors: [soilEntry(5000)],
     })
     await expect(handleSensorIngest(podsEvent)).rejects.toMatchObject({ statusCode: 400 })
 
-    const techEvent = bearerEvent('test-key')
+    const techEvent = bearerEvent('test-key', 'dev-tech')
     vi.mocked(globalThis.readBody).mockResolvedValue({
       deviceId: 'dev-tech',
       variant: 'tech',

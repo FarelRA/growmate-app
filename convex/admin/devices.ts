@@ -15,7 +15,7 @@ import {
   DEFAULT_TANK_CAPACITY, DEFAULT_TANK_MIN_LEVEL,
   newCommandId,
 } from '../types'
-import { getQueuedDeviceCommands } from '../helpers/devices/queued'
+import { getQueuedDeviceCommands, MAX_DOSE_SECONDS } from '../helpers/devices/queued'
 import { batchGetPlants, batchGetUsers } from './stats'
 
 // AUTH POLICY: `requireAdmin` gates live ONLY in the thin delegates in
@@ -138,6 +138,19 @@ export async function saveAdminDevice(ctx: MutationCtx, args: SaveAdminDeviceArg
   const existingByDeviceId = await getDeviceByExternalId(ctx, trimmedDeviceId)
   if (existingByDeviceId && String(existingByDeviceId._id) !== String(args.existingDeviceId)) {
      throw new ConvexError('ID perangkat tersebut sudah digunakan')
+  }
+
+  // Dose durations are seconds; firmware refuses anything above 30s
+  // (30000ms both families), so reject it here like the manual queue path
+  // does ('0 < durationMs <= 30000') instead of staging an un-runnable dose.
+  for (const [label, seconds] of [
+    ['wateringDuration', args.wateringDuration],
+    ['fertilizingDuration', args.fertilizingDuration],
+    ['pesticideDuration', args.pesticideDuration],
+  ] as const) {
+    if (seconds !== undefined && (!Number.isFinite(seconds) || seconds <= 0 || seconds > MAX_DOSE_SECONDS)) {
+      throw new ConvexError(`${label} must be within (0, ${MAX_DOSE_SECONDS}] seconds`)
+    }
   }
 
   const payload = {

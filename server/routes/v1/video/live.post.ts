@@ -106,7 +106,9 @@ export default defineFirmwareHandler(async (event) => {
     if (error && typeof error === 'object' && 'statusCode' in error) {
       throw error
     }
-    // The firmware boundary logs with the request id and serializes JSON.
+    // Log the original (request id correlates with the boundary log line);
+    // the client still gets a generic JSON 500 with no internals.
+    console.error(`[live ${String(event.context.requestId ?? 'noid')}] ingest failed:`, error)
     throw createError({ statusCode: 500, statusMessage: 'Internal server error' })
   }
 })

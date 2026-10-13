@@ -44,12 +44,15 @@ export default defineFirmwareHandler(async (event) => {
       }
     }
 
-    const rawBody = await readRawBody(event)
+    // h3 returns a utf8 string by default: binary JPEG bytes must be read
+    // raw (false), otherwise Buffer.from mangles every byte >= 0x80 and
+    // sharp rejects the frame as an unsupported format.
+    const rawBody = await readRawBody(event, false)
     if (!rawBody || rawBody.length === 0) {
       throw createError({ statusCode: 400, statusMessage: 'Image body is required' })
     }
 
-    const input = Buffer.from(rawBody)
+    const input = Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(rawBody)
     if (input.length > MAX_DEVICE_FRAME_BYTES) {
       throw createError({
         statusCode: 400,

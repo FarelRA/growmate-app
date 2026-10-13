@@ -51,7 +51,7 @@ beforeEach(() => {
   globalThis.readMultipartFormData = vi.fn()
 })
 
-describe('POST /api/v1/camera', () => {
+describe('POST /v1/camera', () => {
   describe('authentication', () => {
     it('returns 401 when Bearer token does not match', async () => {
       vi.resetModules()
@@ -284,6 +284,24 @@ describe('POST /api/v1/camera', () => {
       await cameraHandler(event)
 
       expect(mockProcessImage).toHaveBeenCalled()
+    })
+
+    it('reads the frame as raw binary, never utf8 text', async () => {
+      // Regression: readRawBody(event) defaults to utf8 text, which mangles
+      // every JPEG byte >= 0x80 so sharp rejects the frame as unsupported.
+      const rawBody = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46])
+      const readRawBodyMock = vi.fn().mockResolvedValue(rawBody)
+      globalThis.readRawBody = readRawBodyMock
+      mockMutation.mockResolvedValue(undefined)
+
+      const event = bearerEvent('valid-key')
+      event.headers.set('x-device-id', 'device-1')
+      event.headers.set('content-type', 'image/jpeg')
+
+      await cameraHandler(event)
+
+      expect(readRawBodyMock).toHaveBeenCalledWith(event, false)
+      expect(mockProcessImage).toHaveBeenCalledWith(rawBody, [50, 200, 400, 800, 1200])
     })
   })
 })

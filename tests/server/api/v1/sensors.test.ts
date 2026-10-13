@@ -39,7 +39,7 @@ beforeEach(() => {
   globalThis.readBody = vi.fn() as any
 })
 
-describe('POST /api/v1/sensors', () => {
+describe('POST /v1/sensors', () => {
   it('returns the firmware response shape verbatim via the shared handler', async () => {
     vi.resetModules()
     process.env.DEVICE_API_KEY = 'test-key'

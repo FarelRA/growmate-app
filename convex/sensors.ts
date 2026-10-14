@@ -66,8 +66,6 @@ async function ingestSensorReadings(
     lightEnabled: boolean
     fertilizerEnabled?: boolean
     pesticideEnabled?: boolean
-    tankSwitchOpen?: boolean
-    drawerSwitchOpen?: boolean
     batteryCurrent?: number | null
     streaming?: boolean
     streamFps?: number
@@ -115,12 +113,6 @@ async function ingestSensorReadings(
     if (currentState.pesticideEnabled !== undefined) {
       deviceUpdates.reportedPesticideEnabled = currentState.pesticideEnabled
     }
-    if (currentState.tankSwitchOpen !== undefined) {
-      deviceUpdates.reportedTankSwitchOpen = currentState.tankSwitchOpen
-    }
-    if (currentState.drawerSwitchOpen !== undefined) {
-      deviceUpdates.reportedDrawerSwitchOpen = currentState.drawerSwitchOpen
-    }
     // Firmware sends batteryCurrent: null always (RAW-only current rides
     // sensors[] kind=current). Only legacy/app clients send a number.
     if (isFiniteNumber(currentState.batteryCurrent)) {
@@ -138,7 +130,7 @@ async function ingestSensorReadings(
         const { accumulatedMah, soc } = estimateBatterySoC(
           currentState.batteryCurrent,
           prevAccumulated,
-          device.batteryCapacityAh ?? 5,
+          device.batteryCapacityAh ?? 3.5,
           timeDeltaMs,
         )
         deviceUpdates.batteryAccumulatedMah = accumulatedMah
@@ -170,7 +162,7 @@ async function ingestSensorReadings(
       const { accumulatedMah, soc } = estimateBatterySoC(
         value,
         device.batteryAccumulatedMah ?? 0,
-        device.batteryCapacityAh ?? 5,
+        device.batteryCapacityAh ?? 3.5,
         timeDeltaMs,
       )
       deviceUpdates.batteryCurrent = value
@@ -348,8 +340,6 @@ const ingestSensorDataArgs = {
       lightEnabled: v.boolean(),
       fertilizerEnabled: v.optional(v.boolean()),
       pesticideEnabled: v.optional(v.boolean()),
-      tankSwitchOpen: v.optional(v.boolean()),
-      drawerSwitchOpen: v.optional(v.boolean()),
       batteryCurrent: v.optional(v.union(v.number(), v.null())),
       batteryAccumulatedMah: v.optional(v.number()),
       streaming: v.optional(v.boolean()),
@@ -385,8 +375,6 @@ type IngestSensorDataArgs = {
     lightEnabled: boolean
     fertilizerEnabled?: boolean
     pesticideEnabled?: boolean
-    tankSwitchOpen?: boolean
-    drawerSwitchOpen?: boolean
     batteryCurrent?: number | null
     batteryAccumulatedMah?: number
     streaming?: boolean

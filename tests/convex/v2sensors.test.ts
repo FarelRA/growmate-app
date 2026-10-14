@@ -188,55 +188,56 @@ describe('evaluatePesticideRule', () => {
 })
 
 describe('estimateBatterySoC', () => {
-  it('returns 50% SoC with zero current and no accumulation', () => {
-    const result = estimateBatterySoC(0, 0, 5, 60000)
-    expect(result.soc).toBe(50)
+  it('returns 100% SoC with zero current and no accumulation (fresh full pack)', () => {
+    const result = estimateBatterySoC(0, 0, 3.5, 60000)
+    expect(result.soc).toBe(100)
     expect(result.accumulatedMah).toBe(0)
   })
 
   it('charges battery (positive current increases SoC)', () => {
-    const result = estimateBatterySoC(500, 0, 5, 3600000)
-    expect(result.accumulatedMah).toBe(500)
-    expect(result.soc).toBeGreaterThan(50)
+    const result = estimateBatterySoC(500, -500, 3.5, 3600000)
+    expect(result.accumulatedMah).toBe(0)
+    expect(result.soc).toBe(100)
   })
 
   it('discharges battery (negative current decreases SoC)', () => {
-    const result = estimateBatterySoC(-500, 0, 5, 3600000)
+    const result = estimateBatterySoC(-500, 0, 3.5, 3600000)
     expect(result.accumulatedMah).toBe(-500)
-    expect(result.soc).toBeLessThan(50)
+    expect(result.soc).toBeLessThan(100)
   })
 
   it('clamps SoC to 0% minimum', () => {
-    const result = estimateBatterySoC(-5000, 0, 5, 36000000)
+    const result = estimateBatterySoC(-5000, 0, 3.5, 36000000)
     expect(result.soc).toBe(0)
   })
 
   it('clamps SoC to 100% maximum', () => {
-    const result = estimateBatterySoC(5000, 0, 5, 36000000)
+    const result = estimateBatterySoC(5000, 0, 3.5, 36000000)
     expect(result.soc).toBe(100)
   })
 
   it('accumulates mAh correctly over multiple calls', () => {
-    const r1 = estimateBatterySoC(1000, 0, 5, 3600000)
-    expect(r1.accumulatedMah).toBe(1000)
-    const r2 = estimateBatterySoC(500, r1.accumulatedMah, 5, 3600000)
-    expect(r2.accumulatedMah).toBe(1500)
+    const r1 = estimateBatterySoC(1000, -2000, 3.5, 3600000)
+    expect(r1.accumulatedMah).toBe(-1000)
+    const r2 = estimateBatterySoC(500, r1.accumulatedMah, 3.5, 3600000)
+    expect(r2.accumulatedMah).toBe(-500)
   })
 
-  it('handles zero capacity gracefully (defaults to 5Ah)', () => {
-    const result = estimateBatterySoC(1000, 0, 0, 3600000)
-    expect(result.soc).toBe(50 + (1000 / 5000) * 50)
+  it('handles zero capacity gracefully (defaults to 3.5Ah)', () => {
+    const result = estimateBatterySoC(1000, -1000, 0, 3600000)
+    expect(result.accumulatedMah).toBe(0)
+    expect(result.soc).toBe(100)
   })
 
   it('handles very small time delta', () => {
-    const result = estimateBatterySoC(1000, 0, 5, 1)
-    expect(result.accumulatedMah).toBeCloseTo(0.000278, 4)
-    expect(result.soc).toBeCloseTo(50, 4)
+    const result = estimateBatterySoC(1000, -1000, 3.5, 1)
+    expect(result.accumulatedMah).toBeCloseTo(-1000 + 0.000278, 4)
+    expect(result.soc).toBeCloseTo(100 + (-1000 / 3500) * 100, 4)
   })
 
   it('handles large time delta', () => {
-    const result = estimateBatterySoC(100, 0, 5, 86400000)
-    expect(result.accumulatedMah).toBe(2400)
-    expect(result.soc).toBe(50 + (2400 / 5000) * 50)
+    const result = estimateBatterySoC(-100, 0, 3.5, 86400000)
+    expect(result.accumulatedMah).toBe(-2400)
+    expect(result.soc).toBe(100 + (-2400 / 3500) * 100)
   })
 })

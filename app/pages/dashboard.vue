@@ -50,8 +50,6 @@ const {
   batteryIcon,
   timeToEmpty,
   timeToFull,
-  tankSwitchOpen,
-  drawerSwitchOpen,
   hasModem,
   hasSolarPanel,
   solarPanelWatts,
@@ -175,8 +173,6 @@ watch(
       :battery-icon="batteryIcon"
       :time-to-empty="timeToEmpty"
       :time-to-full="timeToFull"
-      :tank-switch-open="tankSwitchOpen"
-      :drawer-switch-open="drawerSwitchOpen"
       :has-modem="hasModem"
       :has-solar-panel="hasSolarPanel"
       :solar-panel-watts="solarPanelWatts"

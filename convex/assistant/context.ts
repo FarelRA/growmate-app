@@ -115,8 +115,6 @@ export async function buildAssistantContext(
           batterySoC: device.batterySoC,
           batteryCurrent: device.batteryCurrent,
           batteryCapacityAh: device.batteryCapacityAh,
-          reportedTankSwitchOpen: device.reportedTankSwitchOpen,
-          reportedDrawerSwitchOpen: device.reportedDrawerSwitchOpen,
           hasModem: device.hasModem,
           hasSolarPanel: device.hasSolarPanel,
           modemImei: device.modemImei,

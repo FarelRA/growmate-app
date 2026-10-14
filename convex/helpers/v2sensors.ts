@@ -77,8 +77,12 @@ export function estimateBatterySoC(
 ): { accumulatedMah: number; soc: number } {
   const deltaMah = (batteryCurrent * timeDeltaMs) / (3600 * 1000)
   const newAccumulated = accumulatedMah + deltaMah
-  const capacityMah = (capacityAh || 5) * 1000
-  const rawSoC = 50 + (newAccumulated / capacityMah) * 50
+  // Sign convention (matches install.sh bring-up + dashboard labels):
+  // negative current discharges the pack, positive charges it.
+  // accumulatedMah integrates net mAh SINCE FULL, so a fresh pack (0)
+  // reads 100%; unknown/zero capacity falls back to the 3.5Ah pack.
+  const capacityMah = (capacityAh || 3.5) * 1000
+  const rawSoC = 100 + (newAccumulated / capacityMah) * 100
   return {
     accumulatedMah: newAccumulated,
     soc: Math.max(0, Math.min(100, rawSoC)),

@@ -56,7 +56,6 @@ const DASHBOARD_KEYS = [
   'streamActive', 'isLiveLoading', 'fetchRecordings', 'retryRecordings',
   'batterySoC', 'batteryCurrent', 'batteryCapacityAh', 'batteryIcon',
   'timeToEmpty', 'timeToFull',
-  'tankSwitchOpen', 'drawerSwitchOpen',
   'hasModem', 'hasSolarPanel', 'solarPanelWatts',
   'tankCapacity', 'tankMinLevel',
 ]

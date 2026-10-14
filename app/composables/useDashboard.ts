@@ -16,9 +16,9 @@ export type { DashboardPanel } from '@/composables/dashboard/devicePanels'
 
 // convex/types.ts has no battery/solar fallback constants (read-only check),
 // so the missing literals live next to their usage.
-const DEFAULT_BATTERY_SOC = 50
+const DEFAULT_BATTERY_SOC = 100
 const DEFAULT_BATTERY_CURRENT = 0
-const DEFAULT_BATTERY_CAPACITY_AH = 5
+const DEFAULT_BATTERY_CAPACITY_AH = 3.5
 const DEFAULT_SOLAR_PANEL_WATTS = 0
 
 /**
@@ -110,8 +110,6 @@ export function useDashboard() {
   const batteryCapacityAh = computed(
     () => data.value?.device?.batteryCapacityAh ?? DEFAULT_BATTERY_CAPACITY_AH,
   )
-  const tankSwitchOpen = computed(() => data.value?.device?.reportedTankSwitchOpen ?? false)
-  const drawerSwitchOpen = computed(() => data.value?.device?.reportedDrawerSwitchOpen ?? false)
   const hasModem = computed(() => data.value?.device?.hasModem ?? false)
   const hasSolarPanel = computed(() => data.value?.device?.hasSolarPanel ?? false)
   const solarPanelWatts = computed(
@@ -351,8 +349,6 @@ export function useDashboard() {
     batteryIcon,
     timeToEmpty,
     timeToFull,
-    tankSwitchOpen,
-    drawerSwitchOpen,
     hasModem,
     hasSolarPanel,
     solarPanelWatts,

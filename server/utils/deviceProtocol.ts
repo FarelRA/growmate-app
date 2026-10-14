@@ -236,7 +236,7 @@ export function validateDeviceEnvelope(body: unknown): DeviceEnvelope {
         bad(`currentState.${field} must be boolean`)
       }
     }
-    for (const field of ['fertilizerEnabled', 'pesticideEnabled', 'tankSwitchOpen', 'drawerSwitchOpen', 'streaming']) {
+    for (const field of ['fertilizerEnabled', 'pesticideEnabled', 'streaming']) {
       if (state[field] !== undefined && typeof state[field] !== 'boolean') {
         bad(`currentState.${field} must be boolean`)
       }

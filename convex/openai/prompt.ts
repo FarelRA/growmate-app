@@ -94,8 +94,6 @@ export const assistantContextValidator = v.object({
       batterySoC: v.optional(v.number()),
       batteryCurrent: v.optional(v.number()),
       batteryCapacityAh: v.optional(v.number()),
-      reportedTankSwitchOpen: v.optional(v.boolean()),
-      reportedDrawerSwitchOpen: v.optional(v.boolean()),
       hasModem: v.optional(v.boolean()),
       hasSolarPanel: v.optional(v.boolean()),
       modemImei: v.optional(v.string()),

@@ -165,18 +165,18 @@ describe('estimateBatterySoC edge cases', () => {
   })
 
   it('handles small negative current accurately', () => {
-    const result = estimateBatterySoC(-1, 0, 5, 3600000)
+    const result = estimateBatterySoC(-1, 0, 3.5, 3600000)
     expect(result.accumulatedMah).toBeCloseTo(-1, 0)
-    expect(result.soc).toBeLessThan(50)
+    expect(result.soc).toBeLessThan(100)
   })
 
   it('handles large capacity batteries', () => {
-    const result = estimateBatterySoC(1000, 0, 200, 3600000)
-    expect(result.soc).toBeCloseTo(50.25, 4)
+    const result = estimateBatterySoC(1000, -1000, 200, 3600000)
+    expect(result.soc).toBeCloseTo(100, 4)
   })
 
   it('handles very small capacity batteries', () => {
-    const result = estimateBatterySoC(100, 0, 0.5, 3600000)
-    expect(result.soc).toBeCloseTo(60, 4)
+    const result = estimateBatterySoC(-10, 0, 0.5, 3600000)
+    expect(result.soc).toBeCloseTo(98, 4)
   })
 })

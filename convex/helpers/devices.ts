@@ -109,8 +109,6 @@ export async function formatDeviceDetail(ctx: Ctx, device: DeviceDoc) {
     batteryCurrent: device.batteryCurrent,
     batteryCapacityAh: device.batteryCapacityAh,
     batteryLastFullCharge: device.batteryLastFullCharge,
-    reportedTankSwitchOpen: device.reportedTankSwitchOpen,
-    reportedDrawerSwitchOpen: device.reportedDrawerSwitchOpen,
     hasModem: device.hasModem,
     hasSolarPanel: device.hasSolarPanel,
     modemImei: device.modemImei,

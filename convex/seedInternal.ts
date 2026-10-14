@@ -361,10 +361,12 @@ export const patchDeviceVariant = internalMutation({
   args: {
     deviceId: v.id("devices"),
     variant: v.optional(v.union(v.literal("tech"), v.literal("tech-addon"))),
+    batteryCapacityAh: v.optional(v.number()),
   },
-  handler: async (ctx, { deviceId, variant }) => {
+  handler: async (ctx, { deviceId, variant, batteryCapacityAh }) => {
     await ctx.db.patch(deviceId, {
-      variant,
+      ...(variant !== undefined ? { variant } : {}),
+      ...(batteryCapacityAh !== undefined ? { batteryCapacityAh } : {}),
       updatedAt: Date.now(),
     });
   },

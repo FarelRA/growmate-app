@@ -47,8 +47,6 @@ export interface AdminDeviceListItem {
   batteryCapacityAh?: number
   batterySoC?: number
   batteryCurrent?: number
-  reportedTankSwitchOpen?: boolean
-  reportedDrawerSwitchOpen?: boolean
   modemImei?: string
   solarPanelWatts?: number
   hasModem?: boolean

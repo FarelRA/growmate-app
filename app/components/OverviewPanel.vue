@@ -18,8 +18,6 @@ defineProps<{
   batteryIcon?: string
   timeToEmpty?: string
   timeToFull?: string
-  tankSwitchOpen?: boolean
-  drawerSwitchOpen?: boolean
   hasModem?: boolean
   hasSolarPanel?: boolean
   solarPanelWatts?: number
@@ -233,20 +231,6 @@ function formatPlantHealthLabel(value: string) {
             </div>
             <div v-if="hasSolarPanel" class="mt-1 flex items-center gap-1 text-xs text-gm-muted">
               <span class="material-symbols-outlined text-sm">solar_power</span> Panel surya {{ solarPanelWatts }}W
-            </div>
-          </article>
-
-          <article class="rounded-[2rem] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
-            <p class="text-xs font-bold uppercase tracking-[0.2em] text-gm-primary">Sakelar</p>
-            <div class="mt-3 space-y-2 text-sm">
-              <div :class="tankSwitchOpen ? 'text-red-500' : 'text-green-600'" class="flex items-center gap-2">
-                <span class="inline-block h-2 w-2 rounded-full" :class="tankSwitchOpen ? 'bg-red-500' : 'bg-green-600'" />
-                <span>{{ tankSwitchOpen ? 'Tutup tangki terbuka' : 'Tutup tangki tertutup' }}</span>
-              </div>
-              <div :class="drawerSwitchOpen ? 'text-red-500' : 'text-green-600'" class="flex items-center gap-2">
-                <span class="inline-block h-2 w-2 rounded-full" :class="drawerSwitchOpen ? 'bg-red-500' : 'bg-green-600'" />
-                <span>{{ drawerSwitchOpen ? 'Laci terbuka' : 'Laci tertutup' }}</span>
-              </div>
             </div>
           </article>
         </template>

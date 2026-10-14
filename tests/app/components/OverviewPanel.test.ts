@@ -247,30 +247,12 @@ describe('OverviewPanel', () => {
     })
   })
 
-  describe('switches panel (v2)', () => {
-    it('shows tank switch open state', () => {
-      const wrapper = createWrapper({ isV2: true, tankSwitchOpen: true })
-      expect(wrapper.text()).toContain('Tutup tangki terbuka')
-    })
-
-    it('shows tank switch closed state', () => {
-      const wrapper = createWrapper({ isV2: true, tankSwitchOpen: false })
-      expect(wrapper.text()).toContain('Tutup tangki tertutup')
-    })
-
-    it('shows drawer switch open state', () => {
-      const wrapper = createWrapper({ isV2: true, drawerSwitchOpen: true })
-      expect(wrapper.text()).toContain('Laci terbuka')
-    })
-
-    it('shows drawer switch closed state', () => {
-      const wrapper = createWrapper({ isV2: true, drawerSwitchOpen: false })
-      expect(wrapper.text()).toContain('Laci tertutup')
-    })
-
-    it('does not show switches panel for v1', () => {
-      const wrapper = createWrapper({ isV2: false })
+  describe('switches panel removed', () => {
+    it('never renders tank/drawer switch indicators', () => {
+      const wrapper = createWrapper({ isV2: true })
       expect(wrapper.text()).not.toContain('Sakelar')
+      expect(wrapper.text()).not.toContain('Tutup tangki')
+      expect(wrapper.text()).not.toContain('Laci')
     })
   })
 })

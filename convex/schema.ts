@@ -248,9 +248,6 @@ export default defineSchema({
     batterySoC: v.optional(v.number()),
     lastBatteryReading: v.optional(v.number()),
     batteryLastFullCharge: v.optional(v.number()),
-    // V2 Limit switches
-    reportedTankSwitchOpen: v.optional(v.boolean()),
-    reportedDrawerSwitchOpen: v.optional(v.boolean()),
     // V2 Device variant flags
     hasModem: v.optional(v.boolean()),
     hasSolarPanel: v.optional(v.boolean()),

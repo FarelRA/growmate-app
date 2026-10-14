@@ -1,5 +1,5 @@
 import { ConvexError } from 'convex/values'
-import type { Ctx, MutationCtx, DeviceDoc } from '../../types'
+import type { Ctx, MutationCtx } from '../../types'
 import type { Id } from '../../_generated/dataModel'
 import {
   DEFAULT_WATERING_THRESHOLD, DEFAULT_LIGHTING_THRESHOLD,

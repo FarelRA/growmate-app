@@ -88,20 +88,14 @@ export async function ensureDeviceExists(
 }
 
 export async function getUserDevices(ctx: Ctx, userId: Id<'users'>) {
-  // Bounded reads only on this hot path (every dashboard/assistant/trigger
-  // query fans out here): cursor-paginated full collection, 100/page, so a
-  // single read never grows with the user's history. Sorting is unchanged.
-  const devices: DeviceDoc[] = []
-  let cursor: string | null = null
-  while (true) {
-    const page = await ctx.db
-      .query('devices')
-      .withIndex('by_user', (q) => q.eq('userId', userId))
-      .paginate({ cursor, numItems: 100 })
-    devices.push(...page.page)
-    if (page.isDone) break
-    cursor = page.continueCursor
-  }
+  // Per-user scope (a grower owns a handful of units): a single indexed
+  // collect. This must NOT paginate — callers like sendAssistantMessage run
+  // other paginated reads in the same function, and Convex allows only one
+  // .paginate() per function (live 500 otherwise; unit fakes don't enforce).
+  const devices = await ctx.db
+    .query('devices')
+    .withIndex('by_user', (q) => q.eq('userId', userId))
+    .collect()
 
   return devices.sort((a, b) => b.updatedAt - a.updatedAt)
 }

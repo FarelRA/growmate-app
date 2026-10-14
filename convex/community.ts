@@ -17,33 +17,23 @@ const COMMUNITY_COMMENT_PAGE = 20
 const COMMUNITY_COMMENT_SHOWN = 6
 
 async function countPostLikes(ctx: Ctx, postId: Id<'communityPosts'>) {
-  let total = 0
-  let cursor: string | null = null
-  while (true) {
-    const page = await ctx.db
-      .query('postLikes')
-      .withIndex('by_post', (q) => q.eq('postId', postId))
-      .paginate({ cursor, numItems: 100 })
-    total += page.page.length
-    if (page.isDone) break
-    cursor = page.continueCursor
-  }
-  return total
+  // Per-post scope (a handful of rows): plain collect. Must NOT paginate —
+  // getCommunityPostView counts likes AND comments in one function, and
+  // Convex allows only a single .paginate() per function (live 500).
+  const likes = await ctx.db
+    .query('postLikes')
+    .withIndex('by_post', (q) => q.eq('postId', postId))
+    .collect()
+  return likes.length
 }
 
 async function countPostComments(ctx: Ctx, postId: Id<'communityPosts'>) {
-  let total = 0
-  let cursor: string | null = null
-  while (true) {
-    const page = await ctx.db
-      .query('postComments')
-      .withIndex('by_post', (q) => q.eq('postId', postId))
-      .paginate({ cursor, numItems: 100 })
-    total += page.page.length
-    if (page.isDone) break
-    cursor = page.continueCursor
-  }
-  return total
+  // Same single-paginate rule as countPostLikes above.
+  const comments = await ctx.db
+    .query('postComments')
+    .withIndex('by_post', (q) => q.eq('postId', postId))
+    .collect()
+  return comments.length
 }
 
 async function getCommunityPostView(ctx: Ctx, post: CommunityPostDoc, viewerId?: Id<'users'>) {

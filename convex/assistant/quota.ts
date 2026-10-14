@@ -24,19 +24,16 @@ export async function getAssistantUsage(
   // Quota limits: basic 20/day, advanced 100/day (see getAssistantMessageLimit).
   // Indexed count over today's user messages — no take() ceiling, so usage
   // can never silently undercount when history exceeds the old 160-row cap.
-  let usedToday = 0
-  let cursor: string | null = null
-  while (true) {
-    const page = await ctx.db
-      .query('assistantMessages')
-      .withIndex('by_thread_role_createdAt', (q) =>
-        q.eq('threadId', threadId).eq('role', 'user').gte('createdAt', startOfToday),
-      )
-      .paginate({ cursor, numItems: 100 })
-    usedToday += page.page.length
-    if (page.isDone) break
-    cursor = page.continueCursor
-  }
+  // Plain collect (per-thread-per-day scope is tiny): sendAssistantMessage
+  // calls this twice per function (pre-check + post-insert recount), and
+  // Convex allows only a single .paginate() per function (live 500).
+  const todays = await ctx.db
+    .query('assistantMessages')
+    .withIndex('by_thread_role_createdAt', (q) =>
+      q.eq('threadId', threadId).eq('role', 'user').gte('createdAt', startOfToday),
+    )
+    .collect()
+  const usedToday = todays.length
   const limit = getAssistantMessageLimit(tier)
 
   return {

@@ -69,7 +69,7 @@ describe('backend threshold constants', () => {
   })
 
   it('exposes tank and ADC bounds', () => {
-    expect(DEFAULT_TANK_CAPACITY).toBe(10)
+    expect(DEFAULT_TANK_CAPACITY).toBe(1)
     expect(DEFAULT_TANK_MIN_LEVEL).toBe(10)
     expect(ADC_RAW_MIN).toBe(0)
     expect(ADC_RAW_MAX).toBe(32767)

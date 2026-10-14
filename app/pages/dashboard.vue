@@ -50,9 +50,6 @@ const {
   batteryIcon,
   timeToEmpty,
   timeToFull,
-  hasModem,
-  hasSolarPanel,
-  solarPanelWatts,
   tankCapacity,
   tankMinLevel,
 } = useDashboard()
@@ -173,9 +170,6 @@ watch(
       :battery-icon="batteryIcon"
       :time-to-empty="timeToEmpty"
       :time-to-full="timeToFull"
-      :has-modem="hasModem"
-      :has-solar-panel="hasSolarPanel"
-      :solar-panel-watts="solarPanelWatts"
       :tank-capacity="tankCapacity"
       :tank-min-level="tankMinLevel"
       @water="handleWater"

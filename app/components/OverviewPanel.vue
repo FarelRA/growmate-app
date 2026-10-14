@@ -18,9 +18,6 @@ defineProps<{
   batteryIcon?: string
   timeToEmpty?: string
   timeToFull?: string
-  hasModem?: boolean
-  hasSolarPanel?: boolean
-  solarPanelWatts?: number
   tankCapacity?: number
   tankMinLevel?: number
 }>()
@@ -146,7 +143,7 @@ function formatPlantHealthLabel(value: string) {
           v-if="isV2"
           :level="waterSensor?.value ?? 0"
           label="Level Tangki Pupuk"
-          :capacity="tankCapacity ?? 10"
+          :capacity="tankCapacity ?? 1"
           :min-level="tankMinLevel ?? 10"
         />
         <article v-else class="rounded-[2rem] bg-[#f3f3f3] p-5 shadow-[0_12px_32px_rgba(15,23,42,0.04)]">
@@ -225,12 +222,6 @@ function formatPlantHealthLabel(value: string) {
             </div>
             <div class="mt-3 text-xs text-gm-muted">
               <p>{{ (batteryCurrent ?? 0) > 0 ? timeToFull : timeToEmpty }}</p>
-            </div>
-            <div v-if="hasModem" class="mt-2 flex items-center gap-1 text-xs text-gm-muted">
-              <span class="material-symbols-outlined text-sm">signal_cellular_alt</span> Modem terpasang
-            </div>
-            <div v-if="hasSolarPanel" class="mt-1 flex items-center gap-1 text-xs text-gm-muted">
-              <span class="material-symbols-outlined text-sm">solar_power</span> Panel surya {{ solarPanelWatts }}W
             </div>
           </article>
         </template>

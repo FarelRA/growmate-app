@@ -357,16 +357,18 @@ export const claimDeviceByUser = internalMutation({
 // Backfill the static v2 hardware variant on rows inserted before the
 // field existed (fresh inserts already carry it). Firmware versions are
 // intentionally NOT backfilled here: they change with OTA updates.
-export const patchDeviceVariant = internalMutation({
+export const patchDeviceStatics = internalMutation({
   args: {
     deviceId: v.id("devices"),
     variant: v.optional(v.union(v.literal("tech"), v.literal("tech-addon"))),
     batteryCapacityAh: v.optional(v.number()),
+    tankCapacity: v.optional(v.number()),
   },
-  handler: async (ctx, { deviceId, variant, batteryCapacityAh }) => {
+  handler: async (ctx, { deviceId, variant, batteryCapacityAh, tankCapacity }) => {
     await ctx.db.patch(deviceId, {
       ...(variant !== undefined ? { variant } : {}),
       ...(batteryCapacityAh !== undefined ? { batteryCapacityAh } : {}),
+      ...(tankCapacity !== undefined ? { tankCapacity } : {}),
       updatedAt: Date.now(),
     });
   },

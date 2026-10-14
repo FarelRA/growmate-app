@@ -92,16 +92,18 @@ export const devices = internalAction({
       if (existing) {
         // Rows seeded before `variant` existed stay visible to dashboards:
         // backfill the static hardware facts without touching versions.
-        // Same for the pack: every unit ships the 3.5Ah cell, so reseed
+        // Same for the pack (3.5Ah on every unit) and the 1L tank: reseed
         // converges legacy rows instead of stranding old capacities.
         if (
           (existing as { variant?: string }).variant !== d.variant ||
-          (existing as { batteryCapacityAh?: number }).batteryCapacityAh !== d.batteryCapacityAh
+          (existing as { batteryCapacityAh?: number }).batteryCapacityAh !== d.batteryCapacityAh ||
+          (existing as { tankCapacity?: number }).tankCapacity !== d.tankCapacity
         ) {
-          await ctx.runMutation(internal.seedInternal.patchDeviceVariant, {
+          await ctx.runMutation(internal.seedInternal.patchDeviceStatics, {
             deviceId: existing._id,
             variant: d.variant,
             batteryCapacityAh: d.batteryCapacityAh,
+            tankCapacity: d.tankCapacity,
           });
         }
         deviceIds.push(existing._id);

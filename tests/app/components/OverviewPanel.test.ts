@@ -230,14 +230,10 @@ describe('OverviewPanel', () => {
       expect(wrapper.text()).toContain('5 jam lagi')
     })
 
-    it('shows modem indicator', () => {
-      const wrapper = createWrapper({ isV2: true, hasModem: true })
-      expect(wrapper.text()).toContain('Modem terpasang')
-    })
-
-    it('shows solar panel indicator with wattage', () => {
-      const wrapper = createWrapper({ isV2: true, hasSolarPanel: true, solarPanelWatts: 50 })
-      expect(wrapper.text()).toContain('Panel surya 50W')
+    it('never shows modem or solar labels', () => {
+      const wrapper = createWrapper({ isV2: true, hasModem: true, hasSolarPanel: true, solarPanelWatts: 50 })
+      expect(wrapper.text()).not.toContain('Modem terpasang')
+      expect(wrapper.text()).not.toContain('Panel surya')
     })
 
     it('does not show battery panel for v1', () => {

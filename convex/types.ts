@@ -168,7 +168,7 @@ export const DEFAULT_FERTILIZING_COOLDOWN = 432000
 export const DEFAULT_PESTICIDE_THRESHOLD = 0
 export const DEFAULT_PESTICIDE_DURATION = 10
 export const DEFAULT_PESTICIDE_COOLDOWN = 604800
-export const DEFAULT_TANK_CAPACITY = 10
+export const DEFAULT_TANK_CAPACITY = 1
 export const DEFAULT_TANK_MIN_LEVEL = 10
 
 export const plantStagePoints: Record<PlantStageValue, number> = {
